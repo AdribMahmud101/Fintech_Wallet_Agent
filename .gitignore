@@ -1,0 +1,56 @@
+# Rust -----------------------------------------------------------------------
+/fusion-core/target/
+**/*.rs.bk
+# UniFFI generates these into the tree; regenerate with scripts, never commit.
+/fusion-core/src/uniffi/
+/fusion-core-kotlin/build/
+.kotlin/
+
+# Android / Gradle -----------------------------------------------------------
+/fusion-core-android/build/
+/fusion-core-android/app/build/
+/fusion-core-android/.gradle/
+/fusion-core-android/local.properties          # machine-specific SDK path
+/fusion-core-android/.cxx/
+.gradle/
+build/
+
+# Native libraries ----------------------------------------------------------
+# Produced by `cargo ndk -t arm64-v8a`; 7MB binary, regenerable, and tied to whichever
+# NDK is installed. Kept out of git so a clone is source-only.
+*.so
+*.dylib
+*.dll
+*.a
+*.rlib
+
+# Build outputs -------------------------------------------------------------
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Signing --------------------------------------------------------------------
+# Never publish signing material, even for a demo.
+*.jks
+*.keystore
+*.p12
+keystore.properties
+
+# Secrets --------------------------------------------------------------------
+.env
+.env.*
+*.pem
+
+# Editors / OS --------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Working files -------------------------------------------------------------
+.temp-instructions.txt
+__pycache__/
+*.pyc

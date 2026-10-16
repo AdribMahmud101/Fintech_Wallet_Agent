@@ -1,0 +1,5 @@
+[bindings.kotlin]
+package_name = "app.fusion.wallet.core"
+cdylib_name = "fusion_core"
+android = true
+kotlin_target_version = "1.9"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy round launcher icon for API 24-25; see mipmap/ic_launcher.xml for why this is a
+  layer-list rather than the old blue shield vector. A legacy round icon gets no
+  circular mask of its own from the launcher, so the artwork is shown on the square
+  canvas here exactly as the adaptive layers compose it.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

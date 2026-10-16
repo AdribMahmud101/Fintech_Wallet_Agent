@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fusion Wallet</string>
+
+    <string name="nav_chat">Chat</string>
+    <string name="nav_tokens">Tokens</string>
+    <string name="nav_ledger">Ledger</string>
+    <string name="engine_rust">RUST OK</string>
+    <string name="engine_rust_down">RUST DOWN</string>
+
+    <string name="open_terminal">Open system log terminal</string>
+    <string name="open_settings">Open settings</string>
+
+    <string name="prompt_input_hint">Ask the agent to move funds…</string>
+    <string name="prompt_send">Send to agent</string>
+    <string name="prompt_voice">Voice input</string>
+
+    <string name="preflight_header">RUST GUARDRAIL PRE-FLIGHT CHECK</string>
+    <string name="preflight_confirm">Confirm &amp; Execute</string>
+    <string name="preflight_cancel">Cancel</string>
+
+    <string name="terminal_title">SYSTEM LOG</string>
+    <string name="terminal_clear">Clear</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_close">Close settings</string>
+    <string name="settings_rpc">RPC URL Node</string>
+    <string name="settings_rpc_pinned">Pinned at first launch</string>
+    <string name="settings_daily_cap">Daily Velocity Threshold</string>
+    <string name="settings_whitelist">Active Token Whitelist</string>
+    <string name="settings_threads">MNN Inference Threads</string>
+    <string name="tokens_empty">No balance path wired up yet.</string>
+    <string name="empty_chat_title">No transactions yet</string>
+    <string name="empty_chat_body">Ask the agent to transfer, or tap a suggestion below.</string>
+</resources>

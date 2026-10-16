@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy launcher icon, used only on API 24-25; API 26+ resolves
+  mipmap-anydpi-v26/ic_launcher.xml and gets the real adaptive icon.
+
+  This used to be a hand-drawn blue shield vector that no longer matched anything the app
+  shipped. It is now the same two layers as the adaptive icon (canvas background plus
+  the generated foreground) so there is one piece of artwork rather than two that drift.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

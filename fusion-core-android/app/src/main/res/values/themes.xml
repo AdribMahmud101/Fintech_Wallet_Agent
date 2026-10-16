@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The app itself draws nothing on a bare Material window, so before the splash theme
+      existed the cold start showed a white flash between the launcher and the dark UI.
+    -->
+    <style name="Theme.FusionWallet" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+
+    <!--
+      Launch theme. Installed by MainActivity.installSplashScreen() and swapped for
+      Theme.FusionWallet once the first frame is up.
+
+      windowSplashScreenAnimatedIcon is deliberately not set: with no explicit icon the
+      platform uses android:icon, which is the adaptive icon, so the splash and the
+      launcher show the same mark without naming the asset twice. The system splash
+      cannot render text at all (the platform exposes a background colour and an animated
+      icon, and no branding-image slot), which is why "Fusion Wallet" is set as type in
+      FusionWalletApp rather than here.
+    -->
+    <style name="Theme.FusionWallet.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.FusionWallet</item>
+    </style>
+</resources>

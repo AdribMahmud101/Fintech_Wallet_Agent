@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      The adaptive-icon background and the splash background are the same surface on
+      purpose. The foreground artwork is a white-and-violet shield drawn on near-black,
+      so anything other than Obsidian.CanvasBackground (#08090C) here shows as a visible
+      plate behind the launcher icon and a flash between the system splash and the app.
+    -->
+    <color name="ic_launcher_background">#08090C</color>
+    <color name="splash_background">#08090C</color>
+</resources>
