@@ -92,6 +92,7 @@ class AuthTest {
         assertEquals(3, a.map { it.password }.toSet().size)
         assertEquals(setOf(UserRole.OWNER, UserRole.MANAGER, UserRole.AUDITOR), a.map { it.role }.toSet())
         assertTrue(a.all { it.avatarColor in 0..5 })
+        assertTrue("default users all use the plain person icon", a.all { it.avatarIcon == AvatarIcon.PERSON })
     }
 
     @Test fun roles_grant_progressively_fewer_powers() {

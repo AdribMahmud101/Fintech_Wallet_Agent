@@ -204,6 +204,9 @@ interface PortfolioReadDao {
     @Query("SELECT * FROM egress_log ORDER BY createdAt DESC LIMIT :limit")
     fun observeEgress(limit: Int): Flow<List<EgressLogEntity>>
 
+    @Query("SELECT * FROM bucket_snapshot WHERE accountId = :accountId AND observedAt >= :since ORDER BY observedAt ASC")
+    fun observeBucketHistory(accountId: Long, since: Long): Flow<List<BucketSnapshotEntity>>
+
     @Query("SELECT * FROM bucket_snapshot WHERE accountId = :accountId ORDER BY observedAt DESC LIMIT 1")
     fun observeLatestBuckets(accountId: Long): Flow<BucketSnapshotEntity?>
 }

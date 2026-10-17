@@ -19,6 +19,16 @@ object Fmt {
     /** Native 18-decimal amount to 4 places, e.g. 0.0123. */
     fun native(raw: BigInteger): String = BigDecimal(raw).movePointLeft(18).setScale(4, RoundingMode.HALF_UP).toPlainString()
 
+    /** Short form for tight spaces: 10,000 -> "10K", 1,250 -> "1.3K", 950 -> "950". */
+    fun compact(raw: BigInteger, dec: Int): String {
+        val v = BigDecimal(raw).movePointLeft(dec)
+        val k = BigDecimal(1000)
+        return if (v.abs() >= k) {
+            val s = v.divide(k).setScale(1, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+            s + "K"
+        } else v.setScale(0, RoundingMode.HALF_UP).toPlainString()
+    }
+
     fun short(hex: String): String = if (hex.length > 14) hex.take(8) + "…" + hex.takeLast(4) else hex
 
     /** 95 -> "1:35", 3700 -> "1h 1m". */

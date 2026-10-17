@@ -66,11 +66,16 @@ import app.fusion.wallet.accountant.data.Tier
 import app.fusion.wallet.accountant.domain.Raw
 import app.fusion.wallet.ui.Fmt
 import app.fusion.wallet.ui.accountant.AccountantViewModel
+import app.fusion.wallet.ui.charts.RingGauge
+import app.fusion.wallet.ui.common.BentoGap
+import app.fusion.wallet.ui.common.BentoRow
+import app.fusion.wallet.ui.common.BentoTile
 import app.fusion.wallet.ui.common.Expander
+import app.fusion.wallet.ui.common.StatTile
+import app.fusion.wallet.ui.common.TileLabel
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.common.ScreenHeader
 import app.fusion.wallet.ui.common.Tone
-import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.theme.Accessible
 import app.fusion.wallet.ui.theme.FusionDims
@@ -102,15 +107,24 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewMod
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(BentoGap),
     ) {
         item { ScreenHeader(stringResource(R.string.ag_title), stringResource(R.string.ag_subtitle)) }
-        s.mandate?.let { m -> item { AgentCard(m, dec, unit, now, s.caps.controlAgent) } }
+        s.mandate?.let { m ->
+            item {
+                BentoRow {
+                    IdentityTile(Modifier.weight(1.3f).fillMaxHeight(), m, dec, unit)
+                    LimitTile(Modifier.weight(1f).fillMaxHeight(), m, dec)
+                }
+            }
+            item { StatsRow(s.decisions) }
+            item { RulesTile(m, dec, unit, now, s.caps.controlAgent) }
+        }
         if (s.demoData) item { Text(stringResource(R.string.ag_demo_note), style = MaterialTheme.typography.bodySmall, color = Tone.Earning) }
 
         item { Text(stringResource(R.string.ag_timeline), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold) }
         if (s.decisions.isEmpty()) {
-            item { ObsidianCard { Text(stringResource(R.string.ag_empty), Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = Muted) } }
+            item { BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) { Text(stringResource(R.string.ag_empty), style = MaterialTheme.typography.bodyLarge, color = Muted) } }
         } else {
             items(s.decisions, key = { it.id }) { DecisionCard(it, now, s.caps.controlAgent) }
         }
@@ -132,61 +146,76 @@ private fun statusRes(s: AgentStatus) = when (s) {
 }
 
 @Composable
-private fun AgentCard(m: MandateEntity, dec: Int, unit: String, now: Long, canControl: Boolean) {
-    var open by rememberSaveable { mutableStateOf(false) }
+private fun IdentityTile(modifier: Modifier, m: MandateEntity, dec: Int, unit: String) {
     fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
+    BentoTile(modifier) {
+        Box(Modifier.size(44.dp).clip(CircleShape).background(FusionTheme.surfaces.level3), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.SmartToy, contentDescription = null, tint = Tone.Earning, modifier = Modifier.size(24.dp))
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(m.agentLabel, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.padding(vertical = 6.dp)) { StatusPill(label = stringResource(statusRes(m.status)), tone = statusTone(m.status)) }
+        Text(stringResource(R.string.ag_summary_rules, whole(m.immediateMaxRaw), whole(m.delayedMaxRaw)), style = MaterialTheme.typography.bodySmall, color = Muted)
+    }
+}
+
+@Composable
+private fun LimitTile(modifier: Modifier, m: MandateEntity, dec: Int) {
     val spent = Raw.parse(m.spentTodayRaw)
     val limit = Raw.parse(m.dailyLimitRaw)
     val frac = if (limit.signum() <= 0) 0f else (spent.multiply(BigInteger.valueOf(1000)).divide(limit).toInt() / 1000f).coerceIn(0f, 1f)
-
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(FusionTheme.surfaces.level3), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.SmartToy, contentDescription = null, tint = Tone.Earning, modifier = Modifier.size(24.dp))
-                }
-                Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                    Text(m.agentLabel, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        stringResource(R.string.ag_summary_rules, whole(m.immediateMaxRaw), whole(m.delayedMaxRaw)),
-                        style = MaterialTheme.typography.bodySmall, color = Muted,
-                    )
-                }
-                StatusPill(label = stringResource(statusRes(m.status)), tone = statusTone(m.status))
-            }
-            Spacer(Modifier.height(14.dp))
-            Text(
-                stringResource(R.string.ag_used_line, Fmt.whole(spent, dec), whole(m.dailyLimitRaw)),
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(FusionTheme.surfaces.level3)) {
-                if (frac > 0f) Box(Modifier.weight(frac).height(8.dp).background(if (frac > 0.8f) Tone.Warn else Tone.Earning))
-                if (frac < 1f) Box(Modifier.weight(1f - frac).height(8.dp))
-            }
-
-            Expander(
-                label = stringResource(if (open) R.string.ag_rules_hide else R.string.ag_rules_show),
-                expanded = open, onToggle = { open = !open },
+    BentoTile(modifier) {
+        TileLabel(stringResource(R.string.ag_today))
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            RingGauge(
+                progress = frac, color = if (frac > 0.8f) Tone.Warn else Tone.Earning, size = 104.dp, stroke = 14.dp,
+                description = stringResource(R.string.cd_limit, Fmt.whole(spent, dec), Fmt.whole(limit, dec)),
             ) {
-                Column(Modifier.padding(top = 4.dp)) {
-                    Rule(Tone.Good, stringResource(R.string.ag_rule_auto, whole(m.immediateMaxRaw)))
-                    Rule(Tone.Warn, stringResource(R.string.ag_rule_delay, whole(m.delayedMaxRaw), durationText(m.delaySeconds.toLong())))
-                    Rule(Tone.Earning, stringResource(R.string.ag_rule_owner, whole(m.delayedMaxRaw)))
-                    Rule(Tone.Bad, stringResource(R.string.ag_rule_hard, whole(m.hardMaxRaw), whole(m.dailyLimitRaw)))
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.ag_session, durationText(m.sessionExpiresAt - now)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                    Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(stringResource(R.string.ag_fingerprint), style = MaterialTheme.typography.bodySmall, color = Muted)
-                        Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    if (canControl) {
-                        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
-                        Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
-                    } else {
-                        Text(stringResource(R.string.ag_view_only), style = MaterialTheme.typography.bodySmall, color = Muted)
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(Fmt.whole(spent, dec), style = MonoStyle.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ag_ring_of, Fmt.whole(limit, dec)), style = MaterialTheme.typography.labelMedium, color = Muted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsRow(decisions: List<AgentDecisionEntity>) {
+    BentoRow {
+        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_done), decisions.count { it.status == DecisionStatus.EXECUTED }.toString(), Tone.Good)
+        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_waiting), decisions.count { it.status == DecisionStatus.QUEUED }.toString(), Tone.Warn)
+        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_blocked), decisions.count { it.status == DecisionStatus.BLOCKED }.toString(), Tone.Bad)
+    }
+}
+
+@Composable
+private fun RulesTile(m: MandateEntity, dec: Int, unit: String, now: Long, canControl: Boolean) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
+    BentoTile(Modifier.fillMaxWidth(), padding = 14.dp) {
+        Expander(
+            label = stringResource(if (open) R.string.ag_rules_hide else R.string.ag_rules_show),
+            expanded = open, onToggle = { open = !open },
+        ) {
+            Column(Modifier.padding(top = 4.dp)) {
+                Rule(Tone.Good, stringResource(R.string.ag_rule_auto, whole(m.immediateMaxRaw)))
+                Rule(Tone.Warn, stringResource(R.string.ag_rule_delay, whole(m.delayedMaxRaw), durationText(m.delaySeconds.toLong())))
+                Rule(Tone.Earning, stringResource(R.string.ag_rule_owner, whole(m.delayedMaxRaw)))
+                Rule(Tone.Bad, stringResource(R.string.ag_rule_hard, whole(m.hardMaxRaw), whole(m.dailyLimitRaw)))
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.ag_session, durationText(m.sessionExpiresAt - now)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(stringResource(R.string.ag_fingerprint), style = MaterialTheme.typography.bodySmall, color = Muted)
+                    Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Spacer(Modifier.height(10.dp))
+                if (canControl) {
+                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
+                    Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                } else {
+                    Text(stringResource(R.string.ag_view_only), style = MaterialTheme.typography.bodySmall, color = Muted)
                 }
             }
         }
@@ -235,7 +264,7 @@ private fun DecisionCard(d: AgentDecisionEntity, now: Long, canControl: Boolean)
     val tone = outcomeTone(d)
     val time = SimpleDateFormat("HH:mm", Locale.US).format(Date(d.createdAt * 1000))
 
-    ObsidianCard {
+    BentoTile(Modifier.fillMaxWidth(), padding = 0.dp) {
         Row(Modifier.height(IntrinsicSize.Min)) {
             Box(Modifier.width(5.dp).fillMaxHeight().background(tone))
             Column(

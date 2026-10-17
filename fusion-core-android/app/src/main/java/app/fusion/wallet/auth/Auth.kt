@@ -137,10 +137,11 @@ data class DemoAccount(
 )
 
 object DemoUsers {
+    // Every default account starts with the plain "person" avatar; colour tells them apart and users can customise it.
     val accounts = listOf(
-        DemoAccount("mei@fusion.demo", "Owner#2026", "Lin Mei", UserRole.OWNER, "Mei Trading Co.", 0, AvatarIcon.BRIEFCASE),
-        DemoAccount("wei@fusion.demo", "Manager#2026", "Chen Wei", UserRole.MANAGER, "Mei Trading Co.", 2, AvatarIcon.INITIALS),
-        DemoAccount("judge@fusion.demo", "Auditor#2026", "Guest Judge", UserRole.AUDITOR, "Mei Trading Co.", 4, AvatarIcon.SHIELD),
+        DemoAccount("mei@fusion.demo", "Owner#2026", "Lin Mei", UserRole.OWNER, "Mei Trading Co.", 0, AvatarIcon.PERSON),
+        DemoAccount("wei@fusion.demo", "Manager#2026", "Chen Wei", UserRole.MANAGER, "Mei Trading Co.", 2, AvatarIcon.PERSON),
+        DemoAccount("judge@fusion.demo", "Auditor#2026", "Guest Judge", UserRole.AUDITOR, "Mei Trading Co.", 4, AvatarIcon.PERSON),
     )
 
     /** Inserts any missing demo account (idempotent). */

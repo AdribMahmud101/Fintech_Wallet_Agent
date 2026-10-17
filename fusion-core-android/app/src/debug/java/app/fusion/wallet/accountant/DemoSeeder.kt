@@ -8,6 +8,7 @@ import app.fusion.wallet.accountant.data.AgentStatus
 import app.fusion.wallet.accountant.data.AssetEntity
 import app.fusion.wallet.accountant.data.AssetKind
 import app.fusion.wallet.accountant.data.BalanceSnapshotEntity
+import app.fusion.wallet.accountant.data.BucketSnapshotEntity
 import app.fusion.wallet.accountant.data.CategoryEntity
 import app.fusion.wallet.accountant.data.CheckState
 import app.fusion.wallet.accountant.data.DecisionKind
@@ -92,6 +93,22 @@ object DemoSeeder {
         w.insertLedger(ledger(LedgerKind.PAYMENT, Direction.OUT, 800, suppliers, 9, "demo supplier", null))
         w.insertLedger(ledger(LedgerKind.INCOME, Direction.IN, 41, yieldCat, 2, "demo yield", null))
         w.insertLedger(ledger(LedgerKind.DEPOSIT, Direction.OUT, 10, null, 0, "agent sweep", "0x" + "c3".repeat(32)))
+
+        // 30 days of daily snapshots ending exactly at today's reference state (3,500 free / 1,500 reserved / 5,000 deployed).
+        fun raw(x: Double) = Math.round(x * 1_000_000.0).toString()
+        fun wiggle(d: Int) = 40.0 * Math.sin(d / 3.0)
+        for (d in 0..29) {
+            val total = 9_690.0 + d * (310.0 / 29.0) + wiggle(d) - wiggle(29)
+            val deployed = 4_200.0 + d * (800.0 / 29.0)
+            val reserved = 1_500.0
+            w.insertBuckets(
+                BucketSnapshotEntity(
+                    accountId = acct, freeRaw = raw(total - reserved - deployed), reservedRaw = raw(reserved), deployedRaw = raw(deployed),
+                    sweepableRaw = raw(maxOf(total - reserved - deployed - 500.0, 0.0)), shortfallRaw = "0",
+                    observedAt = now - (29 - d) * day,
+                ),
+            )
+        }
 
         w.saveMandate(
             MandateEntity(

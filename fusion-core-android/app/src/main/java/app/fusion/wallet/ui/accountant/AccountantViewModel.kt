@@ -16,6 +16,7 @@ import app.fusion.wallet.accountant.cloud.GuardPolicy
 import app.fusion.wallet.accountant.cloud.GuardResult
 import app.fusion.wallet.accountant.data.AgentDecisionEntity
 import app.fusion.wallet.accountant.data.ArenaResultEntity
+import app.fusion.wallet.accountant.data.BucketSnapshotEntity
 import app.fusion.wallet.accountant.data.EgressLogEntity
 import app.fusion.wallet.accountant.data.InsightTopic
 import app.fusion.wallet.accountant.data.MandateEntity
@@ -49,6 +50,8 @@ data class AppUiState(
     val decisions: List<AgentDecisionEntity> = emptyList(),
     val arena: List<ArenaResultEntity> = emptyList(),
     val receipts: List<ReceiptRow> = emptyList(),
+    /** Daily bucket snapshots for the last ~30 days, oldest first (empty until the wallet has history). */
+    val history: List<BucketSnapshotEntity> = emptyList(),
     /** True when the data on screen is debug fixture data. Always false in release builds. */
     val demoData: Boolean = false,
     /** What the signed-in role may change. Defaults to nothing until a user is signed in. */
@@ -69,6 +72,10 @@ class AccountantViewModel(app: Application) : AndroidViewModel(app) {
             refresh()
             svc.db.readDao().primaryAccount()?.let { acct ->
                 launch { svc.db.readDao().observeReceipts(acct.id, 20).collect { l -> _state.update { it.copy(receipts = l) } } }
+                launch {
+                    val since = System.currentTimeMillis() / 1000 - 31L * 24 * 3600
+                    svc.db.readDao().observeBucketHistory(acct.id, since).collect { l -> _state.update { it.copy(history = l) } }
+                }
             }
         }
         viewModelScope.launch { svc.db.sinkDao().observeSettings().collect { s -> _state.update { it.copy(settings = s ?: PrivacySettingsEntity()) } } }

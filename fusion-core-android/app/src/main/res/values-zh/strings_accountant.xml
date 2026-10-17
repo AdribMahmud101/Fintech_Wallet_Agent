@@ -209,4 +209,47 @@
     <plurals name="f_gas_low_p"><item quantity="other">手续费余量只够智能体操作约 %1$s 次。请为智能体补充 ETH，否则它无法操作。</item></plurals>
     <plurals name="tr_in_days_p"><item quantity="other">%1$s 天后</item></plurals>
     <plurals name="tr_bills_total_p"><item quantity="other">共 %1$s 笔账单 · 合计 %2$s</item></plurals>
+    <!-- Bento & charts -->
+    <string name="tr_alloc">资金分布</string>
+    <string name="tr_alloc_total">总计</string>
+    <string name="tr_legend_cash">现金 %1$s%%</string>
+    <string name="tr_legend_bills">账单 %1$s%%</string>
+    <string name="tr_legend_earning">生息 %1$s%%</string>
+    <string name="cd_alloc">%1$s 的分布：现金占 %2$s%%，留作付账款占 %3$s%%，生息占 %4$s%%。</string>
+    <string name="tr_runway">现金可支撑</string>
+    <string name="tr_runway_days">天</string>
+    <string name="tr_runway_none">暂无支出</string>
+    <string name="rw_good">很充裕</string>
+    <string name="rw_watch">需要留意</string>
+    <string name="rw_low">即将不足</string>
+    <string name="cd_runway">按近期支出，您的现金约可支撑 %1$s 天。</string>
+    <string name="tr_trend">近 30 天总额</string>
+    <string name="tr_trend_up">▲ 30 天增长 %1$s%%</string>
+    <string name="tr_trend_down">▼ 30 天下降 %1$s%%</string>
+    <string name="tr_trend_flat">30 天内没有变化</string>
+    <string name="tr_trend_none">历史数据还不够</string>
+    <string name="cd_trend">近 30 天的资金总额，从 %1$s 变为 %2$s %3$s。</string>
+    <string name="tr_spend">每周支出</string>
+    <string name="tr_spend_none">近 30 天没有支出</string>
+    <string name="cd_spend">近四周的每周支出：%1$s。</string>
+    <string name="wk_3">3周</string>
+    <string name="wk_2">2周</string>
+    <string name="wk_1">1周</string>
+    <string name="wk_0">本周</string>
+    <string name="cat_payroll">工资</string>
+    <string name="cat_suppliers">供应商</string>
+    <string name="cat_other">其他</string>
+    <string name="tr_rates">年利率</string>
+    <string name="bill_week">本周</string>
+    <string name="bill_month">本月</string>
+    <string name="bill_later">之后</string>
+    <string name="bill_overdue">已逾期</string>
+    <string name="cd_bills">按到期时间划分的账单：%1$s。</string>
+    <string name="ag_ring_of">共 %1$s</string>
+    <string name="cd_limit">今日已用 %1$s / %2$s。</string>
+    <string name="ag_stat_done">已完成</string>
+    <string name="ag_stat_waiting">等待中</string>
+    <string name="ag_stat_blocked">已拦截</string>
+    <string name="pf_stat_none">—</string>
+    <string name="ag_today">今日</string>
 </resources>

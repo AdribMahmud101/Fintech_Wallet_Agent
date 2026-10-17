@@ -230,4 +230,47 @@
         <item quantity="one">%1$s bill · %2$s</item>
         <item quantity="other">%1$s bills · %2$s in total</item>
     </plurals>
+    <!-- Bento & charts -->
+    <string name="tr_alloc">Where it sits</string>
+    <string name="tr_alloc_total">Total</string>
+    <string name="tr_legend_cash">Cash %1$s%%</string>
+    <string name="tr_legend_bills">Bills %1$s%%</string>
+    <string name="tr_legend_earning">Earning %1$s%%</string>
+    <string name="cd_alloc">Where your %1$s sits: cash %2$s percent, set aside for bills %3$s percent, earning interest %4$s percent.</string>
+    <string name="tr_runway">Cash runway</string>
+    <string name="tr_runway_days">days</string>
+    <string name="tr_runway_none">No spending yet</string>
+    <string name="rw_good">Comfortable</string>
+    <string name="rw_watch">Keep an eye on it</string>
+    <string name="rw_low">Running short</string>
+    <string name="cd_runway">Your cash covers about %1$s days at your recent spending.</string>
+    <string name="tr_trend">Total, last 30 days</string>
+    <string name="tr_trend_up">▲ %1$s%% in 30 days</string>
+    <string name="tr_trend_down">▼ %1$s%% in 30 days</string>
+    <string name="tr_trend_flat">No change in 30 days</string>
+    <string name="tr_trend_none">Not enough history yet</string>
+    <string name="cd_trend">Total money over the last 30 days, from %1$s to %2$s %3$s.</string>
+    <string name="tr_spend">Spending by week</string>
+    <string name="tr_spend_none">No spending in the last 30 days</string>
+    <string name="cd_spend">Spending by week over the last four weeks: %1$s.</string>
+    <string name="wk_3">3w</string>
+    <string name="wk_2">2w</string>
+    <string name="wk_1">1w</string>
+    <string name="wk_0">Now</string>
+    <string name="cat_payroll">Payroll</string>
+    <string name="cat_suppliers">Suppliers</string>
+    <string name="cat_other">Other</string>
+    <string name="tr_rates">Interest per year</string>
+    <string name="bill_week">This week</string>
+    <string name="bill_month">This month</string>
+    <string name="bill_later">Later</string>
+    <string name="bill_overdue">Overdue</string>
+    <string name="cd_bills">Bills by due date: %1$s.</string>
+    <string name="ag_ring_of">of %1$s</string>
+    <string name="cd_limit">%1$s of %2$s used today.</string>
+    <string name="ag_stat_done">Done</string>
+    <string name="ag_stat_waiting">Waiting</string>
+    <string name="ag_stat_blocked">Blocked</string>
+    <string name="pf_stat_none">—</string>
+    <string name="ag_today">Today</string>
 </resources>

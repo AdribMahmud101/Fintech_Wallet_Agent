@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,17 +37,20 @@ import app.fusion.wallet.R
 import app.fusion.wallet.accountant.data.ArenaOutcome
 import app.fusion.wallet.accountant.data.ArenaResultEntity
 import app.fusion.wallet.accountant.data.ArenaScenario
+import app.fusion.wallet.accountant.data.EgressLogEntity
 import app.fusion.wallet.accountant.data.ReceiptRow
 import app.fusion.wallet.accountant.domain.Raw
 import app.fusion.wallet.ui.Fmt
 import app.fusion.wallet.ui.accountant.AccountantViewModel
-import app.fusion.wallet.ui.common.CardTitle
+import app.fusion.wallet.ui.common.BentoGap
+import app.fusion.wallet.ui.common.BentoRow
+import app.fusion.wallet.ui.common.BentoTile
 import app.fusion.wallet.ui.common.Expander
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.common.Notice
 import app.fusion.wallet.ui.common.ScreenHeader
+import app.fusion.wallet.ui.common.StatTile
 import app.fusion.wallet.ui.common.Tone
-import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.theme.FusionDims
 import app.fusion.wallet.ui.theme.MonoStyle
@@ -54,23 +58,48 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** "Safety": one headline you can read in a second; the evidence underneath, one tap at a time. */
+/** "Safety": one headline, three numbers, a grid of attack tiles; the detail underneath, one tap at a time. */
 @Composable
 fun ProofScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
     var consentOpen by rememberSaveable { mutableStateOf(false) }
+    val total = s.arena.size
+    val gotThrough = s.arena.count { it.outcome == ArenaOutcome.NOT_BLOCKED }
+    val completed = s.arena.count { it.outcome != ArenaOutcome.ERROR }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(BentoGap),
     ) {
         item { ScreenHeader(stringResource(R.string.pf_title), stringResource(R.string.pf_subtitle)) }
         s.message?.let { m -> item { Notice(m, onDismiss = vm::dismissMessage) } }
-        item { HeadlineCard(s.arena) }
-        item { ArenaCard(s.arena) }
-        item { CloudCard(vm, s.caps.manageCloud, s.settings.cloudEnabled, s.hasApiKey, s.settings.model, s.settings.dailyCallLimit, s.egress.size, s.egress, onToggleOn = { consentOpen = true }) }
-        item { ReceiptsCard(s.receipts) }
+        item { HeadlineTile(total, gotThrough) }
+        item {
+            val none = stringResource(R.string.pf_stat_none)
+            val good = total > 0 && gotThrough == 0
+            BentoRow {
+                StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.pf_asr), if (total == 0) none else "$gotThrough/$total", if (total == 0) Muted else if (good) Tone.Good else Tone.Bad)
+                // No benign-case evaluation exists yet, so this stays "not measured" rather than a flattering 0%.
+                StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.pf_fbr), none, Muted)
+                StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.pf_avail), if (total == 0) none else "$completed/$total", if (total == 0) Muted else Tone.Good)
+            }
+        }
+        item {
+            Text(stringResource(R.string.pf_arena), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.pf_arena_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 2.dp))
+        }
+        ArenaScenario.entries.chunked(2).forEach { pair ->
+            item {
+                BentoRow {
+                    pair.forEach { sc -> ArenaTile(Modifier.weight(1f).fillMaxHeight(), sc, s.arena.firstOrNull { it.scenario == sc }) }
+                    if (pair.size == 1) Box(Modifier.weight(1f))
+                }
+            }
+        }
+        item { Text(stringResource(R.string.pf_arena_unavailable), style = MaterialTheme.typography.bodySmall, color = Muted) }
+        item { CloudTile(vm, s.caps.manageCloud, s.settings.cloudEnabled, s.hasApiKey, s.settings.model, s.settings.dailyCallLimit, s.egress, onToggleOn = { consentOpen = true }) }
+        item { ReceiptsTile(s.receipts) }
     }
     if (consentOpen) ConsentDialog(onAccept = { consentOpen = false; vm.grantConsent() }, onDismiss = { consentOpen = false })
 }
@@ -78,70 +107,41 @@ fun ProofScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewMod
 // ---- headline ---------------------------------------------------------------------------------
 
 @Composable
-private fun HeadlineCard(results: List<ArenaResultEntity>) {
-    val total = results.size
-    val gotThrough = results.count { it.outcome == ArenaOutcome.NOT_BLOCKED }
-    val completed = results.count { it.outcome != ArenaOutcome.ERROR }
-    val none = stringResource(R.string.pf_not_measured)
+private fun HeadlineTile(total: Int, gotThrough: Int) {
     val good = total > 0 && gotThrough == 0
-    ObsidianCard {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(if (total == 0) Muted.copy(alpha = 0.2f) else if (good) Tone.Good.copy(alpha = 0.2f) else Tone.Bad.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.Shield, contentDescription = null, tint = if (total == 0) Muted else if (good) Tone.Good else Tone.Bad, modifier = Modifier.size(24.dp))
-                }
-                Column(Modifier.padding(start = 14.dp)) {
-                    Text(
-                        if (total == 0) stringResource(R.string.pf_headline_none) else stringResource(R.string.pf_headline_some, (total - gotThrough).toString(), total.toString()),
-                        style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
-                    )
-                    if (total == 0) Text(stringResource(R.string.pf_headline_hint), style = MaterialTheme.typography.bodySmall, color = Muted)
-                }
+    val tone = if (total == 0) Muted else if (good) Tone.Good else Tone.Bad
+    BentoTile(Modifier.fillMaxWidth(), tint = if (total == 0) null else tone, padding = 18.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(tone.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Shield, contentDescription = null, tint = tone, modifier = Modifier.size(26.dp))
             }
-            Metric(stringResource(R.string.pf_asr), if (total == 0) none else stringResource(R.string.pf_count_of, gotThrough.toString(), total.toString()), if (total == 0) Muted else if (good) Tone.Good else Tone.Bad)
-            // No benign-case evaluation exists yet, so this stays "not measured" rather than a flattering 0%.
-            Metric(stringResource(R.string.pf_fbr), none, Muted)
-            Metric(stringResource(R.string.pf_avail), if (total == 0) none else stringResource(R.string.pf_count_of, completed.toString(), total.toString()), if (total == 0) Muted else Tone.Good)
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(
+                    if (total == 0) stringResource(R.string.pf_headline_none) else stringResource(R.string.pf_headline_some, (total - gotThrough).toString(), total.toString()),
+                    style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold,
+                )
+                if (total == 0) Text(stringResource(R.string.pf_headline_hint), style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
         }
     }
 }
 
+// ---- arena grid -------------------------------------------------------------------------------
+
 @Composable
-private fun Metric(label: String, value: String, tone: Color) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-        Text(value, style = MonoStyle, color = tone)
+private fun ArenaTile(modifier: Modifier, sc: ArenaScenario, last: ArenaResultEntity?) {
+    val tone = when (last?.outcome) {
+        ArenaOutcome.BLOCKED, ArenaOutcome.SAFE_CHOICE -> Tone.Good
+        ArenaOutcome.NOT_BLOCKED, ArenaOutcome.ERROR -> Tone.Bad
+        null -> Muted
     }
-}
-
-// ---- arena ------------------------------------------------------------------------------------
-
-@Composable
-private fun ArenaCard(results: List<ArenaResultEntity>) {
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.pf_arena))
-            Text(stringResource(R.string.pf_arena_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(bottom = 6.dp))
-            ArenaScenario.entries.forEach { sc ->
-                val last = results.firstOrNull { it.scenario == sc }
-                val tone = when (last?.outcome) {
-                    ArenaOutcome.BLOCKED, ArenaOutcome.SAFE_CHOICE -> Tone.Good
-                    ArenaOutcome.NOT_BLOCKED, ArenaOutcome.ERROR -> Tone.Bad
-                    null -> Muted
-                }
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(tone))
-                    Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                        Text(stringResource(scenarioRes(sc)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                        Text(
-                            last?.let { stringResource(outcomeRes(it.outcome)) + " · " + it.layer } ?: stringResource(R.string.pf_not_run),
-                            style = MaterialTheme.typography.bodySmall, color = tone,
-                        )
-                    }
-                }
-            }
-            Text(stringResource(R.string.pf_arena_unavailable), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 8.dp))
-        }
+    BentoTile(modifier, tint = if (last == null) null else tone) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(tone))
+        Text(stringResource(scenarioRes(sc)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
+        Text(
+            last?.let { stringResource(outcomeRes(it.outcome)) + " · " + it.layer } ?: stringResource(R.string.pf_not_run),
+            style = MaterialTheme.typography.bodySmall, color = tone, modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 
@@ -165,32 +165,30 @@ private fun outcomeRes(o: ArenaOutcome) = when (o) {
 // ---- cloud help: a switch, with the detail behind taps -----------------------------------------
 
 @Composable
-private fun CloudCard(
-    vm: AccountantViewModel, canManage: Boolean, enabled: Boolean, hasKey: Boolean, model: String, dailyLimit: Int, eventCount: Int,
-    egress: List<app.fusion.wallet.accountant.data.EgressLogEntity>, onToggleOn: () -> Unit,
+private fun CloudTile(
+    vm: AccountantViewModel, canManage: Boolean, enabled: Boolean, hasKey: Boolean, model: String, dailyLimit: Int,
+    egress: List<EgressLogEntity>, onToggleOn: () -> Unit,
 ) {
     var shared by rememberSaveable { mutableStateOf(false) }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var activity by rememberSaveable { mutableStateOf(false) }
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.pf_cloud_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.pf_cloud_desc), style = MaterialTheme.typography.bodySmall, color = Muted)
-                }
-                StatusPill(label = stringResource(if (enabled) R.string.pill_cloud_on else R.string.pill_local_only), tone = if (enabled) Tone.Earning else Tone.Good, modifier = Modifier.padding(horizontal = 8.dp))
-                Switch(checked = enabled, enabled = canManage, onCheckedChange = { on -> if (on) onToggleOn() else vm.revokeConsent() })
+    BentoTile(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.pf_cloud_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.pf_cloud_desc), style = MaterialTheme.typography.bodySmall, color = Muted)
             }
-            if (!canManage) Text(stringResource(R.string.pf_owner_only), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 6.dp))
-            Expander(stringResource(R.string.pf_what_shared), shared, { shared = !shared }) { SharedLists() }
-            Expander(stringResource(R.string.pf_activity) + " ($eventCount)", activity, { activity = !activity }) { EgressList(egress) }
-            if (canManage) Expander(stringResource(R.string.pf_advanced), advanced, { advanced = !advanced }) {
-                PrivacyAdvanced(
-                    hasKey = hasKey, model = model, dailyLimit = dailyLimit,
-                    onSaveKey = vm::saveApiKey, onClearKey = vm::clearApiKey, onModel = vm::setModel, onLimit = vm::setDailyLimit,
-                )
-            }
+            StatusPill(label = stringResource(if (enabled) R.string.pill_cloud_on else R.string.pill_local_only), tone = if (enabled) Tone.Earning else Tone.Good, modifier = Modifier.padding(horizontal = 8.dp))
+            Switch(checked = enabled, enabled = canManage, onCheckedChange = { on -> if (on) onToggleOn() else vm.revokeConsent() })
+        }
+        if (!canManage) Text(stringResource(R.string.pf_owner_only), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 6.dp))
+        Expander(stringResource(R.string.pf_what_shared), shared, { shared = !shared }) { SharedLists() }
+        Expander(stringResource(R.string.pf_activity) + " (${egress.size})", activity, { activity = !activity }) { EgressList(egress) }
+        if (canManage) Expander(stringResource(R.string.pf_advanced), advanced, { advanced = !advanced }) {
+            PrivacyAdvanced(
+                hasKey = hasKey, model = model, dailyLimit = dailyLimit,
+                onSaveKey = vm::saveApiKey, onClearKey = vm::clearApiKey, onModel = vm::setModel, onLimit = vm::setDailyLimit,
+            )
         }
     }
 }
@@ -198,20 +196,18 @@ private fun CloudCard(
 // ---- receipts ---------------------------------------------------------------------------------
 
 @Composable
-private fun ReceiptsCard(rows: List<ReceiptRow>) {
+private fun ReceiptsTile(rows: List<ReceiptRow>) {
     val onChain = rows.filter { it.txHash != null }
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.pf_receipts))
-            if (onChain.isEmpty()) Text(stringResource(R.string.pf_receipts_none), style = MaterialTheme.typography.bodyLarge, color = Muted)
-            onChain.take(8).forEach { r ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${r.kind.name.lowercase().replaceFirstChar { it.uppercase() }} · ${Fmt.money(Raw.parse(r.amountRaw), r.decimals)} ${r.symbol}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-                        Text(Fmt.short(r.txHash!!) + " · " + SimpleDateFormat("MMM d HH:mm", Locale.US).format(Date(r.occurredAt * 1000)), style = MonoStyle, color = Muted)
-                    }
-                    StatusPill(label = r.status.name, tone = Tone.Good)
+    BentoTile(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.pf_receipts), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 6.dp))
+        if (onChain.isEmpty()) Text(stringResource(R.string.pf_receipts_none), style = MaterialTheme.typography.bodyLarge, color = Muted)
+        onChain.take(8).forEach { r ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text("${r.kind.name.lowercase().replaceFirstChar { it.uppercase() }} · ${Fmt.money(Raw.parse(r.amountRaw), r.decimals)} ${r.symbol}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Text(Fmt.short(r.txHash!!) + " · " + SimpleDateFormat("MMM d HH:mm", Locale.US).format(Date(r.occurredAt * 1000)), style = MonoStyle, color = Muted)
                 }
+                StatusPill(label = r.status.name, tone = Tone.Good)
             }
         }
     }
