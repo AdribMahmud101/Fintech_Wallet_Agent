@@ -28,7 +28,8 @@ data class LatestLending(
     val positionSymbol: String,
     val suppliedRaw: String,
     val borrowedRaw: String,
-    val supplyApyBps: Int,
+    val liquidityRateRay: String,
+    val sharesRaw: String,
     val blockNumber: Long,
 )
 
@@ -38,6 +39,17 @@ data class ObligationRow(
     val status: ObligationStatus,
     val decimals: Int,
     val categoryKind: FlowCategory?,
+)
+
+data class ReceiptRow(
+    val kind: LedgerKind,
+    val direction: Direction,
+    val amountRaw: String,
+    val decimals: Int,
+    val symbol: String,
+    val status: TxStatus,
+    val occurredAt: Long,
+    val txHash: String?,
 )
 
 data class LedgerRow(
@@ -62,6 +74,9 @@ interface PortfolioWriteDao {
     @Update suspend fun updateObligation(o: ObligationEntity)
     @Insert suspend fun insertLedger(l: LedgerEntryEntity): Long
     @Insert suspend fun insertBuckets(b: BucketSnapshotEntity): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveMandate(m: MandateEntity)
+    @Insert suspend fun insertDecision(d: AgentDecisionEntity): Long
+    @Insert suspend fun insertArena(r: ArenaResultEntity): Long
     @Query("DELETE FROM account") suspend fun wipeAll()
 }
 
@@ -94,7 +109,7 @@ interface PortfolioReadDao {
         SELECT p.id AS positionId, p.protocol AS protocol,
                u.symbol AS underlyingSymbol, u.decimals AS underlyingDecimals, u.isStable AS underlyingIsStable,
                t.symbol AS positionSymbol, p.suppliedRaw AS suppliedRaw, p.borrowedRaw AS borrowedRaw,
-               p.supplyApyBps AS supplyApyBps, p.blockNumber AS blockNumber
+               p.liquidityRateRay AS liquidityRateRay, p.sharesRaw AS sharesRaw, p.blockNumber AS blockNumber
         FROM lending_position p
         JOIN asset u ON u.id = p.underlyingAssetId
         JOIN asset t ON t.id = p.positionAssetId
@@ -150,6 +165,28 @@ interface PortfolioReadDao {
 
     @Query("SELECT address FROM asset WHERE address != 'native' UNION SELECT marketAddress FROM lending_position UNION SELECT label FROM category")
     suspend fun privateChainStrings(): List<String>
+
+    @Query("SELECT txHash FROM agent_decision WHERE txHash IS NOT NULL")
+    suspend fun privateDecisionStrings(): List<String>
+
+    @Query("SELECT * FROM mandate WHERE id = 1")
+    fun observeMandate(): Flow<MandateEntity?>
+
+    @Query("SELECT * FROM agent_decision ORDER BY createdAt DESC LIMIT :limit")
+    fun observeDecisions(limit: Int): Flow<List<AgentDecisionEntity>>
+
+    @Query("SELECT * FROM arena_result ORDER BY ranAt DESC LIMIT :limit")
+    fun observeArena(limit: Int): Flow<List<ArenaResultEntity>>
+
+    @Query(
+        """
+        SELECT l.kind AS kind, l.direction AS direction, l.amountRaw AS amountRaw, a.decimals AS decimals,
+               a.symbol AS symbol, l.status AS status, l.occurredAt AS occurredAt, l.txHash AS txHash
+        FROM ledger_entry l JOIN asset a ON a.id = l.assetId
+        WHERE l.accountId = :accountId ORDER BY l.occurredAt DESC LIMIT :limit
+        """,
+    )
+    fun observeReceipts(accountId: Long, limit: Int): Flow<List<ReceiptRow>>
 
     @Query("SELECT * FROM insight ORDER BY createdAt DESC LIMIT :limit")
     fun observeInsights(limit: Int): Flow<List<InsightEntity>>

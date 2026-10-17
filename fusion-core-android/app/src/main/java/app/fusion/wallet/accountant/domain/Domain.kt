@@ -39,7 +39,19 @@ object Raw {
     }
 }
 
-/** Treasury unit (DemoUSD, 6 decimals in the base scope). All bucket math is in this unit. */
+/** Aave rate math. Aave reports an APR in ray (1e27 = 100%); never a float. */
+object Aave {
+    private val RAY_PER_BP = BigInteger.TEN.pow(23) // 1 bp = 0.01% = 1e-4 of a ray-denominated rate
+
+    /** APR in basis points, rounded half up. 2.0748e24 ray (0.2075%) -> 21 bps. */
+    fun aprBps(rateRay: BigInteger): Int =
+        rateRay.add(RAY_PER_BP.shiftRight(1)).divide(RAY_PER_BP).min(BigInteger.valueOf(1_000_000)).toInt()
+
+    /** "0.21%" from basis points. */
+    fun pct(bps: Int): String = "${bps / 100}.${(bps % 100).toString().padStart(2, '0')}%"
+}
+
+/** Treasury unit (USDC, 6 decimals in the base scope). All bucket math is in this unit. */
 data class TreasuryUnit(val symbol: String, val decimals: Int)
 
 /** Spec §3 buckets. All values are raw units of the treasury unit. */
@@ -76,7 +88,7 @@ object BucketMath {
 
 // ---- Read model ---------------------------------------------------------------------------
 
-data class AssetBalanceView(val symbol: String, val decimals: Int, val isStable: Boolean, val raw: BigInteger)
+data class AssetBalanceView(val symbol: String, val decimals: Int, val isStable: Boolean, val raw: BigInteger, val isNative: Boolean = false)
 
 data class LendingView(
     val protocol: LendingProtocol,
@@ -86,8 +98,16 @@ data class LendingView(
     val isStable: Boolean,
     val supplied: BigInteger,
     val borrowed: BigInteger,
-    val supplyApyBps: Int,
+    /** Supply APR in basis points (Aave `currentLiquidityRate`, rounded). NOT an APY. */
+    val supplyAprBps: Int,
 )
+
+/** Native gas fuel (ETH on Base Sepolia). NOT an ERC-20 and NOT part of treasury value. */
+data class GasView(val balanceWei: BigInteger, val estFeePerActionWei: BigInteger) {
+    /** How many agent actions the fuel covers at the estimated fee; capped for display. */
+    val runwayActions: Int
+        get() = if (estFeePerActionWei.signum() <= 0) 0 else balanceWei.divide(estFeePerActionWei).min(BigInteger.valueOf(9_999)).toInt()
+}
 
 data class ObligationView(val amount: BigInteger, val decimals: Int, val dueAt: Long, val category: FlowCategory?)
 
@@ -105,6 +125,7 @@ data class PortfolioSnapshot(
     val obligations: List<ObligationView>,
     val flows30d: List<FlowView>,
     val buffer: BigInteger,
+    val gas: GasView? = null,
 ) {
     /** Cash C: stable wallet balances normalised to the treasury unit. */
     val cash: BigInteger

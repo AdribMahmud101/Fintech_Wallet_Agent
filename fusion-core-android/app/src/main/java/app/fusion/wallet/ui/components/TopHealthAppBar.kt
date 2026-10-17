@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Shield
@@ -44,7 +46,8 @@ import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
 import app.fusion.wallet.ui.theme.Obsidian
 
-enum class NavRoute { Chat, Tokens, Ledger, Accountant }
+/** Three destinations: what you have (Treasury), what the AI does (Agent), the evidence (Proof). */
+enum class NavRoute { Treasury, Agent, Proof }
 
 /**
  * `layout.md` §2 TopAppBar — brand, active address, a daily-velocity sliver, and the two
@@ -174,10 +177,9 @@ fun FusionBottomBar(
 ) {
     val surfaces = FusionTheme.surfaces
     val tabs = listOf(
-        TabSpec(NavRoute.Chat, R.string.nav_chat, Icons.Filled.Chat),
-        TabSpec(NavRoute.Tokens, R.string.nav_tokens, Icons.Filled.Wallet),
-        TabSpec(NavRoute.Ledger, R.string.nav_ledger, Icons.Filled.Shield),
-        TabSpec(NavRoute.Accountant, R.string.nav_accountant, Icons.Filled.Insights),
+        TabSpec(NavRoute.Treasury, R.string.nav_treasury, Icons.Filled.AccountBalance),
+        TabSpec(NavRoute.Agent, R.string.nav_agent, Icons.Filled.SmartToy),
+        TabSpec(NavRoute.Proof, R.string.nav_proof, Icons.Filled.VerifiedUser),
     )
 
     Row(
@@ -199,7 +201,7 @@ fun FusionBottomBar(
                         RoundedCornerShape(FusionDims.radiusSmall),
                     )
                     .clickableSurface { onSelect(tab.route) }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                    .padding(horizontal = 26.dp, vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(

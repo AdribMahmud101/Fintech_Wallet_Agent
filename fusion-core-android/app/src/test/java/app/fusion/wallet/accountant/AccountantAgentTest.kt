@@ -37,6 +37,13 @@ class AccountantAgentTest {
         assertEquals(0, cloud.calls)
     }
 
+    @Test fun a_consent_given_for_an_older_brief_format_no_longer_counts() = runTest {
+        val cloud = FakeCloud(success)
+        val audit = FakeAudit(enabledSettings().copy(consentVersion = AccountantAgent.CONSENT_VERSION - 1))
+        assertEquals(CloudOutcome.NotEnabled, agent(audit, cloud).ask(InsightTopic.GENERAL, null).cloud)
+        assertEquals(0, cloud.calls)
+    }
+
     @Test fun happy_path_sends_only_the_sanitized_brief_and_audits_it() = runTest {
         val cloud = FakeCloud(success)
         val audit = FakeAudit(enabledSettings())

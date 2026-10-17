@@ -131,7 +131,7 @@ class AccountantAgent(
 
     companion object {
         /** Bump when the set of fields in the brief changes; forces re-consent. */
-        const val CONSENT_VERSION = 1
+        const val CONSENT_VERSION = 2
         private const val DAY_SEC = 86_400L
     }
 }

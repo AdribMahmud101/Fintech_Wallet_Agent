@@ -10,14 +10,17 @@ import app.fusion.wallet.accountant.agent.AccountantReply
 import app.fusion.wallet.accountant.agent.LocalAccountant
 import app.fusion.wallet.accountant.agent.LocalFinding
 import app.fusion.wallet.accountant.cloud.BriefBuilder
+import app.fusion.wallet.accountant.cloud.DeepInfraConfig
 import app.fusion.wallet.accountant.cloud.EgressGuard
 import app.fusion.wallet.accountant.cloud.GuardPolicy
 import app.fusion.wallet.accountant.cloud.GuardResult
-import app.fusion.wallet.accountant.cloud.DeepInfraConfig
+import app.fusion.wallet.accountant.data.AgentDecisionEntity
+import app.fusion.wallet.accountant.data.ArenaResultEntity
 import app.fusion.wallet.accountant.data.EgressLogEntity
-import app.fusion.wallet.accountant.data.InsightEntity
 import app.fusion.wallet.accountant.data.InsightTopic
+import app.fusion.wallet.accountant.data.MandateEntity
 import app.fusion.wallet.accountant.data.PrivacySettingsEntity
+import app.fusion.wallet.accountant.data.ReceiptRow
 import app.fusion.wallet.accountant.domain.PortfolioSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,34 +31,46 @@ import kotlinx.coroutines.launch
 /** What the user would send right now, and whether the guard would let it out. */
 data class BriefPreview(val json: String, val allowed: Boolean, val blockedRules: List<String>)
 
-data class AccountantUiState(
+data class AppUiState(
     val loading: Boolean = true,
     val snapshot: PortfolioSnapshot? = null,
     val local: List<LocalFinding> = emptyList(),
     val settings: PrivacySettingsEntity = PrivacySettingsEntity(),
     val hasApiKey: Boolean = false,
-    val insights: List<InsightEntity> = emptyList(),
     val egress: List<EgressLogEntity> = emptyList(),
     val preview: BriefPreview? = null,
     val asking: Boolean = false,
     val reply: AccountantReply? = null,
     val message: String? = null,
+    val mandate: MandateEntity? = null,
+    val decisions: List<AgentDecisionEntity> = emptyList(),
+    val arena: List<ArenaResultEntity> = emptyList(),
+    val receipts: List<ReceiptRow> = emptyList(),
+    /** True when the data on screen is debug fixture data. Always false in release builds. */
+    val demoData: Boolean = false,
 )
 
+/** Shared by the Treasury, Agent and Proof tabs (same Activity-scoped instance). */
 class AccountantViewModel(app: Application) : AndroidViewModel(app) {
     private val svc = AccountantServices.get(app)
-    private val _state = MutableStateFlow(AccountantUiState(hasApiKey = svc.keyStore.hasKey()))
-    val state: StateFlow<AccountantUiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(AppUiState(hasApiKey = svc.keyStore.hasKey()))
+    val state: StateFlow<AppUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
             // Debug builds only: seeds the spec's reference state. Release is a no-op.
-            DemoSeeder.seedIfEmpty(svc.db)
+            val seeded = DemoSeeder.seedIfEmpty(svc.db)
+            _state.update { it.copy(demoData = seeded || svc.db.readDao().primaryAccount()?.label?.startsWith("Demo") == true) }
             refresh()
+            svc.db.readDao().primaryAccount()?.let { acct ->
+                launch { svc.db.readDao().observeReceipts(acct.id, 20).collect { l -> _state.update { it.copy(receipts = l) } } }
+            }
         }
         viewModelScope.launch { svc.db.sinkDao().observeSettings().collect { s -> _state.update { it.copy(settings = s ?: PrivacySettingsEntity()) } } }
-        viewModelScope.launch { svc.db.readDao().observeInsights(30).collect { l -> _state.update { it.copy(insights = l) } } }
         viewModelScope.launch { svc.db.readDao().observeEgress(30).collect { l -> _state.update { it.copy(egress = l) } } }
+        viewModelScope.launch { svc.db.readDao().observeMandate().collect { m -> _state.update { it.copy(mandate = m) } } }
+        viewModelScope.launch { svc.db.readDao().observeDecisions(30).collect { l -> _state.update { it.copy(decisions = l) } } }
+        viewModelScope.launch { svc.db.readDao().observeArena(50).collect { l -> _state.update { it.copy(arena = l) } } }
     }
 
     fun refresh() {

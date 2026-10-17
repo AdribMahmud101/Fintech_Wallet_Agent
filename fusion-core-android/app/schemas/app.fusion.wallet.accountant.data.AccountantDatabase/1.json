@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d21a760bda63f7005fb640a95a83f25b",
+    "identityHash": "1c2569610552803e317a99068757342c",
     "entities": [
       {
         "tableName": "account",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `label` TEXT NOT NULL, `role` TEXT NOT NULL, `chainId` INTEGER NOT NULL, `address` TEXT NOT NULL, `operatingBufferRaw` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `label` TEXT NOT NULL, `role` TEXT NOT NULL, `chainId` INTEGER NOT NULL, `address` TEXT NOT NULL, `operatingBufferRaw` TEXT NOT NULL, `estFeePerActionWei` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -41,6 +41,12 @@
           {
             "fieldPath": "operatingBufferRaw",
             "columnName": "operatingBufferRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estFeePerActionWei",
+            "columnName": "estFeePerActionWei",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -246,7 +252,7 @@
       },
       {
         "tableName": "lending_position",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `accountId` INTEGER NOT NULL, `protocol` TEXT NOT NULL, `marketAddress` TEXT NOT NULL, `underlyingAssetId` INTEGER NOT NULL, `positionAssetId` INTEGER NOT NULL, `suppliedRaw` TEXT NOT NULL, `scaledBalanceRaw` TEXT NOT NULL, `liquidityIndexRay` TEXT NOT NULL, `supplyApyBps` INTEGER NOT NULL, `borrowedRaw` TEXT NOT NULL, `blockNumber` INTEGER NOT NULL, `observedAt` INTEGER NOT NULL, FOREIGN KEY(`accountId`) REFERENCES `account`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`underlyingAssetId`) REFERENCES `asset`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`positionAssetId`) REFERENCES `asset`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `accountId` INTEGER NOT NULL, `protocol` TEXT NOT NULL, `marketAddress` TEXT NOT NULL, `underlyingAssetId` INTEGER NOT NULL, `positionAssetId` INTEGER NOT NULL, `suppliedRaw` TEXT NOT NULL, `scaledBalanceRaw` TEXT NOT NULL, `sharesRaw` TEXT NOT NULL, `liquidityIndexRay` TEXT NOT NULL, `liquidityRateRay` TEXT NOT NULL, `borrowedRaw` TEXT NOT NULL, `blockNumber` INTEGER NOT NULL, `observedAt` INTEGER NOT NULL, FOREIGN KEY(`accountId`) REFERENCES `account`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`underlyingAssetId`) REFERENCES `asset`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`positionAssetId`) REFERENCES `asset`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
         "fields": [
           {
             "fieldPath": "id",
@@ -297,15 +303,21 @@
             "notNull": true
           },
           {
+            "fieldPath": "sharesRaw",
+            "columnName": "sharesRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "liquidityIndexRay",
             "columnName": "liquidityIndexRay",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "supplyApyBps",
-            "columnName": "supplyApyBps",
-            "affinity": "INTEGER",
+            "fieldPath": "liquidityRateRay",
+            "columnName": "liquidityRateRay",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -1059,12 +1071,308 @@
         },
         "indices": [],
         "foreignKeys": []
+      },
+      {
+        "tableName": "mandate",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `agentLabel` TEXT NOT NULL, `status` TEXT NOT NULL, `immediateMaxRaw` TEXT NOT NULL, `delayedMaxRaw` TEXT NOT NULL, `hardMaxRaw` TEXT NOT NULL, `dailyLimitRaw` TEXT NOT NULL, `spentTodayRaw` TEXT NOT NULL, `delaySeconds` INTEGER NOT NULL, `sessionExpiresAt` INTEGER NOT NULL, `policyHash` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "agentLabel",
+            "columnName": "agentLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "immediateMaxRaw",
+            "columnName": "immediateMaxRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "delayedMaxRaw",
+            "columnName": "delayedMaxRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hardMaxRaw",
+            "columnName": "hardMaxRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyLimitRaw",
+            "columnName": "dailyLimitRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "spentTodayRaw",
+            "columnName": "spentTodayRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "delaySeconds",
+            "columnName": "delaySeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionExpiresAt",
+            "columnName": "sessionExpiresAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "policyHash",
+            "columnName": "policyHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "agent_decision",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `origin` TEXT NOT NULL, `kind` TEXT NOT NULL, `assetsRaw` TEXT NOT NULL, `decimals` INTEGER NOT NULL, `symbol` TEXT NOT NULL, `fromLabel` TEXT NOT NULL, `toLabel` TEXT NOT NULL, `tier` TEXT NOT NULL, `status` TEXT NOT NULL, `readyAt` INTEGER, `expiresAt` INTEGER, `rationale` TEXT NOT NULL, `chosenBy` TEXT NOT NULL, `modelCheck` TEXT NOT NULL, `rustCheck` TEXT NOT NULL, `signerCheck` TEXT NOT NULL, `contractCheck` TEXT NOT NULL, `blockedBy` TEXT, `txHash` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assetsRaw",
+            "columnName": "assetsRaw",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "decimals",
+            "columnName": "decimals",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "symbol",
+            "columnName": "symbol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fromLabel",
+            "columnName": "fromLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "toLabel",
+            "columnName": "toLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tier",
+            "columnName": "tier",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readyAt",
+            "columnName": "readyAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expiresAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rationale",
+            "columnName": "rationale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chosenBy",
+            "columnName": "chosenBy",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelCheck",
+            "columnName": "modelCheck",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rustCheck",
+            "columnName": "rustCheck",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "signerCheck",
+            "columnName": "signerCheck",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contractCheck",
+            "columnName": "contractCheck",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockedBy",
+            "columnName": "blockedBy",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "txHash",
+            "columnName": "txHash",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_agent_decision_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_agent_decision_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "arena_result",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `ranAt` INTEGER NOT NULL, `scenario` TEXT NOT NULL, `outcome` TEXT NOT NULL, `layer` TEXT NOT NULL, `detail` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ranAt",
+            "columnName": "ranAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scenario",
+            "columnName": "scenario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "layer",
+            "columnName": "layer",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_arena_result_ranAt",
+            "unique": false,
+            "columnNames": [
+              "ranAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_arena_result_ranAt` ON `${TABLE_NAME}` (`ranAt`)"
+          }
+        ],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd21a760bda63f7005fb640a95a83f25b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1c2569610552803e317a99068757342c')"
     ]
   }
 }

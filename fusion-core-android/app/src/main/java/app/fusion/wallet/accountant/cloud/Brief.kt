@@ -37,7 +37,7 @@ object BriefLimits {
 }
 
 data class BriefTotals(val assets: String, val freePct: Int, val reservedPct: Int, val deployedPct: Int, val shortfall: Boolean)
-data class BriefLending(val protocol: LendingProtocol, val asset: String, val sharePct: Int, val apyBps: Int)
+data class BriefLending(val protocol: LendingProtocol, val asset: String, val sharePct: Int, val aprBps: Int)
 data class BriefDue(val window: String, val count: Int, val total: String)
 data class BriefFlow(val category: FlowCategory, val income: Boolean, val total: String, val count: Int)
 
@@ -71,7 +71,7 @@ data class AccountantBrief(
             "lending",
             JSONArray().also { a ->
                 lending.forEach {
-                    a.put(JSONObject().put("protocol", it.protocol.name).put("asset", it.asset).put("sharePct", it.sharePct).put("apyBps", it.apyBps))
+                    a.put(JSONObject().put("protocol", it.protocol.name).put("asset", it.asset).put("sharePct", it.sharePct).put("aprBps", it.aprBps))
                 }
             },
         )
@@ -120,7 +120,7 @@ object BriefBuilder {
                     protocol = it.protocol,
                     asset = it.underlyingSymbol.sanitizeSymbol(),
                     sharePct = Raw.pct(Raw.rescale(it.supplied, it.decimals, dec), deployedTotal),
-                    apyBps = it.supplyApyBps.coerceIn(0, 100_000),
+                    aprBps = it.supplyAprBps.coerceIn(0, 100_000),
                 )
             }
 

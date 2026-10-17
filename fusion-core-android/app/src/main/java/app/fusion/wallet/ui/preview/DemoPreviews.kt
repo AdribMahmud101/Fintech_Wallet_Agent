@@ -80,7 +80,7 @@ private fun Body(content: @Composable () -> Unit) {
             onOpenTerminal = {},
         )
         Column(Modifier.weight(1f).fillMaxWidth()) { content() }
-        FusionBottomBar(selected = NavRoute.Chat, onSelect = {})
+        FusionBottomBar(selected = NavRoute.Treasury, onSelect = {})
     }
 }
 

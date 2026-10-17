@@ -34,7 +34,7 @@ object EgressGuard {
     private val ROOT_REQUIRED = setOf("schema", "unit", "topic", "totals", "lending", "obligations", "flows30d")
     private val ROOT_OPTIONAL = setOf("question", "runwayDays")
     private val TOTALS_KEYS = setOf("assets", "freePct", "reservedPct", "deployedPct", "shortfall")
-    private val LENDING_KEYS = setOf("protocol", "asset", "sharePct", "apyBps")
+    private val LENDING_KEYS = setOf("protocol", "asset", "sharePct", "aprBps")
     private val DUE_KEYS = setOf("window", "count", "total")
     private val FLOW_KEYS = setOf("category", "dir", "total", "count")
 
@@ -119,7 +119,7 @@ object EgressGuard {
             if (o.optString("protocol") !in PROTOCOLS) rules += "field:lending.protocol"
             if (!o.optString("asset").matches(SYMBOL)) rules += "field:lending.asset"
             intIn(o, "sharePct", 0, 100, rules)
-            intIn(o, "apyBps", 0, 100_000, rules)
+            intIn(o, "aprBps", 0, 100_000, rules)
         }
         arrayField(root, "obligations", BriefLimits.MAX_OBLIGATION_BUCKETS, rules)?.forEachObject { o ->
             keysExact(o, DUE_KEYS, emptySet(), "obligations", rules)

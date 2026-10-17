@@ -1,6 +1,8 @@
 package app.fusion.wallet.accountant.data
 
 import app.fusion.wallet.accountant.domain.AccountantReadModel
+import app.fusion.wallet.accountant.domain.Aave
+import app.fusion.wallet.accountant.domain.GasView
 import app.fusion.wallet.accountant.domain.AssetBalanceView
 import app.fusion.wallet.accountant.domain.FlowView
 import app.fusion.wallet.accountant.domain.LendingView
@@ -12,14 +14,14 @@ import app.fusion.wallet.accountant.domain.TreasuryUnit
 /** Builds the private [PortfolioSnapshot] from Room using only the read DAO. */
 class RoomReadModel(
     private val dao: PortfolioReadDao,
-    private val unit: TreasuryUnit = TreasuryUnit("DemoUSD", 6),
+    private val unit: TreasuryUnit = TreasuryUnit("USDC", 6),
 ) : AccountantReadModel {
 
     override suspend fun snapshot(now: Long): PortfolioSnapshot? {
         val account = dao.primaryAccount() ?: return null
         val balances = dao.latestBalances(account.id)
             .filter { it.kind != AssetKind.ATOKEN && it.kind != AssetKind.VAULT_SHARE }
-            .map { AssetBalanceView(it.symbol, it.decimals, it.isStable, Raw.parse(it.balanceRaw)) }
+            .map { AssetBalanceView(it.symbol, it.decimals, it.isStable, Raw.parse(it.balanceRaw), isNative = it.kind == AssetKind.NATIVE) }
         val lending = dao.latestLending(account.id).map {
             LendingView(
                 protocol = it.protocol,
@@ -29,7 +31,7 @@ class RoomReadModel(
                 isStable = it.underlyingIsStable,
                 supplied = Raw.parse(it.suppliedRaw),
                 borrowed = Raw.parse(it.borrowedRaw),
-                supplyApyBps = it.supplyApyBps,
+                supplyAprBps = Aave.aprBps(Raw.parse(it.liquidityRateRay)),
             )
         }
         val obligations = dao.activeObligations(account.id).map {
@@ -50,11 +52,12 @@ class RoomReadModel(
         return PortfolioSnapshot(
             asOf = now, unit = unit, balances = balances, lending = lending,
             obligations = obligations, flows30d = flows, buffer = Raw.parse(account.operatingBufferRaw),
+            gas = balances.firstOrNull { it.isNative }?.let { GasView(it.raw, Raw.parse(account.estFeePerActionWei)) },
         )
     }
 
     override suspend fun privateStrings(): Set<String> =
-        (dao.privateAccountStrings() + dao.privateObligationStrings() + dao.privateLedgerStrings() + dao.privateChainStrings())
+        (dao.privateAccountStrings() + dao.privateObligationStrings() + dao.privateLedgerStrings() + dao.privateChainStrings() + dao.privateDecisionStrings())
             .map { it.trim() }
             .filter { it.length >= MIN_DENY_LEN }
             .toSet()

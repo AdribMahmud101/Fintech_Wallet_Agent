@@ -1,5 +1,6 @@
 package app.fusion.wallet.accountant
 
+import app.fusion.wallet.accountant.agent.AccountantAgent
 import app.fusion.wallet.accountant.agent.AccountantAudit
 import app.fusion.wallet.accountant.cloud.CloudClient
 import app.fusion.wallet.accountant.cloud.CloudResult
@@ -20,20 +21,20 @@ import java.math.BigInteger
 const val NOW = 1_800_000_000L
 const val DAY = 86_400L
 
-/** DemoUSD raw units (6 decimals). */
+/** USDC raw units (6 decimals). */
 fun usd(whole: Long): BigInteger = BigInteger.valueOf(whole).multiply(BigInteger.valueOf(1_000_000))
 
 /** Spec reference state: C=5,000  R=1,500  B=500  V=3,000 (Aave) + 2,000 (ERC-4626 demo). */
 fun referenceSnapshot(): PortfolioSnapshot = PortfolioSnapshot(
     asOf = NOW,
-    unit = TreasuryUnit("DemoUSD", 6),
+    unit = TreasuryUnit("USDC", 6),
     balances = listOf(
-        AssetBalanceView("DemoUSD", 6, true, usd(5_000)),
-        AssetBalanceView("ETH", 18, false, BigInteger("12345678901234567")),
+        AssetBalanceView("USDC", 6, true, usd(5_000)),
+        AssetBalanceView("ETH", 18, false, BigInteger("12345678901234567"), isNative = true),
     ),
     lending = listOf(
-        LendingView(LendingProtocol.AAVE_V3, "DemoUSD", "aDemoUSD", 6, true, usd(3_000), BigInteger.ZERO, 420),
-        LendingView(LendingProtocol.ERC4626_DEMO, "DemoUSD", "vDemoUSD", 6, true, usd(2_000), BigInteger.ZERO, 310),
+        LendingView(LendingProtocol.AAVE_V3, "USDC", "waBasSepUSDC", 6, true, usd(3_000), BigInteger.ZERO, 21),
+        LendingView(LendingProtocol.ERC4626_DEMO, "USDC", "fvUSDC", 6, true, usd(2_000), BigInteger.ZERO, 50),
     ),
     obligations = listOf(
         ObligationView(usd(1_000), 6, NOW + 3 * DAY, FlowCategory.PAYROLL),
@@ -46,6 +47,7 @@ fun referenceSnapshot(): PortfolioSnapshot = PortfolioSnapshot(
         FlowView(FlowCategory.YIELD, true, usd(41), 6, NOW - 2 * DAY),
     ),
     buffer = usd(500),
+    gas = app.fusion.wallet.accountant.domain.GasView(BigInteger("12345678901234567"), BigInteger("30000000000000")),
 )
 
 /** Strings that exist on the device and must never be sent (they act as canaries). */
@@ -90,4 +92,4 @@ class FakeCloud(var result: CloudResult) : CloudClient {
 const val GOOD_REPLY =
     """{"summary":"About half of funds are deployed and reserves are covered.","findings":[{"topic":"LIQUIDITY","severity":"INFO","text":"Surplus is available above the reserve and buffer."}],"followUps":["Should I rebalance between positions?"]}"""
 
-fun enabledSettings(limit: Int = 20) = PrivacySettingsEntity(cloudEnabled = true, consentVersion = 1, consentedAt = NOW, dailyCallLimit = limit)
+fun enabledSettings(limit: Int = 20) = PrivacySettingsEntity(cloudEnabled = true, consentVersion = AccountantAgent.CONSENT_VERSION, consentedAt = NOW, dailyCallLimit = limit)

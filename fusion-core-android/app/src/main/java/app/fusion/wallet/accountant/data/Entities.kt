@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey
  * Embedded accounting store (Room/SQLite) for the Accountant Agent.
  *
  * Rules that apply to every entity here:
- *  - Money is a base-10 STRING of raw integer units ("1500000000" = 1,500 DemoUSD at 6 decimals).
+ *  - Money is a base-10 STRING of raw integer units ("1500000000" = 1,500 USDC at 6 decimals).
  *    Never Double/Float: the spec forbids floating point in any financial path. Use [Raw] to do math.
  *  - Everything in this file is PRIVATE data and stays on the device. What may leave the device is
  *    decided in `accountant.cloud` and nowhere else; see `DataClass`.
@@ -50,6 +50,8 @@ data class AccountEntity(
     val address: String,
     /** Operating buffer B in raw units of the unit asset (spec: protected threshold = R + B). */
     val operatingBufferRaw: String = "0",
+    /** Estimated native-gas cost of one agent action (wei). An ESTIMATE used only for the gas-runway display. */
+    val estFeePerActionWei: String = "30000000000000",
     val createdAt: Long,
 )
 
@@ -62,7 +64,7 @@ data class AssetEntity(
     val symbol: String,
     val decimals: Int,
     val kind: AssetKind,
-    /** Pegged 1:1 to the treasury unit (DemoUSD). Only stable assets count toward buckets. */
+    /** Pegged 1:1 to the treasury unit (USDC). Only stable assets count toward buckets. */
     val isStable: Boolean,
     /** For ATOKEN / VAULT_SHARE: the underlying asset this position wraps. */
     val underlyingAssetId: Long? = null,
@@ -93,7 +95,9 @@ data class BalanceSnapshotEntity(
  * For Aave: [positionAssetId] is the aToken; its balanceOf() already accrues interest, so
  * [suppliedRaw] is the aToken balance at [blockNumber] and [scaledBalanceRaw] is the aToken's
  * scaledBalanceOf (principal in ray-index terms), letting us recompute accrual between reads.
- * APY is basis points as an Int, never a float.
+ * [liquidityRateRay] is Aave's `currentLiquidityRate` verbatim (an APR in ray, 1e27 = 100%). It is an
+ * APR (simple annual rate), not an APY. [sharesRaw] holds ERC-4626 shares (for the `waUSDC` wrapper)
+ * while [suppliedRaw] is always the asset value, so share price drift is visible.
  */
 @Entity(
     tableName = "lending_position",
@@ -114,9 +118,10 @@ data class LendingPositionEntity(
     val positionAssetId: Long,
     val suppliedRaw: String,
     val scaledBalanceRaw: String = "0",
+    val sharesRaw: String = "0",
     /** Liquidity index in ray (1e27) at read time; "0" if the protocol has none. */
     val liquidityIndexRay: String = "0",
-    val supplyApyBps: Int,
+    val liquidityRateRay: String = "0",
     val borrowedRaw: String = "0",
     val blockNumber: Long,
     val observedAt: Long,
@@ -248,4 +253,78 @@ data class PrivacySettingsEntity(
     /** Max cloud calls per rolling 24h. */
     val dailyCallLimit: Int = 20,
     val model: String = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+)
+
+// ---- The AI agent as an accountable participant -------------------------------------------------
+
+enum class AgentStatus { ARMED, PAUSED, HALTED }
+enum class Tier { IMMEDIATE, DELAYED, OWNER_REQUIRED }
+enum class DecisionKind { SWEEP_TO_VAULT, WITHDRAW_TO_CASH, REBALANCE, HOLD }
+enum class DecisionStatus { PROPOSED, QUEUED, EXECUTED, CANCELLED, EXPIRED, BLOCKED, HELD }
+enum class CheckState { PASS, FAIL, SKIPPED }
+enum class DecisionOrigin { AGENT, ARENA_ATTACK }
+enum class ArenaScenario { PROMPT_INJECTION, DEPEG, CAP_BREACH, RESERVE_BREACH, DRIP_DRAIN, QUEUE_BYPASS, CRASH_RECOVERY }
+enum class ArenaOutcome { BLOCKED, SAFE_CHOICE, NOT_BLOCKED, ERROR }
+
+/**
+ * The owner's signed delegation to the agent: single row (id = 1). Mirrors what the on-chain wallet
+ * enforces; the app only DISPLAYS it. [policyHash] is the on-chain mandate fingerprint (public).
+ */
+@Entity(tableName = "mandate")
+data class MandateEntity(
+    @PrimaryKey val id: Int = 1,
+    val agentLabel: String,
+    val status: AgentStatus,
+    val immediateMaxRaw: String,
+    val delayedMaxRaw: String,
+    val hardMaxRaw: String,
+    val dailyLimitRaw: String,
+    val spentTodayRaw: String,
+    val delaySeconds: Int,
+    val sessionExpiresAt: Long,
+    val policyHash: String,
+    val updatedAt: Long,
+)
+
+/**
+ * One thing the agent proposed, and what every safety layer said about it. Labels are human-safe
+ * words ("Cash", "Aave USDC vault"), never addresses.
+ */
+@Entity(tableName = "agent_decision", indices = [Index("createdAt")])
+data class AgentDecisionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val createdAt: Long,
+    val origin: DecisionOrigin,
+    val kind: DecisionKind,
+    val assetsRaw: String,
+    val decimals: Int,
+    val symbol: String,
+    /** Label KEY ("CASH", "AAVE", "VAULT", "UNKNOWN"), translated by the UI; unknown keys display as-is. */
+    val fromLabel: String,
+    val toLabel: String,
+    val tier: Tier,
+    val status: DecisionStatus,
+    val readyAt: Long? = null,
+    val expiresAt: Long? = null,
+    /** Short human reason from the planner. Untrusted text; display only. */
+    val rationale: String = "",
+    /** e.g. "LFM2.5-230M" or "rules". */
+    val chosenBy: String,
+    val modelCheck: CheckState,
+    val rustCheck: CheckState,
+    val signerCheck: CheckState,
+    val contractCheck: CheckState,
+    /** Which layer stopped it, e.g. "MODEL", "RUST", "SIGNER", "CONTRACT:ReserveViolation". */
+    val blockedBy: String? = null,
+    val txHash: String? = null,
+)
+
+@Entity(tableName = "arena_result", indices = [Index("ranAt")])
+data class ArenaResultEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val ranAt: Long,
+    val scenario: ArenaScenario,
+    val outcome: ArenaOutcome,
+    val layer: String,
+    val detail: String,
 )
