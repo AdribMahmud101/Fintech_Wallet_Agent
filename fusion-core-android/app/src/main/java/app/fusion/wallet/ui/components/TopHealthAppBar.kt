@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Shield
@@ -42,7 +44,7 @@ import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
 import app.fusion.wallet.ui.theme.Obsidian
 
-enum class NavRoute { Chat, Tokens, Ledger }
+enum class NavRoute { Chat, Tokens, Ledger, Accountant }
 
 /**
  * `layout.md` §2 TopAppBar — brand, active address, a daily-velocity sliver, and the two
@@ -175,12 +177,16 @@ fun FusionBottomBar(
         TabSpec(NavRoute.Chat, R.string.nav_chat, Icons.Filled.Chat),
         TabSpec(NavRoute.Tokens, R.string.nav_tokens, Icons.Filled.Wallet),
         TabSpec(NavRoute.Ledger, R.string.nav_ledger, Icons.Filled.Shield),
+        TabSpec(NavRoute.Accountant, R.string.nav_accountant, Icons.Filled.Insights),
     )
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(surfaces.canvas)
+            // Edge-to-edge: without this the tabs sit under the system navigation buttons and
+            // the right-hand tab cannot be tapped on 3-button-nav devices.
+            .navigationBarsPadding()
             .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
@@ -193,7 +199,7 @@ fun FusionBottomBar(
                         RoundedCornerShape(FusionDims.radiusSmall),
                     )
                     .clickableSurface { onSelect(tab.route) }
-                    .padding(horizontal = 20.dp, vertical = 7.dp),
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(

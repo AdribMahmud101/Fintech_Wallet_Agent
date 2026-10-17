@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.fusion.wallet.ui.accountant.AccountantScreen
 import app.fusion.wallet.ui.chat.ChatFeed
 import app.fusion.wallet.ui.chat.EngineStrip
 import app.fusion.wallet.ui.chat.PromptComposer
@@ -235,6 +236,7 @@ private fun DestinationHost(
                 onCancel = viewModel::cancelPending,
             )
 
+            NavRoute.Accountant -> AccountantScreen()
             NavRoute.Tokens -> TokensScreen(wallet = state.wallet)
             NavRoute.Ledger -> LedgerScreen(
                 wallet = state.wallet,

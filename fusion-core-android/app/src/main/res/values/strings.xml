@@ -5,6 +5,7 @@
     <string name="nav_chat">Chat</string>
     <string name="nav_tokens">Tokens</string>
     <string name="nav_ledger">Ledger</string>
+    <string name="nav_accountant">Accountant</string>
     <string name="engine_rust">RUST OK</string>
     <string name="engine_rust_down">RUST DOWN</string>
 
