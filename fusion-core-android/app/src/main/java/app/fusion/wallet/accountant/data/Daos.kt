@@ -80,6 +80,16 @@ interface PortfolioWriteDao {
     @Query("DELETE FROM account") suspend fun wipeAll()
 }
 
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM app_user WHERE email = :email LIMIT 1") suspend fun byEmail(email: String): UserEntity?
+    @Query("SELECT * FROM app_user WHERE id = :id LIMIT 1") suspend fun byId(id: Long): UserEntity?
+    @Query("SELECT * FROM app_user WHERE id = :id LIMIT 1") fun observe(id: Long): Flow<UserEntity?>
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(u: UserEntity): Long
+    @Query("UPDATE app_user SET avatarColor = :color, avatarIcon = :icon WHERE id = :id") suspend fun setAvatar(id: Long, color: Int, icon: AvatarIcon)
+    @Query("UPDATE app_user SET displayName = :name WHERE id = :id") suspend fun setName(id: Long, name: String)
+}
+
 /** Read-only queries behind the Accountant's `AccountantReadModel`. */
 @Dao
 interface PortfolioReadDao {

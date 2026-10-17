@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login -->
+    <string name="login_title">欢迎回来</string>
+    <string name="login_sub">登录您的资金库</string>
+    <string name="login_email">邮箱</string>
+    <string name="login_password">密码</string>
+    <string name="login_show">显示密码</string>
+    <string name="login_hide">隐藏密码</string>
+    <string name="login_button">登录</string>
+    <string name="login_busy">登录中…</string>
+    <string name="login_err_input">请输入邮箱和密码。</string>
+    <string name="login_err_creds">邮箱或密码不正确。</string>
+    <string name="login_err_locked">尝试次数过多，请在 %1$s 秒后重试。</string>
+    <string name="login_demo_title">演示账户</string>
+    <string name="login_demo_hint">点击账户即可自动填入信息，然后按“登录”。</string>
+    <string name="login_demo_pw">密码 %1$s</string>
+    <string name="login_notice">这是黑客松的演示登录：没有真实账户，没有真实资金，仅限测试网。</string>
+
+    <!-- Roles -->
+    <string name="role_OWNER">所有者</string>
+    <string name="role_MANAGER">财务经理</string>
+    <string name="role_AUDITOR">审计员（仅查看）</string>
+    <string name="role_desc_OWNER">设定规则、批准大额付款并管理隐私。</string>
+    <string name="role_desc_MANAGER">可以查看全部内容并暂停智能体，但不能更改隐私设置或批准大额付款。</string>
+    <string name="role_desc_AUDITOR">仅可查看：可以检查所有内容，但不能做任何更改。</string>
+    <string name="can_cloud">管理云端 AI 与隐私</string>
+    <string name="can_pause">暂停智能体或取消等待中的操作</string>
+    <string name="can_approve">批准大额付款</string>
+    <string name="profile_ui_note">这些角色只决定本应用允许您做什么。无论谁登录，支出上限都由链上合约强制执行。</string>
+
+    <!-- Profile -->
+    <string name="profile_open">打开个人资料</string>
+    <string name="profile_can">您可以做什么</string>
+    <string name="profile_name">显示名称</string>
+    <string name="profile_save">保存名称</string>
+    <string name="profile_avatar">头像</string>
+    <string name="profile_company">公司</string>
+    <string name="profile_email">邮箱</string>
+    <string name="profile_language">语言</string>
+    <string name="profile_signout">退出登录</string>
+    <string name="profile_signed_as">%1$s</string>
+    <string name="av_color_0">靛蓝</string>
+    <string name="av_color_1">青绿</string>
+    <string name="av_color_2">琥珀</string>
+    <string name="av_color_3">玫红</string>
+    <string name="av_color_4">天蓝</string>
+    <string name="av_color_5">绿色</string>
+    <string name="av_icon_INITIALS">姓名缩写</string>
+    <string name="av_icon_PERSON">人像</string>
+    <string name="av_icon_BRIEFCASE">公文包</string>
+    <string name="av_icon_SHIELD">盾牌</string>
+    <string name="av_icon_STAR">星星</string>
+    <string name="av_icon_ROCKET">火箭</string>
+    <string name="av_icon_LEAF">叶子</string>
+
+    <!-- Role-aware hints -->
+    <string name="pf_owner_only">只有所有者可以更改云端 AI 设置。</string>
+    <string name="ag_view_only">您对智能体的控制只有查看权限。</string>
+</resources>

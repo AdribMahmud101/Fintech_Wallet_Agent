@@ -21,6 +21,7 @@ import androidx.room.RoomDatabase
         MandateEntity::class,
         AgentDecisionEntity::class,
         ArenaResultEntity::class,
+        UserEntity::class,
     ],
     version = 1,
     exportSchema = true,
@@ -29,6 +30,7 @@ abstract class AccountantDatabase : RoomDatabase() {
     abstract fun writeDao(): PortfolioWriteDao
     abstract fun readDao(): PortfolioReadDao
     abstract fun sinkDao(): AccountantSinkDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile private var instance: AccountantDatabase? = null

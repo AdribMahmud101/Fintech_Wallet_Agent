@@ -4,6 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import app.fusion.wallet.accountant.data.UserEntity
+import app.fusion.wallet.ui.auth.AvatarView
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -38,7 +43,7 @@ import app.fusion.wallet.ui.theme.FusionTheme
  * DEMO badge in debug builds only, and the language switch.
  */
 @Composable
-fun FusionTopBar(lang: String, onLang: (String) -> Unit, demoData: Boolean, modifier: Modifier = Modifier) {
+fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -53,12 +58,19 @@ fun FusionTopBar(lang: String, onLang: (String) -> Unit, demoData: Boolean, modi
             StatusPill(label = stringResource(R.string.badge_testnet), tone = Tone.Warn)
             if (demoData) StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
         }
-        LangToggle(lang, onLang)
+        if (user != null) {
+            val label = stringResource(R.string.profile_open)
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onProfile).semantics { role = Role.Button; contentDescription = label },
+                contentAlignment = Alignment.Center,
+            ) { AvatarView(user.displayName, user.avatarColor, user.avatarIcon, 40.dp) }
+        }
     }
 }
 
+/** English / 中文 switch. Used on the login screen and in the profile. */
 @Composable
-private fun LangToggle(lang: String, onLang: (String) -> Unit) {
+fun LangToggle(lang: String, onLang: (String) -> Unit) {
     val surfaces = FusionTheme.surfaces
     val shape = RoundedCornerShape(FusionDims.radiusSmall)
     val label = stringResource(R.string.lang_switch)

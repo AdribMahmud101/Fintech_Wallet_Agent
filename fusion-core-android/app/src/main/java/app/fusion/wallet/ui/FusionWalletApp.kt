@@ -22,6 +22,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.ui.accountant.AccountantViewModel
 import app.fusion.wallet.ui.agent.AgentScreen
+import app.fusion.wallet.ui.auth.AuthViewModel
+import app.fusion.wallet.ui.auth.LoginScreen
+import app.fusion.wallet.ui.auth.ProfileSheet
 import app.fusion.wallet.ui.components.FusionBottomBar
 import app.fusion.wallet.ui.components.NavRoute
 import app.fusion.wallet.ui.i18n.AppLocale
@@ -33,7 +36,7 @@ import app.fusion.wallet.ui.treasury.TreasuryScreen
 import kotlinx.coroutines.delay
 
 /**
- * Root shell: Treasury (what you have) · Agent (what the AI does) · Proof (the evidence).
+ * Root: sign in first, then Home (what you have) · AI Agent (what it does) · Safety (the evidence).
  *
  * The language switch re-resolves every string at runtime by handing Compose a locale-wrapped
  * Context, so switching English / 中文 never restarts the Activity or loses state.
@@ -43,49 +46,63 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
     val base = LocalContext.current
     var lang by rememberSaveable { mutableStateOf(AppLocale.saved(base)) }
     val localized = remember(lang, base) { AppLocale.wrap(base, lang) }
+    val setLang: (String) -> Unit = { code -> lang = code; AppLocale.save(base, code) }
 
     CompositionLocalProvider(
         LocalContext provides localized,
         LocalConfiguration provides localized.resources.configuration,
     ) {
         FusionWalletTheme {
+            val auth: AuthViewModel = viewModel()
             val vm: AccountantViewModel = viewModel()
+            val authState by auth.state.collectAsStateWithLifecycle()
             val state by vm.state.collectAsStateWithLifecycle()
+            val user = authState.user
 
-            // rememberSaveable so rotation / process death keeps the tab.
             var routeName by rememberSaveable { mutableStateOf(NavRoute.Treasury.name) }
             val route = NavRoute.valueOf(routeName)
+            var profileOpen by rememberSaveable { mutableStateOf(false) }
 
-            // Splash has a floor so it never flashes for one frame; it also waits for the first data read.
+            // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
+            LaunchedEffect(user?.role) { vm.setRole(user?.role) }
+            LaunchedEffect(user == null) { if (user == null) { profileOpen = false; routeName = NavRoute.Treasury.name } }
+
+            // Splash has a floor so it never flashes for one frame; it also waits for the session and first data read.
             var splashElapsed by rememberSaveable { mutableStateOf(false) }
             LaunchedEffect(Unit) {
                 delay(SPLASH_MIN_MS)
                 splashElapsed = true
             }
-            val splashVisible = !splashElapsed || state.loading
+            val splashVisible = !splashElapsed || authState.checking || (user != null && state.loading)
 
-            // Back returns to Treasury first; from Treasury the system takes over.
-            BackHandler(enabled = route != NavRoute.Treasury) { routeName = NavRoute.Treasury.name }
-
-            Scaffold(
-                modifier = modifier.fillMaxSize(),
-                topBar = {
-                    FusionTopBar(
-                        lang = lang,
-                        onLang = { code -> lang = code; AppLocale.save(base, code) },
-                        demoData = state.demoData,
-                    )
-                },
-                bottomBar = { FusionBottomBar(selected = route, onSelect = { routeName = it.name }) },
-            ) { padding ->
-                Box(Modifier.fillMaxSize().padding(padding)) {
-                    Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
-                        when (target) {
-                            NavRoute.Treasury -> TreasuryScreen()
-                            NavRoute.Agent -> AgentScreen()
-                            NavRoute.Proof -> ProofScreen()
+            if (!authState.checking && user == null) {
+                LoginScreen(authState, lang, setLang, onSignIn = auth::signIn, onEdit = auth::clearError)
+            } else if (user != null) {
+                BackHandler(enabled = profileOpen || route != NavRoute.Treasury) {
+                    if (profileOpen) profileOpen = false else routeName = NavRoute.Treasury.name
+                }
+                Scaffold(
+                    modifier = modifier.fillMaxSize(),
+                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, demoData = state.demoData) },
+                    bottomBar = { FusionBottomBar(selected = route, onSelect = { routeName = it.name }) },
+                ) { padding ->
+                    Box(Modifier.fillMaxSize().padding(padding)) {
+                        Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
+                            when (target) {
+                                NavRoute.Treasury -> TreasuryScreen()
+                                NavRoute.Agent -> AgentScreen()
+                                NavRoute.Proof -> ProofScreen()
+                            }
                         }
                     }
+                }
+                if (profileOpen) {
+                    ProfileSheet(
+                        user = user, lang = lang, onLang = setLang,
+                        onName = auth::setName, onAvatar = auth::setAvatar,
+                        onSignOut = { profileOpen = false; auth.signOut() },
+                        onDismiss = { profileOpen = false },
+                    )
                 }
             }
 
@@ -96,5 +113,5 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
 
 private const val CROSSFADE_MS = 140
 
-/** Shortest the cold-start splash stays up; the real condition is the first data read finishing. */
+/** Shortest the cold-start splash stays up; the real condition is the session check and first data read. */
 private const val SPLASH_MIN_MS = 900L

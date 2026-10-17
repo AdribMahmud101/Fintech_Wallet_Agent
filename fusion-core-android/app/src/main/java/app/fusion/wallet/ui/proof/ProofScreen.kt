@@ -69,7 +69,7 @@ fun ProofScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewMod
         s.message?.let { m -> item { Notice(m, onDismiss = vm::dismissMessage) } }
         item { HeadlineCard(s.arena) }
         item { ArenaCard(s.arena) }
-        item { CloudCard(vm, s.settings.cloudEnabled, s.hasApiKey, s.settings.model, s.settings.dailyCallLimit, s.egress.size, s.egress, onToggleOn = { consentOpen = true }) }
+        item { CloudCard(vm, s.caps.manageCloud, s.settings.cloudEnabled, s.hasApiKey, s.settings.model, s.settings.dailyCallLimit, s.egress.size, s.egress, onToggleOn = { consentOpen = true }) }
         item { ReceiptsCard(s.receipts) }
     }
     if (consentOpen) ConsentDialog(onAccept = { consentOpen = false; vm.grantConsent() }, onDismiss = { consentOpen = false })
@@ -166,7 +166,7 @@ private fun outcomeRes(o: ArenaOutcome) = when (o) {
 
 @Composable
 private fun CloudCard(
-    vm: AccountantViewModel, enabled: Boolean, hasKey: Boolean, model: String, dailyLimit: Int, eventCount: Int,
+    vm: AccountantViewModel, canManage: Boolean, enabled: Boolean, hasKey: Boolean, model: String, dailyLimit: Int, eventCount: Int,
     egress: List<app.fusion.wallet.accountant.data.EgressLogEntity>, onToggleOn: () -> Unit,
 ) {
     var shared by rememberSaveable { mutableStateOf(false) }
@@ -180,11 +180,12 @@ private fun CloudCard(
                     Text(stringResource(R.string.pf_cloud_desc), style = MaterialTheme.typography.bodySmall, color = Muted)
                 }
                 StatusPill(label = stringResource(if (enabled) R.string.pill_cloud_on else R.string.pill_local_only), tone = if (enabled) Tone.Earning else Tone.Good, modifier = Modifier.padding(horizontal = 8.dp))
-                Switch(checked = enabled, onCheckedChange = { on -> if (on) onToggleOn() else vm.revokeConsent() })
+                Switch(checked = enabled, enabled = canManage, onCheckedChange = { on -> if (on) onToggleOn() else vm.revokeConsent() })
             }
+            if (!canManage) Text(stringResource(R.string.pf_owner_only), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 6.dp))
             Expander(stringResource(R.string.pf_what_shared), shared, { shared = !shared }) { SharedLists() }
             Expander(stringResource(R.string.pf_activity) + " ($eventCount)", activity, { activity = !activity }) { EgressList(egress) }
-            Expander(stringResource(R.string.pf_advanced), advanced, { advanced = !advanced }) {
+            if (canManage) Expander(stringResource(R.string.pf_advanced), advanced, { advanced = !advanced }) {
                 PrivacyAdvanced(
                     hasKey = hasKey, model = model, dailyLimit = dailyLimit,
                     onSaveKey = vm::saveApiKey, onClearKey = vm::clearApiKey, onModel = vm::setModel, onLimit = vm::setDailyLimit,

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Login -->
+    <string name="login_title">Welcome back</string>
+    <string name="login_sub">Sign in to your treasury</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_show">Show password</string>
+    <string name="login_hide">Hide password</string>
+    <string name="login_button">Sign in</string>
+    <string name="login_busy">Signing in…</string>
+    <string name="login_err_input">Enter your email and password.</string>
+    <string name="login_err_creds">That email and password do not match.</string>
+    <string name="login_err_locked">Too many tries. You can try again in %1$s s.</string>
+    <string name="login_demo_title">Demo accounts</string>
+    <string name="login_demo_hint">Tap an account to fill in its details, then press Sign in.</string>
+    <string name="login_demo_pw">password %1$s</string>
+    <string name="login_notice">Demo sign-in for the hackathon. No real accounts, no real money, test network only.</string>
+
+    <!-- Roles -->
+    <string name="role_OWNER">Owner</string>
+    <string name="role_MANAGER">Finance manager</string>
+    <string name="role_AUDITOR">Auditor (view only)</string>
+    <string name="role_desc_OWNER">Sets the rules, approves large payments and manages privacy.</string>
+    <string name="role_desc_MANAGER">Sees everything and can pause the agent, but cannot change privacy or approve large payments.</string>
+    <string name="role_desc_AUDITOR">View only: can inspect everything but change nothing.</string>
+    <string name="can_cloud">Manage cloud AI and privacy</string>
+    <string name="can_pause">Pause the agent or cancel a waiting action</string>
+    <string name="can_approve">Approve large payments</string>
+    <string name="profile_ui_note">These roles control what this app lets you do. The spending limits themselves are enforced on-chain, whoever is signed in.</string>
+
+    <!-- Profile -->
+    <string name="profile_open">Open profile</string>
+    <string name="profile_can">What you can do</string>
+    <string name="profile_name">Display name</string>
+    <string name="profile_save">Save name</string>
+    <string name="profile_avatar">Avatar</string>
+    <string name="profile_company">Company</string>
+    <string name="profile_email">Email</string>
+    <string name="profile_language">Language</string>
+    <string name="profile_signout">Sign out</string>
+    <string name="profile_signed_as">%1$s</string>
+    <string name="av_color_0">Indigo</string>
+    <string name="av_color_1">Teal</string>
+    <string name="av_color_2">Amber</string>
+    <string name="av_color_3">Rose</string>
+    <string name="av_color_4">Sky</string>
+    <string name="av_color_5">Green</string>
+    <string name="av_icon_INITIALS">Initials</string>
+    <string name="av_icon_PERSON">Person</string>
+    <string name="av_icon_BRIEFCASE">Briefcase</string>
+    <string name="av_icon_SHIELD">Shield</string>
+    <string name="av_icon_STAR">Star</string>
+    <string name="av_icon_ROCKET">Rocket</string>
+    <string name="av_icon_LEAF">Leaf</string>
+
+    <!-- Role-aware hints -->
+    <string name="pf_owner_only">Only the owner can change cloud AI settings.</string>
+    <string name="ag_view_only">You have view-only access to the agent’s controls.</string>
+</resources>

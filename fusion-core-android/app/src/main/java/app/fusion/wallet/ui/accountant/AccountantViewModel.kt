@@ -21,6 +21,9 @@ import app.fusion.wallet.accountant.data.InsightTopic
 import app.fusion.wallet.accountant.data.MandateEntity
 import app.fusion.wallet.accountant.data.PrivacySettingsEntity
 import app.fusion.wallet.accountant.data.ReceiptRow
+import app.fusion.wallet.accountant.data.UserRole
+import app.fusion.wallet.auth.Caps
+import app.fusion.wallet.auth.caps
 import app.fusion.wallet.accountant.domain.PortfolioSnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +51,8 @@ data class AppUiState(
     val receipts: List<ReceiptRow> = emptyList(),
     /** True when the data on screen is debug fixture data. Always false in release builds. */
     val demoData: Boolean = false,
+    /** What the signed-in role may change. Defaults to nothing until a user is signed in. */
+    val caps: Caps = Caps.NONE,
 )
 
 /** Shared by the Treasury, Agent and Proof tabs (same Activity-scoped instance). */
@@ -71,6 +76,15 @@ class AccountantViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { svc.db.readDao().observeMandate().collect { m -> _state.update { it.copy(mandate = m) } } }
         viewModelScope.launch { svc.db.readDao().observeDecisions(30).collect { l -> _state.update { it.copy(decisions = l) } } }
         viewModelScope.launch { svc.db.readDao().observeArena(50).collect { l -> _state.update { it.copy(arena = l) } } }
+    }
+
+    /** Called by the shell whenever the signed-in user (or their role) changes. */
+    fun setRole(role: UserRole?) = _state.update { it.copy(caps = role?.caps() ?: Caps.NONE) }
+
+    private fun requireOwner(): Boolean {
+        if (_state.value.caps.manageCloud) return true
+        _state.update { it.copy(message = "Only the owner can change this.") }
+        return false
     }
 
     fun refresh() {
@@ -116,13 +130,14 @@ class AccountantViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Explicit opt-in. Records which consent version the user saw. */
-    fun grantConsent() = saveSettings { it.copy(cloudEnabled = true, consentVersion = AccountantAgent.CONSENT_VERSION, consentedAt = System.currentTimeMillis() / 1000) }
+    fun grantConsent() = ownerOnly { saveSettings { it.copy(cloudEnabled = true, consentVersion = AccountantAgent.CONSENT_VERSION, consentedAt = System.currentTimeMillis() / 1000) } }
 
-    fun revokeConsent() = saveSettings { it.copy(cloudEnabled = false) }
+    fun revokeConsent() = ownerOnly { saveSettings { it.copy(cloudEnabled = false) } }
 
-    fun setDailyLimit(n: Int) = saveSettings { it.copy(dailyCallLimit = n.coerceIn(1, 100)) }
+    fun setDailyLimit(n: Int) = ownerOnly { saveSettings { it.copy(dailyCallLimit = n.coerceIn(1, 100)) } }
 
     fun setModel(model: String) {
+        if (!requireOwner()) return
         if (!DeepInfraConfig.isModelAllowed(model)) {
             _state.update { it.copy(message = "That model is not allowed (Google/Anthropic models are retained by those providers).") }
             return
@@ -131,17 +146,20 @@ class AccountantViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveApiKey(key: String) {
-        if (key.isBlank()) return
+        if (!requireOwner() || key.isBlank()) return
         svc.keyStore.save(key)
         _state.update { it.copy(hasApiKey = true, message = "API key stored encrypted on this device.") }
     }
 
     fun clearApiKey() {
+        if (!requireOwner()) return
         svc.keyStore.clear()
         _state.update { it.copy(hasApiKey = false, message = "API key removed.") }
     }
 
     fun dismissMessage() = _state.update { it.copy(message = null) }
+
+    private inline fun ownerOnly(block: () -> Unit) { if (requireOwner()) block() }
 
     private fun saveSettings(f: (PrivacySettingsEntity) -> PrivacySettingsEntity) {
         viewModelScope.launch { svc.db.sinkDao().saveSettings(f(svc.audit.settings())) }

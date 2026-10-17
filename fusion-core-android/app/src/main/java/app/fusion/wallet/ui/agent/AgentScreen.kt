@@ -105,14 +105,14 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewMod
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { ScreenHeader(stringResource(R.string.ag_title), stringResource(R.string.ag_subtitle)) }
-        s.mandate?.let { m -> item { AgentCard(m, dec, unit, now) } }
+        s.mandate?.let { m -> item { AgentCard(m, dec, unit, now, s.caps.controlAgent) } }
         if (s.demoData) item { Text(stringResource(R.string.ag_demo_note), style = MaterialTheme.typography.bodySmall, color = Tone.Earning) }
 
         item { Text(stringResource(R.string.ag_timeline), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold) }
         if (s.decisions.isEmpty()) {
             item { ObsidianCard { Text(stringResource(R.string.ag_empty), Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = Muted) } }
         } else {
-            items(s.decisions, key = { it.id }) { DecisionCard(it, now) }
+            items(s.decisions, key = { it.id }) { DecisionCard(it, now, s.caps.controlAgent) }
         }
     }
 }
@@ -132,7 +132,7 @@ private fun statusRes(s: AgentStatus) = when (s) {
 }
 
 @Composable
-private fun AgentCard(m: MandateEntity, dec: Int, unit: String, now: Long) {
+private fun AgentCard(m: MandateEntity, dec: Int, unit: String, now: Long, canControl: Boolean) {
     var open by rememberSaveable { mutableStateOf(false) }
     fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
     val spent = Raw.parse(m.spentTodayRaw)
@@ -181,8 +181,12 @@ private fun AgentCard(m: MandateEntity, dec: Int, unit: String, now: Long) {
                         Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
                     }
                     Spacer(Modifier.height(10.dp))
-                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
-                    Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                    if (canControl) {
+                        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
+                        Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                    } else {
+                        Text(stringResource(R.string.ag_view_only), style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
                 }
             }
         }
@@ -225,7 +229,7 @@ private fun outcomeIcon(d: AgentDecisionEntity): ImageVector = when (d.status) {
 }
 
 @Composable
-private fun DecisionCard(d: AgentDecisionEntity, now: Long) {
+private fun DecisionCard(d: AgentDecisionEntity, now: Long, canControl: Boolean) {
     var open by rememberSaveable(d.id) { mutableStateOf(false) }
     val attack = d.origin == DecisionOrigin.ARENA_ATTACK
     val tone = outcomeTone(d)
@@ -273,7 +277,7 @@ private fun DecisionCard(d: AgentDecisionEntity, now: Long) {
                         Check(R.string.ag_chk_signer, d.signerCheck)
                         Check(R.string.ag_chk_contract, d.contractCheck)
                     }
-                    if (d.status == DecisionStatus.QUEUED) {
+                    if (d.status == DecisionStatus.QUEUED && canControl) {
                         OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.padding(top = 10.dp).heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_cancel)) }
                         Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
                     }

@@ -328,3 +328,30 @@ data class ArenaResultEntity(
     val layer: String,
     val detail: String,
 )
+
+// ---- Demo sign-in ------------------------------------------------------------------------------
+
+/** What a signed-in person is allowed to do in the UI. Money limits are enforced by the contract, not by this. */
+enum class UserRole { OWNER, MANAGER, AUDITOR }
+
+/** Avatar glyph. INITIALS draws the person's initials; the rest are vector icons (no emoji, no network). */
+enum class AvatarIcon { INITIALS, PERSON, BRIEFCASE, SHIELD, STAR, ROCKET, LEAF }
+
+/**
+ * A demo account. Passwords are never stored: only a per-user random salt and a PBKDF2 hash.
+ * [avatarColor] indexes the fixed palette in the UI (0..5).
+ */
+@Entity(tableName = "app_user", indices = [Index(value = ["email"], unique = true)])
+data class UserEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val email: String,
+    val displayName: String,
+    val role: UserRole,
+    val company: String,
+    val avatarColor: Int,
+    val avatarIcon: AvatarIcon,
+    val pwSalt: String,
+    val pwHash: String,
+    val pwIterations: Int,
+    val createdAt: Long,
+)
