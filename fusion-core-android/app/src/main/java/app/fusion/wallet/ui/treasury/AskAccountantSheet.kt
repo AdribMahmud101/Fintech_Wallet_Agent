@@ -77,7 +77,7 @@ fun AskAccountantSheet(vm: AccountantViewModel, onDismiss: () -> Unit) {
                 Text(stringResource(R.string.acc_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
                 StatusPill(
                     label = stringResource(if (cloudOn) R.string.pill_cloud_on else R.string.pill_local_only),
-                    tone = if (cloudOn) Obsidian.AccentAiViolet else Obsidian.StatusSuccess,
+                    tone = if (cloudOn) app.fusion.wallet.ui.common.Tone.Earning else app.fusion.wallet.ui.common.Tone.Good,
                 )
             }
             Text(stringResource(if (cloudOn) R.string.acc_mode_cloud else R.string.acc_mode_local), style = MaterialTheme.typography.bodySmall, color = Muted)

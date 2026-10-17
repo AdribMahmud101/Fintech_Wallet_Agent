@@ -31,7 +31,7 @@ object LocalAccountant {
         val dec = s.unit.decimals
         val u = s.unit.symbol
         val b = s.buckets
-        fun f(x: BigInteger) = "${Raw.format(x, dec)} $u"
+        fun f(x: BigInteger) = "${Raw.pretty(x, dec)} $u"
         val out = mutableListOf<LocalFinding>()
         fun add(topic: InsightTopic, sev: Severity, code: FindingCode, args: List<String>, text: String) {
             out += LocalFinding(topic, sev, code, args, text)

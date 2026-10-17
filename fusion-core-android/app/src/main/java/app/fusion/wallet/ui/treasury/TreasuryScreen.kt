@@ -1,6 +1,7 @@
 package app.fusion.wallet.ui.treasury
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,27 +9,34 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,29 +44,33 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.accountant.agent.FindingCode
 import app.fusion.wallet.accountant.agent.LocalFinding
-import app.fusion.wallet.accountant.cloud.BriefBuilder
-import app.fusion.wallet.accountant.cloud.BriefLimits
 import app.fusion.wallet.accountant.data.LendingProtocol
+import app.fusion.wallet.accountant.data.Severity
 import app.fusion.wallet.accountant.domain.Aave
 import app.fusion.wallet.accountant.domain.PortfolioSnapshot
-import app.fusion.wallet.accountant.domain.Raw
 import app.fusion.wallet.ui.Fmt
 import app.fusion.wallet.ui.accountant.AccountantViewModel
 import app.fusion.wallet.ui.common.CardTitle
+import app.fusion.wallet.ui.common.Expander
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.common.Notice
 import app.fusion.wallet.ui.common.ScreenHeader
+import app.fusion.wallet.ui.common.Tone
 import app.fusion.wallet.ui.common.severityColor
 import app.fusion.wallet.ui.components.ObsidianCard
-import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.theme.Accessible
 import app.fusion.wallet.ui.theme.FusionDims
 import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
-import app.fusion.wallet.ui.theme.Obsidian
 import java.math.BigInteger
 
-/** Home: what you have, what is spoken for, and the one number the agent is allowed to act on. */
+private const val LOW_FUEL_ACTIONS = 20
+private const val DAY_SEC = 86_400L
+
+/**
+ * Home. One question answered first: "how much money can the agent safely use?" Everything else is
+ * secondary and tucked behind a tap so the screen never feels like a spreadsheet.
+ */
 @Composable
 fun TreasuryScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
@@ -67,16 +79,9 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = view
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item {
-            ScreenHeader(stringResource(R.string.tr_title), stringResource(R.string.tr_subtitle)) {
-                StatusPill(
-                    label = stringResource(if (s.settings.cloudEnabled) R.string.pill_cloud_on else R.string.pill_local_only),
-                    tone = if (s.settings.cloudEnabled) Obsidian.AccentAiViolet else Obsidian.StatusSuccess,
-                )
-            }
-        }
+        item { ScreenHeader(stringResource(R.string.tr_title), stringResource(R.string.tr_subtitle)) }
         s.message?.let { m -> item { Notice(m, onDismiss = vm::dismissMessage) } }
 
         val snap = s.snapshot
@@ -85,27 +90,23 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = view
                 ObsidianCard {
                     Text(
                         stringResource(if (s.loading) R.string.tr_loading else R.string.tr_empty),
-                        Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = Muted,
+                        Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = Muted,
                     )
                 }
             }
         } else {
             item { HeroCard(snap) }
-            item { HoldingsCard(snap) }
+            item { AskTile(onClick = { askOpen = true }) }
+            if (s.local.isNotEmpty()) item { AttentionCard(s.local) }
+            item { WhereCard(snap) }
             item { BillsCard(snap) }
-            item { FindingsCard(s.local) }
-        }
-        item {
-            Button(
-                onClick = { askOpen = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Accessible.ButtonFill),
-            ) { Text(stringResource(R.string.tr_ask_button)) }
         }
     }
 
     if (askOpen) AskAccountantSheet(vm = vm, onDismiss = { askOpen = false })
 }
+
+// ---- hero -------------------------------------------------------------------------------------
 
 @Composable
 private fun HeroCard(snap: PortfolioSnapshot) {
@@ -113,163 +114,200 @@ private fun HeroCard(snap: PortfolioSnapshot) {
     val dec = snap.unit.decimals
     val u = snap.unit.symbol
     val total = b.totalAssets
+    val short = b.shortfall.signum() > 0
+    var details by rememberSaveable { mutableStateOf(false) }
     fun w(x: BigInteger): Float = if (total.signum() <= 0) 0f else (x.multiply(BigInteger.valueOf(10_000)).divide(total).toInt() / 10_000f)
 
     ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            Text(stringResource(R.string.tr_safe_to_deploy), style = MaterialTheme.typography.labelSmall, color = Muted)
-            Text(
-                "${Fmt.money(b.sweepable, dec)} $u",
-                style = MaterialTheme.typography.headlineMedium,
-                color = if (b.shortfall.signum() > 0) Obsidian.StatusError else Obsidian.StatusSuccess,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(stringResource(R.string.tr_safe_hint), style = MaterialTheme.typography.bodySmall, color = Muted)
-            Spacer(Modifier.height(14.dp))
+        Column(Modifier.padding(18.dp)) {
+            Text(stringResource(R.string.tr_safe_to_deploy), style = MaterialTheme.typography.bodyMedium, color = Muted)
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    Fmt.money(b.sweepable, dec),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(" $u", style = MaterialTheme.typography.titleMedium, color = Muted, modifier = Modifier.padding(bottom = 5.dp))
+            }
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (short) Icons.Filled.Warning else Icons.Filled.CheckCircle, contentDescription = null,
+                    tint = if (short) Tone.Bad else Tone.Good, modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    if (short) stringResource(R.string.tr_status_short, Fmt.money(b.shortfall, dec), u) else stringResource(R.string.tr_status_ok),
+                    Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium,
+                    color = if (short) Tone.Bad else Tone.Good, fontWeight = FontWeight.Medium,
+                )
+            }
+            Text(stringResource(R.string.tr_safe_hint), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 8.dp))
 
-            CardTitle(stringResource(R.string.tr_total_assets), "${Fmt.money(total, dec)} $u")
+            Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(FusionTheme.surfaces.level3)) {
-                listOf(w(b.free) to Obsidian.StatusSuccess, w(b.reserved) to Obsidian.StatusWarning, w(b.deployed) to Obsidian.AccentAiViolet)
+                listOf(w(b.free) to Tone.Cash, w(b.reserved) to Tone.Bills, w(b.deployed) to Tone.Earning)
                     .filter { it.first > 0f }
                     .forEach { (weight, color) -> Box(Modifier.weight(weight).height(10.dp).background(color)) }
             }
             Spacer(Modifier.height(8.dp))
-            BucketRow(stringResource(R.string.tr_bucket_available), Fmt.money(b.free, dec), Obsidian.StatusSuccess, stringResource(R.string.tr_bucket_available_note, Fmt.money(b.sweepable, dec)))
-            BucketRow(stringResource(R.string.tr_bucket_reserved), Fmt.money(b.reserved, dec), Obsidian.StatusWarning, stringResource(R.string.tr_bucket_reserved_note, Fmt.money(b.obligationTarget, dec)))
-            BucketRow(stringResource(R.string.tr_bucket_earning), Fmt.money(b.deployed, dec), Obsidian.AccentAiViolet, stringResource(R.string.tr_bucket_earning_note))
-            if (b.shortfall.signum() > 0) {
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.tr_shortfall, Fmt.money(b.shortfall, dec), u), style = MaterialTheme.typography.bodySmall, color = Obsidian.StatusError)
-            }
+            BucketRow(stringResource(R.string.tr_bucket_available), Fmt.money(b.free, dec), Tone.Cash, if (details) stringResource(R.string.tr_bucket_available_note, Fmt.money(b.sweepable, dec)) else null)
+            BucketRow(stringResource(R.string.tr_bucket_reserved), Fmt.money(b.reserved, dec), Tone.Bills, if (details) stringResource(R.string.tr_bucket_reserved_note, Fmt.money(b.obligationTarget, dec)) else null)
+            BucketRow(stringResource(R.string.tr_bucket_earning), Fmt.money(b.deployed, dec), Tone.Earning, if (details) stringResource(R.string.tr_bucket_earning_note) else null)
+            Expander(
+                label = stringResource(if (details) R.string.common_details_hide else R.string.common_details_show),
+                expanded = details, onToggle = { details = !details },
+            ) {}
         }
     }
 }
 
 @Composable
-private fun BucketRow(label: String, value: String, color: Color, note: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Column(Modifier.padding(start = 10.dp).weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(note, style = MaterialTheme.typography.labelSmall, color = Muted)
+private fun BucketRow(label: String, value: String, color: Color, note: String?) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (note != null) Text(note, style = MaterialTheme.typography.bodySmall, color = Muted)
         }
         Text(value, style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
-// ---- holdings: cash / earning / gas --------------------------------------------------------------
+// ---- ask --------------------------------------------------------------------------------------
 
 @Composable
-private fun HoldingsCard(snap: PortfolioSnapshot) {
-    val cash = snap.balances.filter { it.isStable }
+private fun AskTile(onClick: () -> Unit) {
+    ObsidianCard(level = 2, onClick = onClick, modifier = Modifier.semantics { role = Role.Button }) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(Accessible.ButtonFill), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(stringResource(R.string.tr_ask_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.tr_ask_hint), style = MaterialTheme.typography.bodySmall, color = Muted)
+            }
+        }
+    }
+}
+
+// ---- worth knowing: only the most important two, the rest on request -------------------------
+
+@Composable
+private fun AttentionCard(all: List<LocalFinding>) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val ranked = all.sortedByDescending { it.severity.ordinal }
+    // Informational notes are only shown when there is nothing more important.
+    val important = ranked.filter { it.severity != Severity.INFO }.ifEmpty { ranked }
+    val shown = if (expanded) ranked else important.take(2)
+    val hidden = ranked.size - shown.size
+
+    ObsidianCard {
+        Column(Modifier.padding(16.dp)) {
+            CardTitle(stringResource(R.string.tr_attention))
+            shown.forEach { f ->
+                Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.padding(top = 7.dp).size(8.dp).clip(CircleShape).background(severityColor(f.severity)))
+                    Text(findingText(f), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            if (hidden > 0 || expanded) {
+                Expander(
+                    label = if (expanded) stringResource(R.string.tr_see_less) else stringResource(R.string.tr_see_all, ranked.size.toString()),
+                    expanded = expanded, onToggle = { expanded = !expanded },
+                ) {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun findingText(f: LocalFinding): String {
+    val a = f.args
+    return when (f.code) {
+        FindingCode.SHORTFALL -> stringResource(R.string.f_shortfall, a[0], a[1], a[2])
+        FindingCode.BELOW_BUFFER -> stringResource(R.string.f_below, a[0], a[1])
+        FindingCode.SURPLUS -> stringResource(R.string.f_surplus, a[0], a[1], a[2])
+        FindingCode.CONCENTRATION -> stringResource(R.string.f_concentration, a[0], a[1])
+        FindingCode.OVERDUE -> pluralStringResource(R.plurals.f_overdue_p, a[0].toInt(), a[0])
+        FindingCode.DUE_SOON -> pluralStringResource(R.plurals.f_due_soon_p, a[0].toInt(), a[0], a[1])
+        FindingCode.YIELD -> pluralStringResource(R.plurals.f_yield_p, a[2].toInt(), a[0], a[1], a[2])
+        FindingCode.GAS_LOW -> pluralStringResource(R.plurals.f_gas_low_p, a[0].toInt(), a[0])
+        FindingCode.RUNWAY -> pluralStringResource(R.plurals.f_runway_p, a[0].toInt(), a[0])
+    }
+}
+
+// ---- where the money is -----------------------------------------------------------------------
+
+@Composable
+private fun WhereCard(snap: PortfolioSnapshot) {
     val other = snap.balances.filter { !it.isStable && !it.isNative }
     ObsidianCard {
         Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.tr_holdings))
-
-            GroupLabel(stringResource(R.string.tr_group_cash))
-            cash.forEach { Line(it.symbol, null, Fmt.money(it.raw, it.decimals), null) }
-
-            GroupLabel(stringResource(R.string.tr_group_earning))
-            snap.lending.forEach { l ->
-                val name = stringResource(if (l.protocol == LendingProtocol.AAVE_V3) R.string.tr_pos_aave else R.string.tr_pos_vault)
-                Line(name, l.positionSymbol, Fmt.money(l.supplied, l.decimals), stringResource(R.string.tr_rate_apr, Aave.pct(l.supplyAprBps)) to Obsidian.StatusSuccess)
+            CardTitle(stringResource(R.string.tr_where))
+            snap.balances.filter { it.isStable }.forEach {
+                Item(stringResource(R.string.tr_row_cash, it.symbol), null, Fmt.money(it.raw, it.decimals), null, Tone.Cash)
             }
-
-            snap.gas?.let { g ->
-                GroupLabel(stringResource(R.string.tr_group_gas))
-                val low = g.runwayActions < LOW_FUEL_ACTIONS
-                Line(
-                    "ETH", stringResource(R.string.tr_gas_note), Fmt.native(g.balanceWei),
-                    (if (low) stringResource(R.string.tr_gas_low) else stringResource(R.string.tr_gas_runway, g.runwayActions.toString())) to
-                        (if (low) Obsidian.StatusWarning else Muted),
+            snap.lending.forEach { l ->
+                val aave = l.protocol == LendingProtocol.AAVE_V3
+                Item(
+                    title = stringResource(if (aave) R.string.tr_row_earn_aave else R.string.tr_row_earn_vault),
+                    subtitle = stringResource(R.string.tr_row_earn_rate, Aave.pct(l.supplyAprBps)),
+                    amount = Fmt.money(l.supplied, l.decimals), tag = null, color = Tone.Earning,
                 )
             }
-
-            if (other.isNotEmpty()) {
-                GroupLabel(stringResource(R.string.tr_group_other))
-                other.forEach { Line(it.symbol, null, Fmt.money(it.raw, it.decimals), null) }
+            snap.gas?.let { g ->
+                val low = g.runwayActions < LOW_FUEL_ACTIONS
+                Item(
+                    title = stringResource(R.string.tr_row_gas),
+                    subtitle = if (low) stringResource(R.string.tr_gas_low) else stringResource(R.string.tr_gas_enough, g.runwayActions.toString()),
+                    amount = Fmt.native(g.balanceWei), tag = null, color = if (low) Tone.Warn else Muted, subtitleColor = if (low) Tone.Warn else Muted,
+                )
             }
-            if (cash.isEmpty() && snap.lending.isEmpty()) Text("—", color = Muted, style = MaterialTheme.typography.bodySmall)
+            other.forEach { Item(stringResource(R.string.tr_row_other), it.symbol, Fmt.money(it.raw, it.decimals), null, Muted) }
         }
     }
 }
 
-private const val LOW_FUEL_ACTIONS = 20
-
 @Composable
-private fun GroupLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelSmall, color = Muted, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
-}
-
-@Composable
-private fun Line(title: String, subtitle: String?, amount: String, tag: Pair<String, Color>?) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Muted)
+private fun Item(title: String, subtitle: String?, amount: String, tag: String?, color: Color, subtitleColor: Color = Muted) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
         }
         Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
             Text(amount, style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
-            if (tag != null) Text(tag.first, style = MaterialTheme.typography.labelSmall, color = tag.second)
+            if (tag != null) Text(tag, style = MaterialTheme.typography.bodySmall, color = Muted)
         }
     }
 }
 
-// ---- bills --------------------------------------------------------------------------------------
+// ---- bills: one calm line ---------------------------------------------------------------------
 
 @Composable
 private fun BillsCard(snap: PortfolioSnapshot) {
     val dec = snap.unit.decimals
-    val groups = snap.obligations.groupBy { BriefBuilder.dueWindow(it.dueAt - snap.asOf) }
+    val overdue = snap.obligations.count { it.dueAt < snap.asOf }
+    val next = snap.obligations.filter { it.dueAt >= snap.asOf }.minByOrNull { it.dueAt }
     ObsidianCard {
         Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.tr_bills), Fmt.money(snap.reserved, dec) + " " + snap.unit.symbol)
-            if (groups.isEmpty()) Text(stringResource(R.string.tr_bills_none), style = MaterialTheme.typography.bodySmall, color = Muted)
-            BriefLimits.DUE_WINDOWS.forEach { w ->
-                val list = groups[w] ?: return@forEach
-                val sum = list.fold(BigInteger.ZERO) { a, o -> a + Raw.rescale(o.amount, o.decimals, dec) }
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            CardTitle(stringResource(R.string.tr_bills))
+            if (snap.obligations.isEmpty()) {
+                Text(stringResource(R.string.tr_bills_none), style = MaterialTheme.typography.bodyLarge, color = Muted)
+            } else {
+                if (next != null) {
+                    val days = ((next.dueAt - snap.asOf + DAY_SEC - 1) / DAY_SEC).coerceAtLeast(0)
                     Text(
-                        (if (w == "OVERDUE") stringResource(R.string.tr_due_overdue) else stringResource(R.string.tr_due_window, w)) + " · ${list.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (w == "OVERDUE") Obsidian.StatusError else MaterialTheme.colorScheme.onSurface,
+                        stringResource(R.string.tr_next_bill, Fmt.money(app.fusion.wallet.accountant.domain.Raw.rescale(next.amount, next.decimals, dec), dec), pluralStringResource(R.plurals.tr_in_days_p, days.toInt(), days.toString())),
+                        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium,
                     )
-                    Text(Fmt.money(sum, dec), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
                 }
-            }
-        }
-    }
-}
-
-// ---- on-device analysis -------------------------------------------------------------------------
-
-@Composable
-private fun findingText(f: LocalFinding): String {
-    val res = when (f.code) {
-        FindingCode.SHORTFALL -> R.string.f_shortfall
-        FindingCode.BELOW_BUFFER -> R.string.f_below
-        FindingCode.SURPLUS -> R.string.f_surplus
-        FindingCode.OVERDUE -> R.string.f_overdue
-        FindingCode.DUE_SOON -> R.string.f_due_soon
-        FindingCode.CONCENTRATION -> R.string.f_concentration
-        FindingCode.YIELD -> R.string.f_yield
-        FindingCode.GAS_LOW -> R.string.f_gas_low
-        FindingCode.RUNWAY -> R.string.f_runway
-    }
-    return stringResource(res, *f.args.toTypedArray())
-}
-
-@Composable
-private fun FindingsCard(findings: List<LocalFinding>) {
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.tr_findings), stringResource(R.string.tr_findings_note))
-            findings.forEach { f ->
-                Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
-                    Box(Modifier.padding(top = 6.dp).size(8.dp).clip(CircleShape).background(severityColor(f.severity)))
-                    Text(findingText(f), Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                }
+                Text(
+                    pluralStringResource(R.plurals.tr_bills_total_p, snap.obligations.size, snap.obligations.size.toString(), Fmt.money(snap.reserved, dec)),
+                    style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 2.dp),
+                )
+                if (overdue > 0) Text(stringResource(R.string.tr_bills_overdue, overdue.toString()), style = MaterialTheme.typography.bodyMedium, color = Tone.Bad, modifier = Modifier.padding(top = 4.dp))
             }
         }
     }

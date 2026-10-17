@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,51 +41,54 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/** Key, model and limit. Lives behind "Advanced settings" so the main screen stays simple. */
 @Composable
-fun PrivacyCard(
-    enabled: Boolean, hasKey: Boolean, model: String, dailyLimit: Int,
-    onToggle: (Boolean) -> Unit, onSaveKey: (String) -> Unit, onClearKey: () -> Unit, onModel: (String) -> Unit, onLimit: (Int) -> Unit,
+fun PrivacyAdvanced(
+    hasKey: Boolean, model: String, dailyLimit: Int,
+    onSaveKey: (String) -> Unit, onClearKey: () -> Unit, onModel: (String) -> Unit, onLimit: (Int) -> Unit,
 ) {
     var key by remember { mutableStateOf("") }
     var modelText by rememberSaveable(model) { mutableStateOf(model) }
     var limitText by rememberSaveable(dailyLimit) { mutableStateOf(dailyLimit.toString()) }
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.priv_title))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.priv_toggle), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                    Text(stringResource(R.string.priv_toggle_note), style = MaterialTheme.typography.labelSmall, color = Muted)
-                }
-                Switch(checked = enabled, onCheckedChange = onToggle)
-            }
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = key, onValueChange = { key = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text(stringResource(if (hasKey) R.string.priv_key_stored else R.string.priv_key)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { onSaveKey(key); key = "" }, enabled = key.isNotBlank()) { Text(stringResource(R.string.priv_save_key)) }
-                TextButton(onClick = onClearKey, enabled = hasKey) { Text(stringResource(R.string.priv_remove_key)) }
-            }
-            OutlinedTextField(
-                value = modelText, onValueChange = { modelText = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text(stringResource(R.string.priv_model)) },
-                supportingText = { Text(stringResource(R.string.priv_model_note)) },
-            )
-            TextButton(onClick = { onModel(modelText) }, enabled = modelText.trim() != model) { Text(stringResource(R.string.priv_apply_model)) }
-            OutlinedTextField(
-                value = limitText, onValueChange = { limitText = it.filter(Char::isDigit).take(3) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text(stringResource(R.string.priv_limit)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
-            TextButton(
-                onClick = { limitText.toIntOrNull()?.let(onLimit) },
-                enabled = limitText.toIntOrNull() != null && limitText.toIntOrNull() != dailyLimit,
-            ) { Text(stringResource(R.string.priv_apply_limit)) }
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        OutlinedTextField(
+            value = key, onValueChange = { key = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+            label = { Text(stringResource(if (hasKey) R.string.priv_key_stored else R.string.priv_key)) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { onSaveKey(key); key = "" }, enabled = key.isNotBlank(), modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.priv_save_key)) }
+            TextButton(onClick = onClearKey, enabled = hasKey, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.priv_remove_key)) }
         }
+        OutlinedTextField(
+            value = modelText, onValueChange = { modelText = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+            label = { Text(stringResource(R.string.priv_model)) },
+            supportingText = { Text(stringResource(R.string.priv_model_note)) },
+        )
+        TextButton(onClick = { onModel(modelText) }, enabled = modelText.trim() != model, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.priv_apply_model)) }
+        OutlinedTextField(
+            value = limitText, onValueChange = { limitText = it.filter(Char::isDigit).take(3) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
+            label = { Text(stringResource(R.string.priv_limit)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+        TextButton(
+            onClick = { limitText.toIntOrNull()?.let(onLimit) },
+            enabled = limitText.toIntOrNull() != null && limitText.toIntOrNull() != dailyLimit,
+            modifier = Modifier.heightIn(min = 48.dp),
+        ) { Text(stringResource(R.string.priv_apply_limit)) }
+    }
+}
+
+/** The exact allow / never lists, shown inline (and in the consent dialog). */
+@Composable
+fun SharedLists() {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(stringResource(R.string.cs_sent_h), style = MaterialTheme.typography.bodySmall, color = Obsidian.StatusSuccess, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        Text(stringResource(R.string.cs_sent_b), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.cs_never_h), style = MaterialTheme.typography.bodySmall, color = Obsidian.StatusError, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        Text(stringResource(R.string.cs_never_b), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.cs_foot), style = MaterialTheme.typography.bodySmall, color = Muted)
     }
 }
 
@@ -110,13 +113,10 @@ fun PreviewCard(json: String, allowed: Boolean, rules: List<String>) {
 }
 
 @Composable
-fun EgressCard(rows: List<EgressLogEntity>) {
-    ObsidianCard {
-        Column(Modifier.padding(16.dp)) {
-            CardTitle(stringResource(R.string.eg_title), stringResource(R.string.eg_recent, rows.size.toString()))
-            if (rows.isEmpty()) Text(stringResource(R.string.eg_none), style = MaterialTheme.typography.bodySmall, color = Obsidian.StatusSuccess)
-            rows.take(10).forEach { EgressRow(it) }
-        }
+fun EgressList(rows: List<EgressLogEntity>) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        if (rows.isEmpty()) Text(stringResource(R.string.eg_none), style = MaterialTheme.typography.bodyMedium, color = Obsidian.StatusSuccess)
+        rows.take(10).forEach { EgressRow(it) }
     }
 }
 
@@ -153,15 +153,7 @@ fun ConsentDialog(onAccept: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.cs_title)) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.cs_sent_h), style = MaterialTheme.typography.labelSmall, color = Obsidian.StatusSuccess)
-                Text(stringResource(R.string.cs_sent_b), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.cs_never_h), style = MaterialTheme.typography.labelSmall, color = Obsidian.StatusError)
-                Text(stringResource(R.string.cs_never_b), style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.cs_foot), style = MaterialTheme.typography.bodySmall, color = Muted)
-            }
-        },
+        text = { Column(Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) { SharedLists() } },
         confirmButton = { TextButton(onClick = onAccept) { Text(stringResource(R.string.cs_accept)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cs_decline)) } },
     )

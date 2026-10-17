@@ -2,6 +2,7 @@ package app.fusion.wallet.ui.agent
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,23 +13,41 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -47,16 +66,16 @@ import app.fusion.wallet.accountant.data.Tier
 import app.fusion.wallet.accountant.domain.Raw
 import app.fusion.wallet.ui.Fmt
 import app.fusion.wallet.ui.accountant.AccountantViewModel
-import app.fusion.wallet.ui.common.CardTitle
+import app.fusion.wallet.ui.common.Expander
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.common.ScreenHeader
+import app.fusion.wallet.ui.common.Tone
 import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.theme.Accessible
 import app.fusion.wallet.ui.theme.FusionDims
 import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
-import app.fusion.wallet.ui.theme.Obsidian
 import java.math.BigInteger
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -64,8 +83,9 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 /**
- * The AI as an accountable participant: who it is, what it may do (its mandate), and a visible
- * record of every decision with the verdict of each safety layer.
+ * The AI as an accountable participant. Default view answers two questions in seconds: "what is
+ * it allowed to do?" and "what did it do?". The how (per-layer checks, rationale, receipt) is one
+ * tap away on each card.
  */
 @Composable
 fun AgentScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewModel()) {
@@ -77,79 +97,94 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewMod
         }
     }
     val dec = s.snapshot?.unit?.decimals ?: 6
+    val unit = s.snapshot?.unit?.symbol ?: "USDC"
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { ScreenHeader(stringResource(R.string.ag_title), stringResource(R.string.ag_subtitle)) }
-        s.mandate?.let { m -> item { PassportCard(m, dec, now) } }
-        if (s.demoData) item { Text(stringResource(R.string.ag_demo_note), style = MaterialTheme.typography.labelSmall, color = Obsidian.AccentAiViolet) }
+        s.mandate?.let { m -> item { AgentCard(m, dec, unit, now) } }
+        if (s.demoData) item { Text(stringResource(R.string.ag_demo_note), style = MaterialTheme.typography.bodySmall, color = Tone.Earning) }
 
-        item { Text(stringResource(R.string.ag_timeline), style = MaterialTheme.typography.labelSmall, color = Muted) }
+        item { Text(stringResource(R.string.ag_timeline), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold) }
         if (s.decisions.isEmpty()) {
-            item {
-                ObsidianCard {
-                    Text(stringResource(R.string.ag_empty), Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium, color = Muted)
-                }
-            }
+            item { ObsidianCard { Text(stringResource(R.string.ag_empty), Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = Muted) } }
         } else {
             items(s.decisions, key = { it.id }) { DecisionCard(it, now) }
         }
     }
 }
 
-// ---- passport -----------------------------------------------------------------------------------
+// ---- the agent: identity + the two rules that matter, full rules on request -------------------
 
 private fun statusTone(s: AgentStatus): Color = when (s) {
-    AgentStatus.ARMED -> Obsidian.StatusSuccess
-    AgentStatus.PAUSED -> Obsidian.StatusWarning
-    AgentStatus.HALTED -> Obsidian.StatusError
+    AgentStatus.ARMED -> Tone.Good
+    AgentStatus.PAUSED -> Tone.Warn
+    AgentStatus.HALTED -> Tone.Bad
+}
+
+private fun statusRes(s: AgentStatus) = when (s) {
+    AgentStatus.ARMED -> R.string.ag_status_ARMED
+    AgentStatus.PAUSED -> R.string.ag_status_PAUSED
+    AgentStatus.HALTED -> R.string.ag_status_HALTED
 }
 
 @Composable
-private fun PassportCard(m: MandateEntity, dec: Int, now: Long) {
-    fun whole(raw: String) = Fmt.whole(Raw.parse(raw), dec)
+private fun AgentCard(m: MandateEntity, dec: Int, unit: String, now: Long) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
     val spent = Raw.parse(m.spentTodayRaw)
     val limit = Raw.parse(m.dailyLimitRaw)
     val frac = if (limit.signum() <= 0) 0f else (spent.multiply(BigInteger.valueOf(1000)).divide(limit).toInt() / 1000f).coerceIn(0f, 1f)
 
     ObsidianCard {
         Column(Modifier.padding(16.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(stringResource(R.string.ag_passport), style = MaterialTheme.typography.labelSmall, color = Muted)
-                    Text(m.agentLabel, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(44.dp).clip(CircleShape).background(FusionTheme.surfaces.level3), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.SmartToy, contentDescription = null, tint = Tone.Earning, modifier = Modifier.size(24.dp))
+                }
+                Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                    Text(m.agentLabel, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.ag_summary_rules, whole(m.immediateMaxRaw), whole(m.delayedMaxRaw)),
+                        style = MaterialTheme.typography.bodySmall, color = Muted,
+                    )
                 }
                 StatusPill(label = stringResource(statusRes(m.status)), tone = statusTone(m.status))
             }
-            Spacer(Modifier.height(12.dp))
-            Rule(Obsidian.StatusSuccess, stringResource(R.string.ag_rule_auto, "${whole(m.immediateMaxRaw)} USDC"))
-            Rule(Obsidian.StatusWarning, stringResource(R.string.ag_rule_delay, "${whole(m.delayedMaxRaw)} USDC", durationText(m.delaySeconds.toLong())))
-            Rule(Obsidian.AccentAiViolet, stringResource(R.string.ag_rule_owner, "${whole(m.delayedMaxRaw)} USDC"))
-            Rule(Obsidian.StatusError, stringResource(R.string.ag_rule_hard, "${whole(m.hardMaxRaw)} USDC", "${whole(m.dailyLimitRaw)} USDC"))
-
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.ag_spent_today), style = MaterialTheme.typography.labelSmall, color = Muted)
-                Text("${Fmt.whole(spent, dec)} / ${Fmt.whole(limit, dec)} USDC", style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
-            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                stringResource(R.string.ag_used_line, Fmt.whole(spent, dec), whole(m.dailyLimitRaw)),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface,
+            )
             Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(FusionTheme.surfaces.level3)) {
-                if (frac > 0f) Box(Modifier.weight(frac).height(6.dp).background(if (frac > 0.8f) Obsidian.StatusWarning else Accessible.AccentText))
-                if (frac < 1f) Box(Modifier.weight(1f - frac).height(6.dp))
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(stringResource(R.string.ag_session, durationText(m.sessionExpiresAt - now)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
-            Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.ag_fingerprint), style = MaterialTheme.typography.labelSmall, color = Muted)
-                Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
+            Row(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(FusionTheme.surfaces.level3)) {
+                if (frac > 0f) Box(Modifier.weight(frac).height(8.dp).background(if (frac > 0.8f) Tone.Warn else Tone.Earning))
+                if (frac < 1f) Box(Modifier.weight(1f - frac).height(8.dp))
             }
 
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = {}, enabled = false) { Text(stringResource(R.string.ag_pause)) }
-            Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.labelSmall, color = Muted)
+            Expander(
+                label = stringResource(if (open) R.string.ag_rules_hide else R.string.ag_rules_show),
+                expanded = open, onToggle = { open = !open },
+            ) {
+                Column(Modifier.padding(top = 4.dp)) {
+                    Rule(Tone.Good, stringResource(R.string.ag_rule_auto, whole(m.immediateMaxRaw)))
+                    Rule(Tone.Warn, stringResource(R.string.ag_rule_delay, whole(m.delayedMaxRaw), durationText(m.delaySeconds.toLong())))
+                    Rule(Tone.Earning, stringResource(R.string.ag_rule_owner, whole(m.delayedMaxRaw)))
+                    Rule(Tone.Bad, stringResource(R.string.ag_rule_hard, whole(m.hardMaxRaw), whole(m.dailyLimitRaw)))
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.ag_session, durationText(m.sessionExpiresAt - now)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(stringResource(R.string.ag_fingerprint), style = MaterialTheme.typography.bodySmall, color = Muted)
+                        Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
+                    Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
         }
     }
 }
@@ -166,82 +201,101 @@ private fun durationText(seconds: Long): String {
 }
 
 @Composable
-private fun labelText(key: String): String = when (key) {
-    "CASH" -> stringResource(R.string.lab_CASH)
-    "AAVE" -> stringResource(R.string.lab_AAVE)
-    "VAULT" -> stringResource(R.string.lab_VAULT)
-    "UNKNOWN" -> stringResource(R.string.lab_UNKNOWN)
-    else -> key
-}
-
-private fun statusRes(s: AgentStatus) = when (s) {
-    AgentStatus.ARMED -> R.string.ag_status_ARMED
-    AgentStatus.PAUSED -> R.string.ag_status_PAUSED
-    AgentStatus.HALTED -> R.string.ag_status_HALTED
-}
-
-@Composable
 private fun Rule(color: Color, text: String) {
-    Row(Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(3.dp).height(16.dp).background(color))
-        Text(text, Modifier.padding(start = 10.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).height(18.dp).clip(RoundedCornerShape(2.dp)).background(color))
+        Text(text, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
-// ---- decision timeline --------------------------------------------------------------------------
+// ---- decisions: a plain sentence and an outcome; details on tap -------------------------------
 
-private fun stripeColor(d: AgentDecisionEntity): Color = when {
-    d.status == DecisionStatus.BLOCKED -> Obsidian.StatusError
-    d.status == DecisionStatus.QUEUED -> Obsidian.StatusWarning
-    d.status == DecisionStatus.EXECUTED -> Obsidian.StatusSuccess
+private fun outcomeTone(d: AgentDecisionEntity): Color = when (d.status) {
+    DecisionStatus.BLOCKED -> Tone.Bad
+    DecisionStatus.QUEUED -> Tone.Warn
+    DecisionStatus.EXECUTED -> Tone.Good
     else -> Muted
+}
+
+private fun outcomeIcon(d: AgentDecisionEntity): ImageVector = when (d.status) {
+    DecisionStatus.BLOCKED -> Icons.Filled.Block
+    DecisionStatus.QUEUED -> Icons.Filled.HourglassTop
+    DecisionStatus.EXECUTED -> Icons.Filled.CheckCircle
+    else -> Icons.Filled.Remove
 }
 
 @Composable
 private fun DecisionCard(d: AgentDecisionEntity, now: Long) {
+    var open by rememberSaveable(d.id) { mutableStateOf(false) }
     val attack = d.origin == DecisionOrigin.ARENA_ATTACK
+    val tone = outcomeTone(d)
+    val time = SimpleDateFormat("HH:mm", Locale.US).format(Date(d.createdAt * 1000))
+
     ObsidianCard {
         Row(Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(4.dp).fillMaxHeight().background(stripeColor(d)))
-            Column(Modifier.padding(14.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Box(Modifier.width(5.dp).fillMaxHeight().background(tone))
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { open = !open }
+                    .semantics { role = Role.Button }
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (attack) stringResource(R.string.ag_attack_title) else SimpleDateFormat("HH:mm", Locale.US).format(Date(d.createdAt * 1000)),
-                        style = MaterialTheme.typography.labelSmall, color = if (attack) Obsidian.StatusError else Muted,
+                        if (attack) stringResource(R.string.ag_attack_title) else time,
+                        style = MaterialTheme.typography.bodySmall, color = if (attack) Tone.Bad else Muted,
+                        fontWeight = if (attack) FontWeight.SemiBold else FontWeight.Normal,
+                        modifier = Modifier.weight(1f),
                     )
-                    StatusPill(label = stringResource(decisionStatusRes(d.status)), tone = stripeColor(d))
+                    Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = Muted)
                 }
-                Spacer(Modifier.height(6.dp))
-                Text(decisionSentence(d), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                if (d.rationale.isNotBlank()) {
-                    Text(d.rationale, style = MaterialTheme.typography.bodySmall, color = Muted, fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 4.dp))
-                }
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(tierRes(d.tier)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
-                    Text("·", color = Muted)
-                    Text(stringResource(R.string.ag_by, d.chosenBy), style = MaterialTheme.typography.labelSmall, color = Muted)
+                Text(decisionSentence(d), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
+                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(outcomeIcon(d), contentDescription = null, tint = tone, modifier = Modifier.size(18.dp))
+                    Text(outcomeText(d, time, now), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium, color = tone, fontWeight = FontWeight.Medium)
                 }
 
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Check(R.string.ag_chk_model, d.modelCheck)
-                    Check(R.string.ag_chk_rules, d.rustCheck)
-                    Check(R.string.ag_chk_signer, d.signerCheck)
-                    Check(R.string.ag_chk_contract, d.contractCheck)
-                }
-
-                if (d.status == DecisionStatus.QUEUED && d.readyAt != null) {
+                if (open) {
+                    Spacer(Modifier.height(12.dp))
+                    if (d.rationale.isNotBlank()) {
+                        Text(d.rationale, style = MaterialTheme.typography.bodyMedium, color = Muted, fontStyle = FontStyle.Italic)
+                        Spacer(Modifier.height(10.dp))
+                    }
+                    Text(stringResource(tierRes(d.tier)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.ag_by, d.chosenBy), style = MaterialTheme.typography.bodySmall, color = Muted)
                     Spacer(Modifier.height(10.dp))
-                    Text(stringResource(R.string.ag_countdown, Fmt.duration(d.readyAt - now)), style = MonoStyle, color = Obsidian.StatusWarning)
-                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.padding(top = 6.dp)) { Text(stringResource(R.string.ag_cancel)) }
+                    Text(stringResource(R.string.ag_checks_label), style = MaterialTheme.typography.bodySmall, color = Muted)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Check(R.string.ag_chk_model, d.modelCheck)
+                        Check(R.string.ag_chk_rules, d.rustCheck)
+                        Check(R.string.ag_chk_signer, d.signerCheck)
+                        Check(R.string.ag_chk_contract, d.contractCheck)
+                    }
+                    if (d.status == DecisionStatus.QUEUED) {
+                        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.padding(top = 10.dp).heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_cancel)) }
+                        Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
+                    }
+                    d.txHash?.let { Text(stringResource(R.string.ag_receipt, Fmt.short(it)), style = MonoStyle, color = Muted, modifier = Modifier.padding(top = 10.dp)) }
                 }
-                d.blockedBy?.let { layer ->
-                    Text(stringResource(R.string.ag_blocked_at, layerName(layer)), style = MaterialTheme.typography.bodySmall, color = Obsidian.StatusError, modifier = Modifier.padding(top = 8.dp))
-                }
-                d.txHash?.let { Text(stringResource(R.string.ag_receipt, Fmt.short(it)), style = MonoStyle, color = Muted, modifier = Modifier.padding(top = 8.dp)) }
             }
         }
     }
+}
+
+@Composable
+private fun outcomeText(d: AgentDecisionEntity, time: String, now: Long): String = when (d.status) {
+    DecisionStatus.EXECUTED -> stringResource(R.string.ag_out_EXECUTED, time)
+    DecisionStatus.QUEUED -> {
+        val left = (d.readyAt ?: now) - now
+        if (left <= 0) stringResource(R.string.ag_out_READY) else stringResource(R.string.ag_out_QUEUED, Fmt.duration(left))
+    }
+    DecisionStatus.BLOCKED -> stringResource(R.string.ag_out_BLOCKED, layerName(d.blockedBy ?: "CONTRACT"))
+    DecisionStatus.CANCELLED -> stringResource(R.string.ag_out_CANCELLED)
+    DecisionStatus.EXPIRED -> stringResource(R.string.ag_out_EXPIRED)
+    DecisionStatus.HELD -> stringResource(R.string.ag_out_HELD)
+    DecisionStatus.PROPOSED -> stringResource(R.string.ag_out_PROPOSED)
 }
 
 @Composable
@@ -253,6 +307,15 @@ private fun decisionSentence(d: AgentDecisionEntity): String {
         DecisionKind.WITHDRAW_TO_CASH -> stringResource(R.string.ag_kind_WITHDRAW_TO_CASH, amount, d.symbol, labelText(d.fromLabel), labelText(d.toLabel))
         DecisionKind.REBALANCE -> stringResource(R.string.ag_kind_REBALANCE, amount, d.symbol, labelText(d.fromLabel), labelText(d.toLabel))
     }
+}
+
+@Composable
+private fun labelText(key: String): String = when (key) {
+    "CASH" -> stringResource(R.string.lab_CASH)
+    "AAVE" -> stringResource(R.string.lab_AAVE)
+    "VAULT" -> stringResource(R.string.lab_VAULT)
+    "UNKNOWN" -> stringResource(R.string.lab_UNKNOWN)
+    else -> key
 }
 
 @Composable
@@ -270,16 +333,6 @@ private fun layerName(blockedBy: String): String {
     return if (reason.isEmpty()) name else "$name ($reason)"
 }
 
-private fun decisionStatusRes(s: DecisionStatus) = when (s) {
-    DecisionStatus.PROPOSED -> R.string.ag_st_PROPOSED
-    DecisionStatus.QUEUED -> R.string.ag_st_QUEUED
-    DecisionStatus.EXECUTED -> R.string.ag_st_EXECUTED
-    DecisionStatus.CANCELLED -> R.string.ag_st_CANCELLED
-    DecisionStatus.EXPIRED -> R.string.ag_st_EXPIRED
-    DecisionStatus.BLOCKED -> R.string.ag_st_BLOCKED
-    DecisionStatus.HELD -> R.string.ag_st_HELD
-}
-
 private fun tierRes(t: Tier) = when (t) {
     Tier.IMMEDIATE -> R.string.ag_tier_IMMEDIATE
     Tier.DELAYED -> R.string.ag_tier_DELAYED
@@ -290,8 +343,8 @@ private fun tierRes(t: Tier) = when (t) {
 @Composable
 private fun Check(labelRes: Int, state: CheckState) {
     val (symbol, tone, descRes) = when (state) {
-        CheckState.PASS -> Triple("✓", Obsidian.StatusSuccess, R.string.ag_chk_pass)
-        CheckState.FAIL -> Triple("✗", Obsidian.StatusError, R.string.ag_chk_fail)
+        CheckState.PASS -> Triple("✓", Tone.Good, R.string.ag_chk_pass)
+        CheckState.FAIL -> Triple("✗", Tone.Bad, R.string.ag_chk_fail)
         CheckState.SKIPPED -> Triple("–", Muted, R.string.ag_chk_skipped)
     }
     val label = stringResource(labelRes)
@@ -301,12 +354,12 @@ private fun Check(labelRes: Int, state: CheckState) {
             .clip(RoundedCornerShape(FusionDims.radiusSmall))
             .background(FusionTheme.surfaces.level2)
             .border(FusionDims.hairline, FusionTheme.surfaces.border, RoundedCornerShape(FusionDims.radiusSmall))
-            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
             .semantics { contentDescription = desc },
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(symbol, color = tone, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-        Text(label, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(symbol, color = tone, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Text(label, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, maxLines = 1)
     }
 }

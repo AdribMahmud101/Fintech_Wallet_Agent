@@ -25,6 +25,10 @@ object Raw {
     fun format(raw: BigInteger, decimals: Int): String =
         BigDecimal(raw).movePointLeft(decimals).stripTrailingZeros().toPlainString()
 
+    /** Reader-friendly amount with thousands separators and at most 2 decimals: 1000 -> "1,000", 1234.5 -> "1,234.5". */
+    fun pretty(raw: BigInteger, decimals: Int): String =
+        java.text.DecimalFormat("#,##0.##", java.text.DecimalFormatSymbols(java.util.Locale.US)).format(BigDecimal(raw).movePointLeft(decimals))
+
     /** Two-significant-figure rounding used for anything shown to the cloud. 1234567 @6 -> "1.2". */
     fun coarse(raw: BigInteger, decimals: Int): String {
         if (raw.signum() == 0) return "0"
