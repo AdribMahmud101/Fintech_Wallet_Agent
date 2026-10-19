@@ -48,4 +48,14 @@ object Fmt {
 
     /** Formats a block header without double '#', e.g. "Block #48322201" or "Block —". */
     fun blockLabel(number: Long?): String = if (number != null) "Block #$number" else "Block —"
+
+    /** Formats elapsed duration for the first-paint freshness chip: "15s", "2 min", "3 h". */
+    fun updatedAgo(capturedAtEpochMillis: Long, now: Long = System.currentTimeMillis()): String {
+        val diffSec = maxOf(0L, (now - capturedAtEpochMillis) / 1000)
+        return when {
+            diffSec < 60 -> "${diffSec}s"
+            diffSec < 3600 -> "${diffSec / 60} min"
+            else -> "${diffSec / 3600} h"
+        }
+    }
 }

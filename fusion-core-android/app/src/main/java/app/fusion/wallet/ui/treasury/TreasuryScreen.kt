@@ -116,7 +116,15 @@ fun TreasuryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        if (state.isDisplayStale() && state.blockNumber != null) {
+                        if (state.refreshing && state.capturedAtEpochMillis != null) {
+                            StatusPill(
+                                label = stringResource(
+                                    R.string.chip_updated_ago,
+                                    Fmt.updatedAgo(state.capturedAtEpochMillis!!)
+                                ),
+                                tone = Tone.Warn,
+                            )
+                        } else if (state.isDisplayStale() && state.blockNumber != null) {
                             StatusPill(
                                 label = stringResource(R.string.chip_stale),
                                 tone = Tone.Warn,
@@ -130,9 +138,9 @@ fun TreasuryScreen(
                         }
                         IconButton(
                             onClick = { vm.refresh() },
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(48.dp),
                         ) {
-                            if (state.refreshing) {
+                            if (state.refreshing && state.capturedAtEpochMillis == null) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
                                     strokeWidth = 2.dp,
