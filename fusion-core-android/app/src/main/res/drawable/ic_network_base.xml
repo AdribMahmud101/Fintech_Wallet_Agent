@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <!-- Base official network mark (Coinbase Base L2) -->
+    <path
+        android:fillColor="#0052FF"
+        android:pathData="M16,16m-16,0a16,16 0,1,1 32,0a16,16 0,1,1 -32,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,16m-15.5,0a15.5,15.5 0,1,1 31,0a15.5,15.5 0,1,1 -31,0" />
+    <path
+        android:fillColor="#0052FF"
+        android:fillType="evenOdd"
+        android:pathData="M32,16C32,24.8365 24.824,32 15.9721,32C7.57386,32 0.684242,25.5522 0,17.345H21.1853V14.6551H0C0.684242,6.44789 7.57386,0 15.9721,0C24.824,0 32,7.16344 32,16Z" />
+</vector>
