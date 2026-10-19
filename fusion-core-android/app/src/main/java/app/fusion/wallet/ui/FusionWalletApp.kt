@@ -98,7 +98,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                             when (target) {
                                 NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
                                 NavRoute.Bills -> TreasuryScreen(vm = mainVm)
-                                NavRoute.Agent -> AgentScreen()
+                                NavRoute.Agent -> AgentScreen(vm = mainVm)
                                 NavRoute.Safety, NavRoute.Proof -> ProofScreen()
                                 NavRoute.Judge -> ProofScreen()
                             }
