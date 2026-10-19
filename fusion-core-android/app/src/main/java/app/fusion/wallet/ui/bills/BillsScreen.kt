@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -132,7 +133,7 @@ fun BillsScreen(
                         }
                         IconButton(
                             onClick = { vm.refresh() },
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(48.dp),
                         ) {
                             if (state.refreshing) {
                                 CircularProgressIndicator(
@@ -526,11 +527,12 @@ private fun ObligationCard(
                         Spacer(Modifier.height(4.dp))
                         Row(
                             modifier = Modifier
+                                .heightIn(min = 48.dp)
                                 .clickable(role = Role.Button) {
                                     val url = "https://sepolia.basescan.org/tx/$payTx"
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 }
-                                .padding(vertical = 2.dp),
+                                .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
