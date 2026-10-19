@@ -30,7 +30,10 @@ import app.fusion.wallet.ui.components.NavRoute
 import app.fusion.wallet.ui.i18n.AppLocale
 import app.fusion.wallet.ui.bills.BillsScreen
 import app.fusion.wallet.ui.judge.JudgeScreen
+import app.fusion.wallet.ui.onboarding.OnboardingFlow
+import app.fusion.wallet.onboarding.OnboardingPrefs
 import app.fusion.wallet.ui.proof.ProofScreen
+import app.fusion.wallet.ui.settings.SettingsScreen
 import app.fusion.wallet.ui.shell.FusionTopBar
 import app.fusion.wallet.ui.splash.FusionSplashScreen
 import app.fusion.wallet.ui.theme.FusionWalletTheme
@@ -66,6 +69,9 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             var routeName by rememberSaveable { mutableStateOf(NavRoute.Treasury.name) }
             val route = NavRoute.valueOf(routeName)
             var profileOpen by rememberSaveable { mutableStateOf(false) }
+            var settingsOpen by rememberSaveable { mutableStateOf(false) }
+            // First run → onboarding; the persisted flag survives relaunch (OnboardingPrefs).
+            var onboardingDone by rememberSaveable { mutableStateOf(OnboardingPrefs.isCompleted(base)) }
 
             // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
             LaunchedEffect(user?.role) {
@@ -86,13 +92,22 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
 
             if (!authState.checking && user == null) {
                 LoginScreen(authState, lang, setLang, onSignIn = auth::signIn, onEdit = auth::clearError)
+            } else if (user != null && !onboardingDone) {
+                // The first-run stepper (UX plan §3). Finishing persists the flag and drops to Home.
+                OnboardingFlow(
+                    lang = lang,
+                    onLang = setLang,
+                    onFinish = { OnboardingPrefs.setCompleted(base); onboardingDone = true },
+                )
             } else if (user != null) {
-                BackHandler(enabled = profileOpen || route != NavRoute.Treasury) {
-                    if (profileOpen) profileOpen = false else routeName = NavRoute.Treasury.name
+                BackHandler(enabled = settingsOpen || profileOpen || route != NavRoute.Treasury) {
+                    if (settingsOpen) settingsOpen = false
+                    else if (profileOpen) profileOpen = false
+                    else routeName = NavRoute.Treasury.name
                 }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
+                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
                     bottomBar = { FusionBottomBar(selected = route, onSelect = { routeName = it.name }) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
@@ -114,6 +129,15 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                         onSignOut = { profileOpen = false; auth.signOut() },
                         onDismiss = { profileOpen = false },
                         onOpenJudge = { routeName = NavRoute.Judge.name },
+                    )
+                }
+                if (settingsOpen) {
+                    SettingsScreen(
+                        lang = lang,
+                        onLang = setLang,
+                        onClose = { settingsOpen = false },
+                        onOpenJudge = { settingsOpen = false; routeName = NavRoute.Judge.name },
+                        onRedoOnboarding = { OnboardingPrefs.reset(base); settingsOpen = false; onboardingDone = false },
                     )
                 }
             }
