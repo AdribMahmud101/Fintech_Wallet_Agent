@@ -254,12 +254,25 @@ fun BillsScreen(
             // Bills List
             if (state.obligations.isEmpty()) {
                 item {
-                    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
+                    val isMismatch = state.accountingMatches == false && state.module != null
+                    BentoTile(Modifier.fillMaxWidth(), tint = if (isMismatch) Tone.Warn else null, padding = 16.dp) {
                         Text(
-                            stringResource(R.string.bv_empty_bills),
+                            text = if (isMismatch) {
+                                stringResource(R.string.accounting_mismatch_unavailable, shorten(state.module!!.obligationsRoot))
+                            } else {
+                                stringResource(R.string.bv_empty_bills)
+                            },
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Muted,
+                            color = if (isMismatch) Tone.Warn else Muted,
                         )
+                        if (isMismatch) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "Reserved on-chain: ${state.module!!.reserved.display} USDC (${state.module!!.obligationCount} bills)",
+                                style = MonoStyle.copy(fontSize = 13.sp),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
                 }
             } else {

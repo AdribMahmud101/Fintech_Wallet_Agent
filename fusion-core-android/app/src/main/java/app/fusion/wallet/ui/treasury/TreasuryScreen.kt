@@ -186,14 +186,16 @@ fun TreasuryScreen(
                         Icon(
                             Icons.Filled.Warning,
                             contentDescription = null,
-                            tint = Tone.Bad,
+                            tint = Tone.Warn,
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = stringResource(R.string.accounting_mismatch_warning, state.accountingError ?: "DISCREPANCY"),
+                            text = state.module?.obligationsRoot?.let { root ->
+                                stringResource(R.string.accounting_mismatch_unavailable, shorten(root))
+                            } ?: stringResource(R.string.accounting_mismatch_warning, state.accountingError ?: "DISCREPANCY"),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Tone.Bad,
+                            color = Tone.Warn,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -615,7 +617,13 @@ private fun ObligationsSummaryTile(state: WalletState) {
     BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
         CardTitle(
             stringResource(R.string.tr_bills),
-            trailing = "${unpaid.size} unpaid / ${obligations.size} total",
+            trailing = if (obligations.isNotEmpty()) {
+                "${unpaid.size} unpaid / ${obligations.size} total"
+            } else if (state.module != null && state.module.obligationCount > BigInteger.ZERO) {
+                "${state.module.obligationCount} on chain"
+            } else {
+                "—"
+            },
         )
 
         if (nextBill != null) {
@@ -641,6 +649,29 @@ private fun ObligationsSummaryTile(state: WalletState) {
                 StatusPill(
                     label = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) "OVERDUE" else "SCHEDULED",
                     tone = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) Tone.Bad else Tone.Good,
+                )
+            }
+        } else if (state.module != null && state.module.reserved.raw > BigInteger.ZERO) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        "Owed: ${state.module.reserved.display} USDC",
+                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "Root: ${shorten(state.module.obligationsRoot)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Tone.Bills,
+                    )
+                }
+                StatusPill(
+                    label = "ON-CHAIN",
+                    tone = Tone.Warn,
                 )
             }
         }
