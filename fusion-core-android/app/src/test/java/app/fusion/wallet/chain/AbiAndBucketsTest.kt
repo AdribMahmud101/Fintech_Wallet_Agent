@@ -166,6 +166,15 @@ class AbiAndBucketsTest {
         assertEquals("DEMO", state.copy(source = DataSource.DEMO).dataLabel)
     }
 
+    @Test fun displayFreshnessUses90SecondTTLWithoutPrematureBlockExpiration() {
+        val state = WalletState(status = LoadStatus.READY, blockNumber = 100, capturedAtEpochMillis = 1000, observedHeadBlock = 104)
+        assertFalse(state.isDisplayStale(90_999))
+        assertTrue(state.isDisplayStale(91_000))
+        assertFalse(state.isDisplayStale(2000))
+        assertTrue(state.isDisplayStale(999))
+        assertTrue(state.copy(status = LoadStatus.ERROR).isDisplayStale(2000))
+    }
+
     @Test fun malformedWordsOffsetsEnumsAndNegativeMoneyAreRejected() {
         val invalid = listOf<() -> Any>(
             { Abi("0x01") }, { Abi("0x" + "g".repeat(64)) }, { Abi("0x").uint(0) },

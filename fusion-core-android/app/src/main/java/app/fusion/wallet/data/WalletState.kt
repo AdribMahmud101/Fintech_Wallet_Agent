@@ -57,6 +57,12 @@ data class WalletState(
         return status != LoadStatus.READY || nowMillis < captured || nowMillis - captured >= 30_000 ||
             (headBlock != null && (headBlock < block || headBlock - block >= 5))
     }
+
+    /** Real-device freshness latch: show stale only if last successful snapshot is older than 90s. */
+    fun isDisplayStale(nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val captured = capturedAtEpochMillis ?: return true
+        return status != LoadStatus.READY || nowMillis < captured || nowMillis - captured >= 90_000
+    }
 }
 
 data class Treasury(val safeAddress: String, val assetAddress: String, val balance: Money, val symbol: String = "USDC")

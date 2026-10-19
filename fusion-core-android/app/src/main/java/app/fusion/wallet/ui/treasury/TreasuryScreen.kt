@@ -119,6 +119,12 @@ fun TreasuryScreen(
                             label = stringResource(R.string.badge_network),
                             tone = Tone.Warn,
                         )
+                        if (state.isDisplayStale() && state.blockNumber != null) {
+                            StatusPill(
+                                label = stringResource(R.string.chip_stale),
+                                tone = Tone.Warn,
+                            )
+                        }
                         if (state.source == DataSource.DEMO) {
                             StatusPill(
                                 label = stringResource(R.string.badge_demo),
@@ -147,32 +153,6 @@ fun TreasuryScreen(
                     }
                 },
             )
-        }
-
-        // Stale Data Warning
-        if (state.isStale() && state.blockNumber != null) {
-            item {
-                ObsidianCard(level = 2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Filled.Warning,
-                            contentDescription = null,
-                            tint = Tone.Warn,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.stale_data_warning, state.blockNumber.toString(), "30s+"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Tone.Warn,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
         }
 
         // Accounting Mismatch Warning
