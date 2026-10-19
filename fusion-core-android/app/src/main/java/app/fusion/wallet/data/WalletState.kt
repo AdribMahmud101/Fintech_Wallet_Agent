@@ -42,7 +42,22 @@ data class WalletState(
     val refreshing: Boolean = false,
     val agentSource: String = "SCRIPT",
     val planner: String = "deterministic",
-)
+    val obligations: List<Obligation> = emptyList(),
+    val accountingMatches: Boolean? = null,
+    val accountingError: String? = null,
+    val capturedAtEpochMillis: Long? = null,
+    val observedHeadBlock: Long? = null,
+) {
+    val dataLabel: String get() = if (source == DataSource.DEMO) "DEMO" else "Base Sepolia · LIVE"
+
+    /** Monitor freshness only; consumers must never use this read-only repository to sign. */
+    fun isStale(nowMillis: Long = System.currentTimeMillis(), headBlock: Long? = observedHeadBlock): Boolean {
+        val captured = capturedAtEpochMillis ?: return true
+        val block = blockNumber ?: return true
+        return status != LoadStatus.READY || nowMillis < captured || nowMillis - captured >= 30_000 ||
+            (headBlock != null && (headBlock < block || headBlock - block >= 5))
+    }
+}
 
 data class Treasury(val safeAddress: String, val assetAddress: String, val balance: Money, val symbol: String = "USDC")
 
@@ -68,6 +83,8 @@ data class VaultPosition(
     val maxWithdraw: Money,
     val exposureLimit: Money,
     val simulatedYield: Boolean = false,
+    val previewDepositSharesRaw: BigInteger? = null,
+    val previewWithdrawSharesRaw: BigInteger? = null,
 )
 
 data class Policy(
@@ -156,3 +173,11 @@ interface WalletRepository {
     val state: StateFlow<WalletState>
     suspend fun refresh()
 }
+
+data class Obligation(
+    val id: String,
+    val payeeId: String,
+    val amount: Money,
+    val dueAt: Long,
+    val paid: Boolean,
+)
