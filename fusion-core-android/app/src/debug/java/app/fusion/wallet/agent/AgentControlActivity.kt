@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowManager
 import android.widget.TextView
 import app.fusion.wallet.inference.PlannerClient
 import kotlinx.coroutines.*
@@ -19,10 +20,16 @@ class AgentControlActivity : ComponentActivity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val status = TextView(this).apply { text = "Running on-device AHEM-G probe…"; setPadding(32, 64, 32, 32) }
+        // Foreground evidence ticks must finish before the unchanged live-state
+        // freshness bound expires, even on a phone with a short screen timeout.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        val mode = intent.getStringExtra("mode") ?: "m1"
+        val status = TextView(this).apply {
+            text = if (mode in setOf("m1", "probe-suite")) "Running on-device AHEM-G probe…" else "Running in-app agent tick…"
+            setPadding(32, 64, 32, 32)
+        }
         setContentView(status)
         scope.launch {
-            val mode = intent.getStringExtra("mode") ?: "m1"
             val result = try {
                 if (mode == "m1") PlannerClient.fixedProbe(this@AgentControlActivity)
                 else if (mode == "probe-suite") GateProbeSuite.run(this@AgentControlActivity)

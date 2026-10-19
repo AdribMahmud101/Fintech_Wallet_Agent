@@ -45,14 +45,9 @@ internal object AgentNetwork {
             val request = JSONObject().put("token", config.getString("token")).put("method", method).put("params", params)
             socket.getOutputStream().write((request.toString() + "\n").toByteArray())
             val input = socket.getInputStream().bufferedReader()
-            val response = StringBuilder()
-            while (true) {
-                val c = input.read(); check(c >= 0) { "Edge RPC connection closed" }
-                if (c == 10) break
-                check(response.length < 1_048_576) { "Edge RPC response exceeds limit" }
-                response.append(c.toChar())
-            }
-            val envelope = JSONObject(response.toString())
+            val line = input.readLine() ?: error("Edge RPC connection closed")
+            check(line.length < 1_048_576) { "Edge RPC response exceeds limit" }
+            val envelope = JSONObject(line)
             if (envelope.has("error")) {
                 val error = envelope.getJSONObject("error")
                 throw RpcException(error.optString("message", "Live RPC transport failed"), httpStatus = if (error.has("httpStatus")) error.getInt("httpStatus") else null, rpcCode = if (error.has("code")) error.getInt("code") else null)

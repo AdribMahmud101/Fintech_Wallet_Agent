@@ -25,6 +25,7 @@ class SessionSignerEngineTest {
         val raw = "0x02c0"; val hash = AgentCrypto.hashHex(AgentCrypto.bytes(raw)); val data = "0x12345678" + decision.drop(2)
         val journal = Journal(); var signs = 0; var sends = 0; var leaseCalls = 0
         var loseReply = false; var availableReceipt = true; var wrongReceipt = false; var chain = "0x14a34"; var fee = "0x1"; var loseLeaseOn = 0
+        var failFeeBatch = false
         val action = JSONObject().put("kind", 3).put("assets", "2000000").put("expectedNonce", "9").put("policyEpoch", "12").put("deadline", 200)
         val report = JSONObject().put("dryRun", false).put("requestId", "fixture").put("decisionHash", decision).put("passportJson", "public test passport")
             .put("snapshot", JSONObject().put("blockNumber", 10).put("moduleState", JSONObject().put("mandateHash", mandate)))
@@ -57,7 +58,8 @@ class SessionSignerEngineTest {
         fun engine() = SessionSignerEngine(module, session, ::rpc,
             lease = { leaseCalls++; if (loseLeaseOn == leaseCalls) "wrong lease" else "fixture" },
             verify = { JSONObject().put("to", module).put("data", data).put("decisionHash", decision).put("actionDigest", digest).put("action", action) },
-            sign = { _, _ -> signs++; JSONObject().put("rawTx", raw).put("txHash", hash) }, journal = journal, pause = {})
+            sign = { _, _ -> signs++; JSONObject().put("rawTx", raw).put("txHash", hash) }, journal = journal, pause = {},
+            readBatch = { calls -> check(!failFeeBatch) { "Read batch unavailable" }; calls.map { (method, params) -> rpc(method, params) } })
     }
     @Test fun dryRunCannotReachSigningEvenWithAValidLease() = runTest {
         val f=Fixture(); f.report.put("dryRun",true)
@@ -93,6 +95,11 @@ class SessionSignerEngineTest {
         assertTrue(runCatching { wrong.engine().execute(wrong.report) }.isFailure); assertEquals(0,wrong.signs); assertEquals(0,wrong.sends)
         val costly=Fixture(); costly.fee="0x2540be400"
         assertTrue(runCatching { costly.engine().execute(costly.report) }.isFailure); assertEquals(0,costly.signs); assertEquals(0,costly.sends)
+    }
+    @Test fun failedFeeBatchCannotLoadKeyOrReserveNonce() = runTest {
+        val f=Fixture(); f.failFeeBatch=true
+        assertTrue(runCatching { f.engine().execute(f.report) }.isFailure)
+        assertEquals(0,f.signs); assertEquals(0,f.sends); assertNull(f.journal.pending)
     }
     @Test fun mismatchedReceiptCannotClearJournalOrClaimSuccess() = runTest {
         val f=Fixture(); f.wrongReceipt=true

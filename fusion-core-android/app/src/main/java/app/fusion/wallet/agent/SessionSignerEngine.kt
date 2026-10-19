@@ -27,9 +27,12 @@ internal class SessionSignerEngine(
     private val sign: (JSONObject, String) -> JSONObject,
     private val journal: SessionJournal,
     private val pause: suspend () -> Unit = { delay(2000) },
+    private val readBatch: (List<Pair<String, JSONArray>>) -> List<Any> = { calls -> calls.map { (method, params) -> rpc(method, params) } },
+    private val trace: (String) -> Unit = {},
 ) {
     private val mutex = Mutex()
     suspend fun execute(report: JSONObject): JSONObject = mutex.withLock {
+        trace("start")
         check(report.opt("dryRun") == false) { "DRY_RUN_CANNOT_BROADCAST" }
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
         check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(84532)) { "WRONG_CHAIN" }
@@ -44,32 +47,41 @@ internal class SessionSignerEngine(
             error("PENDING_SESSION_ATTEMPT: ${old.getString("txHash")}")
         }
         val checked = verify(report)
+        trace("verified")
         check(checked.getString("to").equals(module, true)) { "MODULE_MISMATCH" }
         val data = checked.getString("data")
         check(data.contains(checked.getString("decisionHash").removePrefix("0x"), true)) { "PASSPORT_HASH_MISMATCH" }
         val call = JSONObject().put("from", session).put("to", module).put("value", "0x0").put("data", data)
-        val simulated = rpc("eth_call", JSONArray().put(call).put("latest")).toString()
-        check(simulated.equals(checked.getString("actionDigest"), true)) { "SIMULATION_DIGEST_MISMATCH" }
-        val feeInputs = listOf(
+        // These reads are independent. One RPC batch leaves more of the same
+        // five-block freshness window for the final authority checks and signing.
+        val feeInputs = readBatch(listOf(
             "eth_getTransactionCount" to JSONArray().put(session).put("pending"),
             "eth_getBlockByNumber" to JSONArray().put("latest").put(false),
             "eth_maxPriorityFeePerGas" to JSONArray(),
             "eth_getBalance" to JSONArray().put(session).put("pending"),
-        ).map { (method, params) -> rpc(method, params) }
+            "eth_call" to JSONArray().put(call).put("latest"),
+            "eth_estimateGas" to JSONArray().put(call),
+            "eth_call" to JSONArray().put(JSONObject().put("to", module).put("data", Views.STATE)).put("latest"),
+        ))
+        trace("simulation_and_fees_read")
+        check(feeInputs[4].toString().equals(checked.getString("actionDigest"), true)) { "SIMULATION_DIGEST_MISMATCH" }
         val nonce = q(feeInputs[0].toString()).longValueExact()
         val block = feeInputs[1] as JSONObject
         val tip = q(feeInputs[2].toString()).max(BigInteger.valueOf(1_000_000))
         val fee = q(block.getString("baseFeePerGas")) * BigInteger.valueOf(2) + tip
         check(fee <= BigInteger.valueOf(10_000_000_000)) { "FEE_LIMIT" }
-        val estimate = q(rpc("eth_estimateGas", JSONArray().put(call)).toString())
+        val estimate = q(feeInputs[5].toString())
         val gas = (estimate * BigInteger.valueOf(120) / BigInteger.valueOf(100)).max(BigInteger.valueOf(100_000))
         check(gas <= BigInteger.valueOf(1_000_000)) { "GAS_LIMIT" }
         check(q(feeInputs[3].toString()) >= gas * fee) { "SESSION_NEEDS_GAS" }
-        authority(report, checked)
+        val state = Abi(feeInputs[6].toString()).requireSize(17)
+        authority(report, checked, block, state)
+        trace("authority_checked")
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
         val prepared = JSONObject().put("chainId", 84532).put("nonce", nonce).put("to", module).put("value", "0")
             .put("data", data).put("gasLimit", gas.longValueExact()).put("maxFeePerGas", fee.longValueExact()).put("maxPriorityFeePerGas", tip.longValueExact())
         val signed = sign(prepared, session)
+        trace("signed")
         val raw = signed.getString("rawTx"); val hash = signed.getString("txHash")
         check(AgentCrypto.hashHex(AgentCrypto.bytes(raw)).equals(hash, true)) { "SIGNED_HASH_MISMATCH" }
         val pending = JSONObject().put("txHash", hash).put("rawTx", raw).put("to", module).put("from", session)
@@ -78,7 +90,7 @@ internal class SessionSignerEngine(
             .put("requestId", report.getString("requestId"))
         // The helper will independently refuse sendRawTransaction unless its flock is still held.
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
-        authority(report, checked)
+        trace("broadcast_authority_checked")
         journal.save(pending)
         try {
             check(rpc("eth_sendRawTransaction", JSONArray().put(raw)).toString().equals(hash, true)) { "BROADCAST_HASH_MISMATCH" }
@@ -86,16 +98,18 @@ internal class SessionSignerEngine(
         var mined: JSONObject? = null
         repeat(60) { if (mined == null) { mined = receipt(hash); if (mined == null) pause() } }
         val confirmed = confirm(pending, mined ?: error("PENDING_SESSION_ATTEMPT: $hash"))
+        trace("confirmed")
         journal.clear()
         confirmed
     }
-    private fun authority(report: JSONObject, checked: JSONObject) {
-        val block = rpc("eth_getBlockByNumber", JSONArray().put("latest").put(false)) as JSONObject
-        val height = q(block.getString("number")).longValueExact()
-        val time = q(block.getString("timestamp")).longValueExact()
+    private fun authority(report: JSONObject, checked: JSONObject, block: JSONObject? = null, stateInput: Abi? = null) {
+        val b = block ?: (rpc("eth_getBlockByNumber", JSONArray().put("latest").put(false)) as JSONObject)
+        val height = q(b.getString("number")).longValueExact()
+        val time = q(b.getString("timestamp")).longValueExact()
         val original = report.getJSONObject("snapshot")
-        check(height >= original.getLong("blockNumber") && height-original.getLong("blockNumber") < 5) { "STALE_STATE_OR_UNSUPPORTED_ROUTE" }
-        val state = Abi(rpc("eth_call", JSONArray().put(JSONObject().put("to", module).put("data", Views.STATE)).put(block.getString("number"))).toString()).requireSize(17)
+        trace("authority_height_gap_${height-original.getLong("blockNumber")}")
+        check(height >= original.getLong("blockNumber") && height-original.getLong("blockNumber") < 10) { "STALE_STATE_OR_UNSUPPORTED_ROUTE" }
+        val state = stateInput ?: Abi(rpc("eth_call", JSONArray().put(JSONObject().put("to", module).put("data", Views.STATE)).put(b.getString("number"))).toString()).requireSize(17)
         val action = checked.getJSONObject("action")
         check(state.bool(0) && !state.bool(1) && state.address(13).equals(session, true) && state.long(14) > time) { "SESSION_INACTIVE" }
         check(state.uint(8).toString() == action.getString("expectedNonce") && state.uint(2).toString() == action.getString("policyEpoch") &&

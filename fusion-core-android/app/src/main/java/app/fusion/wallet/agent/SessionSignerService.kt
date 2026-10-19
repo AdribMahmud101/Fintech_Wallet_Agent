@@ -10,6 +10,7 @@ import app.fusion.wallet.inference.core.signPrepared
 import app.fusion.wallet.inference.core.verifyForSigning
 import kotlinx.coroutines.*
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.File
 
 /** Same-UID Binder only, separate :signer process. Takes a complete bound decision, never a tx. */
@@ -34,8 +35,19 @@ class SessionSignerService : Service() {
         super.onCreate()
         val manifest = JSONObject(assets.open("deployments/84532.json").bufferedReader().use { it.readText() })
         val d = Deployment.parse(manifest.toString()); val keys = SessionKeys(this)
+        var traceStart = 0L
+        var traceStages = JSONArray()
         engine = SessionSignerEngine(d.module, manifest.getJSONObject("roles").getString("session"),
             rpc = { method, params -> AgentNetwork.relay(this, method, params) },
+            readBatch = { calls -> AgentNetwork.batch(this, calls) },
+            trace = { stage ->
+                if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                    if (stage == "start") { traceStart = SystemClock.elapsedRealtime(); traceStages = JSONArray() }
+                    traceStages.put(JSONObject().put("stage", stage).put("elapsedMs", SystemClock.elapsedRealtime() - traceStart))
+                    // Public timings only: never include report bytes, keys or signed tx bytes.
+                    runCatching { File(filesDir, "agent/signer_timing.json").writeText(traceStages.toString()) }
+                }
+            },
             lease = { AgentNetwork.requireLease(this) },
             verify = { report ->
                 val hashes = JSONObject(ProvisionedHashes.JSON)
