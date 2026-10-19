@@ -138,7 +138,14 @@ private fun EgressRow(r: EgressLogEntity) {
                     style = MaterialTheme.typography.labelSmall, color = Muted,
                 )
             }
-            StatusPill(label = r.status.name, tone = tone)
+            val statusLabel = when (r.status) {
+                EgressStatus.SENT_OK -> "Sent"
+                EgressStatus.BLOCKED_BY_GUARD -> "Blocked"
+                EgressStatus.REJECTED_REPLY -> "Rejected"
+                EgressStatus.FAILED -> "Failed"
+                else -> "Recorded"
+            }
+            StatusPill(label = statusLabel, tone = tone)
         }
         if (r.detail.isNotEmpty()) Text(r.detail, style = MaterialTheme.typography.labelSmall, color = Muted)
         if (r.payloadJson.isNotEmpty()) {

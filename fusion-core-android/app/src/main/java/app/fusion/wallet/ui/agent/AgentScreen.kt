@@ -149,7 +149,7 @@ fun AgentScreen(
                         }
                         IconButton(
                             onClick = { vm.refresh() },
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(48.dp),
                         ) {
                             if (state.refreshing) {
                                 CircularProgressIndicator(

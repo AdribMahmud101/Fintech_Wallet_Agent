@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -111,7 +112,7 @@ fun JudgeScreen(
                         }
                         IconButton(
                             onClick = { vm.refresh() },
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(48.dp),
                         ) {
                             if (state.refreshing) {
                                 CircularProgressIndicator(
@@ -129,7 +130,7 @@ fun JudgeScreen(
                             }
                         }
                         if (onBack != null) {
-                            IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) {
+                            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
@@ -284,13 +285,13 @@ private fun ContractAddressRow(label: String, address: String) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = { clipboard.setText(AnnotatedString(address)) },
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         Icons.Filled.ContentCopy,
                         contentDescription = "Copy $label address",
                         tint = Muted,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
 
@@ -299,7 +300,7 @@ private fun ContractAddressRow(label: String, address: String) {
                         val url = "https://sepolia.basescan.org/address/$address"
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     },
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.OpenInNew,
@@ -415,6 +416,7 @@ private fun EvidenceRowCard(row: EvidenceRow) {
             // BaseScan Link
             Row(
                 modifier = Modifier
+                    .heightIn(min = 48.dp)
                     .clickable(role = Role.Button) {
                         val url = row.explorerUrl.ifEmpty { "https://sepolia.basescan.org/tx/${row.txHash}" }
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
