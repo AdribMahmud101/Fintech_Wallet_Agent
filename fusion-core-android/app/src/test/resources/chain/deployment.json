@@ -1,0 +1,498 @@
+{
+  "chainId": 84532,
+  "status": "SETUP_COMPLETE",
+  "profile": "FULL",
+  "amountDivisor": 1,
+  "rpcUrl": "https://sepolia.base.org",
+  "compiler": {
+    "version": "0.8.24+commit.e11b9ed9",
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": true,
+    "optimizerRuns": 200,
+    "officialSafeViaIR": false
+  },
+  "owners": [
+    "0x61dd06cE2f07d3E4F97d097741b0D7FD50F97F79",
+    "0x208Bfee9F222d611b4Db71d5ee53b3dAB1A2188A"
+  ],
+  "threshold": 2,
+  "roles": {
+    "deployer": "0x77A9224AAc84d496a4ad0E865dcA9eA27B6a22Da",
+    "owner": "0x61dd06cE2f07d3E4F97d097741b0D7FD50F97F79",
+    "approver": "0x208Bfee9F222d611b4Db71d5ee53b3dAB1A2188A",
+    "guardian": "0x46B8E40EB9767BD46E03C5eCF398C10E1372251E",
+    "session": "0xB52Cb48eC1cc5Ad1171C83F162228e31752F87fA",
+    "ops": "0xC78Be9Da2204CC3020B055520102479FA3175066"
+  },
+  "payeeDelaySeconds": 3600,
+  "payeeDelayLabel": "demo setting; production default 24 h",
+  "obligationsDueAt": 1792576500,
+  "contracts": {
+    "safe": {
+      "address": "0x029869910714D9e09b854a2688311AFd42fBb44E",
+      "runtimeCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+      "runtimeCodeBytes": 171,
+      "observedAtBlock": 48317707,
+      "source": "lib/safe-smart-account/contracts/proxies/SafeProxy.sol:SafeProxy",
+      "deploymentTxHash": "0x957ef32ef5e4244b6c76ec20c6aa857b2ca57d2402ed1176eecf4bafcccb9e7b",
+      "deploymentBlock": 48317703,
+      "explorer": "https://sepolia.basescan.org/address/0x029869910714D9e09b854a2688311AFd42fBb44E",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0x029869910714D9e09b854a2688311AFd42fBb44E/",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:31.916328+00:00",
+        "result": {
+          "matchId": "56537775",
+          "creationMatch": null,
+          "runtimeMatch": "match",
+          "verifiedAt": "2026-10-19T09:55:28Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0x029869910714D9e09b854a2688311AFd42fBb44E"
+        }
+      },
+      "compiler": {
+        "version": "0.7.6+commit.7338295f",
+        "evmVersion": "istanbul",
+        "viaIR": false,
+        "optimizer": false,
+        "optimizerRuns": 200
+      }
+    },
+    "asset": {
+      "address": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+      "runtimeCodeHash": "0x76d471b1a3bee182d4a7271b3e2fd20ac466ac7286ed9f9492cca0b5d6a83da0",
+      "runtimeCodeBytes": 3981,
+      "observedAtBlock": 48317707,
+      "source": "Aave test USDC (external)",
+      "explorer": "https://sepolia.basescan.org/address/0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://repo.sourcify.dev/contracts/partial_match/84532/0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f/",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "6185768",
+          "creationMatch": "match",
+          "runtimeMatch": "match",
+          "verifiedAt": "2025-03-05T00:11:08Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f"
+        }
+      }
+    },
+    "vaultA": {
+      "address": "0xf430cb6E2b85f99222fBFA6dFEa18Ff60FA6B32a",
+      "runtimeCodeHash": "0x598e418d1680bc6485e4d90f3a9da5219f65e85fe0f03d1c2815bc529dda8e6c",
+      "runtimeCodeBytes": 1088,
+      "observedAtBlock": 48317708,
+      "source": "Aave waUSDC (external ERC-4626)",
+      "implementation": "0x208747c806b13022db31622c0c9bd3979532a8d6",
+      "explorer": "https://sepolia.basescan.org/address/0xf430cb6E2b85f99222fBFA6dFEa18Ff60FA6B32a",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://base-sepolia.blockscout.com/address/0xf430cb6E2b85f99222fBFA6dFEa18Ff60FA6B32a#code",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "blockscout",
+        "sourceSummary": {
+          "name": "TransparentUpgradeableProxy",
+          "compiler_version": "v0.8.20+commit.a1b79de6",
+          "evm_version": "shanghai",
+          "optimization_enabled": true,
+          "optimization_runs": 200,
+          "is_fully_verified": false,
+          "verified_at": "2026-09-10T12:06:56.107907Z"
+        },
+        "apiUrl": "https://base-sepolia.blockscout.com/api/v2/smart-contracts/0xf430cb6E2b85f99222fBFA6dFEa18Ff60FA6B32a"
+      },
+      "implementationCodeHash": "0xfe5266bf44bbdbb9c36ff6685553f1f8836cdcaa34ceec6166590782c7ae6fc1",
+      "implementationVerification": {
+        "status": "VERIFIED_EXTERNAL",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "10344006",
+          "creationMatch": "match",
+          "runtimeMatch": "match",
+          "verifiedAt": "2025-11-22T05:57:29Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0x208747c806b13022db31622c0c9bD3979532A8D6"
+        },
+        "url": "https://repo.sourcify.dev/contracts/partial_match/84532/0x208747c806b13022db31622c0c9bd3979532a8d6/"
+      }
+    },
+    "vaultB": {
+      "address": "0xf052C0ED8404adEaAEA773A5F8Ae4628134aff6D",
+      "runtimeCodeHash": "0xba74e40456b177fc3129679d5f1d4031f1c6c9cb13b5276a2f5c020a4bf341fb",
+      "runtimeCodeBytes": 4538,
+      "observedAtBlock": 48317709,
+      "source": "src/KavachiDemoVault.sol:KavachiDemoVault",
+      "deploymentTxHash": "0xe706e18973fb4aeee32416e1430f149ebbcc2154e6fddd3fb82338588bbedc8d",
+      "deploymentBlock": 48317704,
+      "explorer": "https://sepolia.basescan.org/address/0xf052C0ED8404adEaAEA773A5F8Ae4628134aff6D",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0xf052C0ED8404adEaAEA773A5F8Ae4628134aff6D/",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:39.272677+00:00",
+        "result": {
+          "matchId": "56537795",
+          "creationMatch": "match",
+          "runtimeMatch": "match",
+          "verifiedAt": "2026-10-19T09:55:41Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0xf052C0ED8404adEaAEA773A5F8Ae4628134aff6D"
+        }
+      },
+      "compiler": {
+        "version": "0.8.24+commit.e11b9ed9",
+        "evmVersion": "cancun",
+        "viaIR": true,
+        "optimizer": true,
+        "optimizerRuns": 200
+      }
+    },
+    "sanctionsList": {
+      "address": "0xd2716e08BCe6eb5B1f01329FF5E1a2dd0468B678",
+      "runtimeCodeHash": "0x160c335288e894c0505fb4c2805386aa6dcab498bdaae2faf4feaacdc9bac563",
+      "runtimeCodeBytes": 652,
+      "observedAtBlock": 48317710,
+      "source": "src/KavachiTestSanctionsList.sol:KavachiTestSanctionsList",
+      "deploymentTxHash": "0x2b28ba967cca84f05d803b2528c097e8af5ff8ea88dd50472008eff3c455de98",
+      "deploymentBlock": 48317705,
+      "explorer": "https://sepolia.basescan.org/address/0xd2716e08BCe6eb5B1f01329FF5E1a2dd0468B678",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0xd2716e08BCe6eb5B1f01329FF5E1a2dd0468B678/",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:42.814230+00:00",
+        "result": {
+          "matchId": "56537800",
+          "creationMatch": "match",
+          "runtimeMatch": "match",
+          "verifiedAt": "2026-10-19T09:55:47Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0xd2716e08BCe6eb5B1f01329FF5E1a2dd0468B678"
+        }
+      },
+      "compiler": {
+        "version": "0.8.24+commit.e11b9ed9",
+        "evmVersion": "cancun",
+        "viaIR": true,
+        "optimizer": true,
+        "optimizerRuns": 200
+      }
+    },
+    "module": {
+      "address": "0xA560ec10259657E9bADd297E68286d2838Cd5a8f",
+      "runtimeCodeHash": "0x74929912c59f8da8017a1c47b35917c3a777adf77be0413f99eb1e7fbca4c5bb",
+      "runtimeCodeBytes": 24301,
+      "observedAtBlock": 48317710,
+      "source": "src/KavachiModule.sol:KavachiModule",
+      "deploymentTxHash": "0x58f90dc5df9e8734ee195bfd672d6adda0a4e8bcb656813e53f534c94501e4aa",
+      "deploymentBlock": 48317706,
+      "explorer": "https://sepolia.basescan.org/address/0xA560ec10259657E9bADd297E68286d2838Cd5a8f",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0xA560ec10259657E9bADd297E68286d2838Cd5a8f/",
+        "error": "d29113ce-a6da-422d-a071-e7e1d491626d\thttps://sourcify.dev/server/verify-ui/jobs/d29113ce-a6da-422d-a071-e7e1d491626d\nStart verifying contract `0xA560ec10259657E9bADd297E68286d2838Cd5a8f` deployed on base-sepolia\nEVM version: cancun\nCompiler version: 0.8.24\nOptimizations:    200\n\nVerifying on sourcify...\nSubmitting verification for [KavachiModule] 0xA560ec10259657E9bADd297E68286d2838Cd5a8f.\nSubmitted contract for verification:\n\tVerification Job ID: `d29113ce-a6da-422d-a071-e7e1d491626d`\n\tURL: https://sourcify.dev/server/verify-ui/jobs/d29113ce-a6da-422d-a071-e7e1d491626d\n\nWaiting for sourcify verification result...\nWarning: Verification is still pending...; waiting 3 seconds before trying again (2 tries remaining)\nWarning: Verification is still pending...; waiting 3 seconds before trying again (1 tries remaining)\nWarning: Verification is still pending...; waiting 3 seconds before trying again (0 tries remaining)\nError: Checking verification result failed\n\nContext:\n- Verification is still pending...\n",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:43.886354+00:00",
+        "result": {
+          "matchId": "56537831",
+          "creationMatch": "exact_match",
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2026-10-19T09:56:09Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0xA560ec10259657E9bADd297E68286d2838Cd5a8f"
+        }
+      },
+      "compiler": {
+        "version": "0.8.24+commit.e11b9ed9",
+        "evmVersion": "cancun",
+        "viaIR": true,
+        "optimizer": true,
+        "optimizerRuns": 200
+      },
+      "linkedLibraries": {
+        "src/KavachiPolicyLib.sol:KavachiPolicyLib": "0x7ee721922dffe2bee9ec8e4ef51646110e6cbc1f"
+      }
+    },
+    "safeSingleton": {
+      "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "runtimeCodeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+      "runtimeCodeBytes": 24421,
+      "observedAtBlock": 48317711,
+      "source": "Safe v1.4.1 SafeL2 (canonical external deployment)",
+      "explorer": "https://sepolia.basescan.org/address/0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0x29fcB43b46531BcA003ddC8FCB67FFE91900C762/",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "5344563",
+          "creationMatch": "exact_match",
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2024-09-12T08:33:44Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+        }
+      }
+    },
+    "safeProxyFactory": {
+      "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+      "runtimeCodeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+      "runtimeCodeBytes": 3054,
+      "observedAtBlock": 48317712,
+      "source": "lib/safe-smart-account/contracts/proxies/SafeProxyFactory.sol:SafeProxyFactory",
+      "explorer": "https://sepolia.basescan.org/address/0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67/",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "5344554",
+          "creationMatch": null,
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2024-09-12T08:33:32Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67"
+        }
+      }
+    },
+    "safeFallbackHandler": {
+      "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "runtimeCodeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+      "runtimeCodeBytes": 5637,
+      "observedAtBlock": 48317713,
+      "source": "lib/safe-smart-account/contracts/handler/CompatibilityFallbackHandler.sol:CompatibilityFallbackHandler",
+      "explorer": "https://sepolia.basescan.org/address/0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99/",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "5344556",
+          "creationMatch": null,
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2024-09-12T08:33:35Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99"
+        }
+      }
+    },
+    "multiSendCallOnly": {
+      "address": "0x9641d764fc13c8B624c04430C7356C1C7C8102e2",
+      "runtimeCodeHash": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+      "runtimeCodeBytes": 410,
+      "observedAtBlock": 48317714,
+      "source": "lib/safe-smart-account/contracts/libraries/MultiSendCallOnly.sol:MultiSendCallOnly",
+      "explorer": "https://sepolia.basescan.org/address/0x9641d764fc13c8B624c04430C7356C1C7C8102e2",
+      "verification": {
+        "status": "VERIFIED_EXTERNAL",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0x9641d764fc13c8B624c04430C7356C1C7C8102e2/",
+        "note": "Canonical external contract; runtime and implementation pins verified independently",
+        "verifier": "sourcify",
+        "result": {
+          "matchId": "5344559",
+          "creationMatch": null,
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2024-09-12T08:33:38Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0x9641d764fc13c8B624c04430C7356C1C7C8102e2"
+        }
+      }
+    },
+    "policyLibrary": {
+      "address": "0x7ee721922dffe2bee9ec8e4ef51646110e6cbc1f",
+      "runtimeCodeHash": "0x0c0079f55ee516a788ef6fe46b59d00a88f0ea29189618157ab65a5bac28ef02",
+      "runtimeCodeBytes": 5854,
+      "observedAtBlock": 48317715,
+      "source": "src/KavachiPolicyLib.sol:KavachiPolicyLib",
+      "deploymentTxHash": "0x53b601369fe5105096d821448d7ae20415c9dca9baf811dbb5088ca427008c8b",
+      "deploymentBlock": 48317685,
+      "explorer": "https://sepolia.basescan.org/address/0x7ee721922dffe2bee9ec8e4ef51646110e6cbc1f",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0x7ee721922dffe2bee9ec8e4ef51646110e6cbc1f/",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:45.344865+00:00",
+        "result": {
+          "matchId": "56537840",
+          "creationMatch": "exact_match",
+          "runtimeMatch": "exact_match",
+          "verifiedAt": "2026-10-19T09:56:11Z",
+          "match": "exact_match",
+          "chainId": "84532",
+          "address": "0x7ee721922DFFe2beE9Ec8E4eF51646110E6CBC1f"
+        }
+      },
+      "compiler": {
+        "version": "0.8.24+commit.e11b9ed9",
+        "evmVersion": "cancun",
+        "viaIR": true,
+        "optimizer": true,
+        "optimizerRuns": 200
+      }
+    },
+    "payeeRegistry": {
+      "address": "0xD798F4DF0dEf13971870AEfEE7fce4691F739B5b",
+      "runtimeCodeHash": "0x3dd9cc0d5590d7ee16c59034997a488035406b10fa75e25d023b7928d430608f",
+      "runtimeCodeBytes": 2254,
+      "observedAtBlock": 48317716,
+      "source": "src/KavachiPayeeRegistry.sol:KavachiPayeeRegistry",
+      "deploymentTxHash": "0x58f90dc5df9e8734ee195bfd672d6adda0a4e8bcb656813e53f534c94501e4aa",
+      "deploymentBlock": 48317706,
+      "explorer": "https://sepolia.basescan.org/address/0xD798F4DF0dEf13971870AEfEE7fce4691F739B5b",
+      "verification": {
+        "status": "VERIFIED",
+        "url": "https://repo.sourcify.dev/contracts/full_match/84532/0xD798F4DF0dEf13971870AEfEE7fce4691F739B5b/",
+        "verifier": "sourcify",
+        "checkedAt": "2026-10-19T09:56:51.707654+00:00",
+        "result": {
+          "matchId": "56537843",
+          "creationMatch": "match",
+          "runtimeMatch": "match",
+          "verifiedAt": "2026-10-19T09:56:17Z",
+          "match": "match",
+          "chainId": "84532",
+          "address": "0xD798F4DF0dEf13971870AEfEE7fce4691F739B5b"
+        }
+      },
+      "compiler": {
+        "version": "0.8.24+commit.e11b9ed9",
+        "evmVersion": "cancun",
+        "viaIR": true,
+        "optimizer": true,
+        "optimizerRuns": 200
+      }
+    }
+  },
+  "labels": {
+    "sanctions": "TEST LIST",
+    "demoVaultYield": "SIMULATED",
+    "agentSource": "SCRIPT",
+    "planner": "deterministic"
+  },
+  "safe": "0x029869910714D9e09b854a2688311AFd42fBb44E",
+  "module": "0xA560ec10259657E9bADd297E68286d2838Cd5a8f",
+  "asset": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+  "vaultA": "0xf430cb6E2b85f99222fBFA6dFEa18Ff60FA6B32a",
+  "vaultB": "0xf052C0ED8404adEaAEA773A5F8Ae4628134aff6D",
+  "sanctionsList": "0xd2716e08BCe6eb5B1f01329FF5E1a2dd0468B678",
+  "codeHashes": {
+    "safe": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+    "asset": "0x76d471b1a3bee182d4a7271b3e2fd20ac466ac7286ed9f9492cca0b5d6a83da0",
+    "vaultA": "0x598e418d1680bc6485e4d90f3a9da5219f65e85fe0f03d1c2815bc529dda8e6c",
+    "vaultB": "0xba74e40456b177fc3129679d5f1d4031f1c6c9cb13b5276a2f5c020a4bf341fb",
+    "sanctionsList": "0x160c335288e894c0505fb4c2805386aa6dcab498bdaae2faf4feaacdc9bac563",
+    "module": "0x74929912c59f8da8017a1c47b35917c3a777adf77be0413f99eb1e7fbca4c5bb",
+    "safeSingleton": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+    "safeProxyFactory": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+    "safeFallbackHandler": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+    "multiSendCallOnly": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+    "policyLibrary": "0x0c0079f55ee516a788ef6fe46b59d00a88f0ea29189618157ab65a5bac28ef02",
+    "payeeRegistry": "0x3dd9cc0d5590d7ee16c59034997a488035406b10fa75e25d023b7928d430608f"
+  },
+  "deploymentBlock": 48317685,
+  "explorerBaseUrl": "https://sepolia.basescan.org",
+  "funding": [
+    {
+      "role": "OWNER",
+      "txHash": "0xb12209d52d86ee095467c2b9e3a5dbc65a0908e64722f7547062b29481db931f",
+      "amountWei": "10000000000000000"
+    },
+    {
+      "role": "APPROVER",
+      "txHash": "0x00032c18c0cbe7437b52b8981fd4a8bba4c4069e50ca2bb1c5a70ff581ae94aa",
+      "amountWei": "10000000000000000"
+    },
+    {
+      "role": "GUARDIAN",
+      "txHash": "0x1b53b7d24712aa4a411b2cfe8a98fcbec758b463a6b94d2f399170e0ec6cb1ad",
+      "amountWei": "10000000000000000"
+    },
+    {
+      "role": "SESSION",
+      "txHash": "0xcd780e297ade55020ea764d743d62872be6deb00f540cdcc1b29870f2fa5d48c",
+      "amountWei": "20000000000000000"
+    },
+    {
+      "role": "TREASURY_USDC",
+      "txHash": "0x0d649bb543e444877a16c587c73ff8c80a83250ce0d289d3029781d5ea13999a",
+      "amountRaw": "10000000000"
+    }
+  ],
+  "payeesActiveAt": 1792407498,
+  "setupTxHashes": [
+    "0xd8d145e6795471b8fcc68c98c3b1e3763e5e95cbb383140fbcc04c256065e299",
+    "0xb8927af265a7d73d84bbefcafe512698bd6547a3cbbef64a6baa1c49659a27fa",
+    "0x8c2a208fed80010e4dfdeaf227f344d80d4411ee1669389abfaabd9d1a4e6ad0",
+    "0xabb5bd793393a221a72d773a8b65708d65ae7cc0be1a3064fe98ed088adf4f94"
+  ],
+  "ownerSeedAllocation": {
+    "txHash": "0xfd7cd40d688fddbaa2dbf68d9dabbbfd65c163934d23ac2a88cbcdf6d293dbba",
+    "vaultAAssetsRaw": "3000000000",
+    "vaultBAssetsRaw": "4000000000",
+    "purpose": "Reference working-cash state for reserve-raid proof; explicit threshold-two owner allocation, not agent execution"
+  },
+  "handoffSnapshot": {
+    "block": 48319954,
+    "blockHash": "0xcf5101d8926d7b0198606640ff75dab905f43db5f2351111ad949b3d90bc8a70",
+    "timestamp": 1792408196,
+    "moduleState": {
+      "configured": true,
+      "paused": true,
+      "policyEpoch": "6",
+      "policyHash": "0xd23e010f3c36f64c006aaa5ac48cdb1932749b94473578ae4ccc4ee85024e1f3",
+      "mandateHash": "0xa243986168698a82690f99b2140b37da0836e86945650adc86499a8228403240",
+      "obligationsRoot": "0x29e3f1325c87d0d9fb36ddca27bca79b5847e2781cd97654c4fa8d8b02c02165",
+      "reservedRaw": "50000000",
+      "obligationCount": "5",
+      "actionNonce": "6",
+      "dailyDayIndex": "20745",
+      "dailyUsedRaw": "2093000000",
+      "sessionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "sessionStartEpoch": "0",
+      "sessionKey": "0x0000000000000000000000000000000000000000",
+      "sessionExpiresAt": "0",
+      "sessionLimitRaw": "0",
+      "sessionUsedRaw": "0"
+    },
+    "cashRaw": "9467001235",
+    "vaultSharesRaw": {
+      "vaultA": "0",
+      "vaultB": "0"
+    },
+    "allowancesRaw": {
+      "vaultA": "0",
+      "vaultB": "0"
+    },
+    "paidMarkers": [
+      true,
+      true,
+      true,
+      true,
+      false
+    ],
+    "dailyLimitRaw": "4000000000",
+    "dailyRemainingRaw": "1907000000",
+    "evidenceRows": 30,
+    "uniqueEvidenceTransactions": 26,
+    "source": "SCRIPT"
+  },
+  "evidenceComplete": true
+}
