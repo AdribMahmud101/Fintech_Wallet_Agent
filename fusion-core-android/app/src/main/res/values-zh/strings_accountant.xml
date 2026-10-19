@@ -254,7 +254,7 @@
     <string name="ag_today">今日</string>
 
     <!-- K5 Real-State UI Strings (Chinese) -->
-    <string name="nav_bills">账单与收款方</string>
+    <string name="nav_bills">账单</string>
     <string name="nav_judge">裁判模式</string>
     <string name="badge_network">Base Sepolia · 测试网</string>
     <string name="stale_data_warning">数据可能已过期：显示区块 #%1$s（%2$s前）</string>
