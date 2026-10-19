@@ -75,6 +75,8 @@ android {
 }
 
 dependencies {
+    // Lightweight secp256k1 / RFC6979 / Keccak APIs; no global provider replacement.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
