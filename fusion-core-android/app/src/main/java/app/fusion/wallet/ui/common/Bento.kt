@@ -73,8 +73,9 @@ fun TileLabel(text: String) {
 /** A count/value tile: big number, small caption. */
 @Composable
 fun StatTile(modifier: Modifier, label: String, value: String, color: Color, tint: Color? = null) {
+    val fontSize = if (value.length > 8) 15.sp else 20.sp
     BentoTile(modifier, tint = tint) {
-        Text(value, style = MonoStyle.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold), color = color)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 2.dp))
+        Text(value, style = MonoStyle.copy(fontSize = fontSize, fontWeight = FontWeight.SemiBold), color = color, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
     }
 }

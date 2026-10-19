@@ -254,14 +254,16 @@
     <string name="ag_today">今日</string>
 
     <!-- K5 Real-State UI Strings (Chinese) -->
-    <string name="nav_bills">账单与收款方</string>
+    <string name="nav_bills">账单</string>
     <string name="nav_judge">裁判模式</string>
     <string name="badge_network">Base Sepolia · 测试网</string>
     <string name="stale_data_warning">数据可能已过期：显示区块 #%1$s（%2$s前）</string>
+    <string name="chip_stale">已过期</string>
     <string name="refresh_button">刷新</string>
     <string name="view_on_basescan">在 BaseScan 查看</string>
     <string name="explorer_link">BaseScan 浏览器</string>
     <string name="accounting_mismatch_warning">账目不匹配：%1$s</string>
+    <string name="accounting_mismatch_unavailable">承诺 %1$s 的账单明细不可用；总额来源于链上</string>
 
     <!-- Treasury -->
     <string name="tr_hero_total">总资产</string>

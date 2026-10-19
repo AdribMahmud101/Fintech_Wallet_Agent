@@ -28,7 +28,7 @@ class MainViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             while (isActive) {
                 repository.refresh()
-                delay(10_000)
+                delay(15_000)
             }
         }
     }

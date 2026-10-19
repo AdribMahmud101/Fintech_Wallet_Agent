@@ -17,6 +17,7 @@ class ChainWalletRepository(
     manifestJson: String,
     private val obligationsJson: String? = null,
     rpc: RpcTransport? = null,
+    private val obligationsResolver: ObligationsResolver = ObligationsResolver(),
 ) : WalletRepository {
     private val deployment = Deployment.parse(manifestJson)
     private val reader = ChainReader(rpc ?: JsonRpcClient(deployment.rpcUrl))
@@ -122,10 +123,9 @@ class ChainWalletRepository(
     }
 
     private fun readObligations(module: ModuleState, call: (String) -> Abi): Pair<List<Obligation>, String?> {
-        val local = obligationsJson?.let(::JSONObject) ?: return emptyList<Obligation>() to "ACCOUNTING_MISMATCH: local bill records unavailable"
-        if (!local.getString("root").equals(module.obligationsRoot, true)) {
-            return emptyList<Obligation>() to "ACCOUNTING_MISMATCH: on-chain commitment differs from bundled bills"
-        }
+        val resolved = obligationsResolver.resolve(module.obligationsRoot, obligationsJson)
+            ?: return emptyList<Obligation>() to "ACCOUNTING_MISMATCH: on-chain commitment differs from bundled bills"
+        val local = JSONObject(resolved)
         val bills = local.getJSONArray("bills")
         val obligations = List(bills.length()) { index ->
             val bill = bills.getJSONObject(index)

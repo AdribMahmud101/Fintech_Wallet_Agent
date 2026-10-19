@@ -115,10 +115,12 @@ fun TreasuryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        StatusPill(
-                            label = stringResource(R.string.badge_network),
-                            tone = Tone.Warn,
-                        )
+                        if (state.isDisplayStale() && state.blockNumber != null) {
+                            StatusPill(
+                                label = stringResource(R.string.chip_stale),
+                                tone = Tone.Warn,
+                            )
+                        }
                         if (state.source == DataSource.DEMO) {
                             StatusPill(
                                 label = stringResource(R.string.badge_demo),
@@ -149,8 +151,8 @@ fun TreasuryScreen(
             )
         }
 
-        // Stale Data Warning
-        if (state.isStale() && state.blockNumber != null) {
+        // Accounting Mismatch Warning
+        if (state.accountingMatches == false) {
             item {
                 ObsidianCard(level = 2) {
                     Row(
@@ -165,35 +167,11 @@ fun TreasuryScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = stringResource(R.string.stale_data_warning, state.blockNumber.toString(), "30s+"),
+                            text = state.module?.obligationsRoot?.let { root ->
+                                stringResource(R.string.accounting_mismatch_unavailable, shorten(root))
+                            } ?: stringResource(R.string.accounting_mismatch_warning, state.accountingError ?: "DISCREPANCY"),
                             style = MaterialTheme.typography.bodySmall,
                             color = Tone.Warn,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-        }
-
-        // Accounting Mismatch Warning
-        if (state.accountingMatches == false) {
-            item {
-                ObsidianCard(level = 2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Filled.Warning,
-                            contentDescription = null,
-                            tint = Tone.Bad,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.accounting_mismatch_warning, state.accountingError ?: "DISCREPANCY"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Tone.Bad,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -290,7 +268,9 @@ private fun TreasuryHeroTile(state: WalletState) {
     val surplus = buckets?.surplus ?: Money.ZERO
     val shortfall = buckets?.shortfall ?: Money.ZERO
     val isShort = shortfall.raw > BigInteger.ZERO
-    val blockText = state.blockNumber?.let { "#$it" } ?: "—"
+    val blockText = state.blockNumber?.let {
+        stringResource(R.string.tr_last_refresh_block, it.toString())
+    } ?: stringResource(R.string.tr_block_unconfirmed)
 
     BentoTile(
         modifier = Modifier.fillMaxWidth(),
@@ -308,7 +288,7 @@ private fun TreasuryHeroTile(state: WalletState) {
                 color = Muted,
             )
             Text(
-                stringResource(R.string.tr_last_refresh_block, blockText),
+                blockText,
                 style = MonoStyle,
                 color = Muted,
             )
@@ -615,7 +595,13 @@ private fun ObligationsSummaryTile(state: WalletState) {
     BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
         CardTitle(
             stringResource(R.string.tr_bills),
-            trailing = "${unpaid.size} unpaid / ${obligations.size} total",
+            trailing = if (obligations.isNotEmpty()) {
+                "${unpaid.size} unpaid / ${obligations.size} total"
+            } else if (state.module != null && state.module.obligationCount > BigInteger.ZERO) {
+                "${state.module.obligationCount} on chain"
+            } else {
+                "—"
+            },
         )
 
         if (nextBill != null) {
@@ -641,6 +627,29 @@ private fun ObligationsSummaryTile(state: WalletState) {
                 StatusPill(
                     label = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) "OVERDUE" else "SCHEDULED",
                     tone = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) Tone.Bad else Tone.Good,
+                )
+            }
+        } else if (state.module != null && state.module.reserved.raw > BigInteger.ZERO) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        "Owed: ${state.module.reserved.display} USDC",
+                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "Root: ${shorten(state.module.obligationsRoot)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Tone.Bills,
+                    )
+                }
+                StatusPill(
+                    label = "ON-CHAIN",
+                    tone = Tone.Warn,
                 )
             }
         }

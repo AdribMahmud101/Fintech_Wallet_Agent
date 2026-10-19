@@ -38,4 +38,7 @@ object Fmt {
         val m = (s % 3600) / 60
         return if (h > 0) "${h}h ${m}m" else "$m:${(s % 60).toString().padStart(2, '0')}"
     }
+
+    /** Formats a block header without double '#', e.g. "Block #48322201" or "Block —". */
+    fun blockLabel(number: Long?): String = if (number != null) "Block #$number" else "Block —"
 }

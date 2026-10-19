@@ -100,6 +100,46 @@ class ChainWalletRepositoryTest {
         assertEquals("9467001235", repository.state.value.treasury!!.balance.rawUnits)
     }
 
+    @Test fun staleBundledBillsReplacedByMatchingCandidate() = runBlocking {
+        val staleBundled = JSONObject(resource("obligations.json")).apply {
+            put("root", "0x" + "0".repeat(64))
+        }.toString()
+        val matchingRemote = resource("obligations.json")
+        val source = object : ObligationsCandidateSource {
+            override fun fetchCandidate(url: String): String? = matchingRemote
+            override fun listAgentEvidenceUrls(): List<String> = emptyList()
+        }
+        val resolver = ObligationsResolver(source)
+        val repository = ChainWalletRepository(resource("deployment.json"), staleBundled, CapturedRpc(), resolver)
+        repository.refresh()
+        val state = repository.state.value
+        assertEquals(LoadStatus.READY, state.status)
+        assertTrue(state.accountingMatches == true)
+        assertEquals(5, state.obligations.size)
+        assertEquals("9467001235", state.treasury!!.balance.rawUnits)
+    }
+
+    @Test fun noCandidateMatchesLeavesTotalsFromChainAvailable() = runBlocking {
+        val staleBundled = JSONObject(resource("obligations.json")).apply {
+            put("root", "0x" + "0".repeat(64))
+        }.toString()
+        val source = object : ObligationsCandidateSource {
+            override fun fetchCandidate(url: String): String? = null
+            override fun listAgentEvidenceUrls(): List<String> = emptyList()
+        }
+        val resolver = ObligationsResolver(source)
+        val repository = ChainWalletRepository(resource("deployment.json"), staleBundled, CapturedRpc(), resolver)
+        repository.refresh()
+        val state = repository.state.value
+        assertEquals(LoadStatus.READY, state.status)
+        assertFalse(state.accountingMatches!!)
+        assertTrue(state.accountingError!!.startsWith("ACCOUNTING_MISMATCH"))
+        assertTrue(state.obligations.isEmpty())
+        assertEquals("9467001235", state.treasury!!.balance.rawUnits)
+        assertEquals("50000000", state.module!!.reserved.rawUnits)
+        assertEquals("8917001235", state.buckets!!.surplus.rawUnits)
+    }
+
     @Test fun repeatRefreshReconcilesHistoryWithoutDuplicatingActions() = runBlocking {
         val replay = CapturedRpc()
         val repository = repository(replay)
