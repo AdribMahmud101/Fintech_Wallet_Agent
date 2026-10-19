@@ -262,40 +262,9 @@ fun AgentScreen(
 
     // Stop Confirmation Dialog
     if (showStopDialog) {
-        val notWiredMessage = stringResource(R.string.ag_stop_not_wired)
-        AlertDialog(
-            onDismissRequest = { showStopDialog = false },
-            title = {
-                Text(
-                    text = stringResource(R.string.ag_stop_confirm_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.ag_stop_confirm_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showStopDialog = false
-                        // Check if ViewModel exposes a pause callback; K4 has not provided one
-                        stopNotWiredNotice = notWiredMessage
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Tone.Bad),
-                ) {
-                    Text(stringResource(R.string.ag_stop_confirm_action), color = Color.White)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStopDialog = false }) {
-                    Text(stringResource(R.string.ag_stop_cancel_action))
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
+        app.fusion.wallet.signer.GuardianStopDialog(
+            requestPause = vm::requestGuardianPause,
+            onDismiss = { showStopDialog = false },
         )
     }
 }
