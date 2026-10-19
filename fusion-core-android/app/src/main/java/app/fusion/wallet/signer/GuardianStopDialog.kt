@@ -1,5 +1,6 @@
 package app.fusion.wallet.signer
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
@@ -43,7 +44,7 @@ fun GuardianStopDialog(requestPause: suspend () -> Result<String>, onDismiss: ()
                 publicHash?.let { hash ->
                     Text(hash)
                     TextButton(onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sepolia.basescan.org/tx/$hash")))
+                        context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse("https://sepolia.basescan.org/tx/$hash")))
                     }) { Text("View on BaseScan") }
                 }
             }

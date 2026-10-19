@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.proof
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -360,7 +361,7 @@ private fun BaseScanLink(url: String, context: android.content.Context) {
     Row(
         modifier = Modifier
             .heightIn(min = 48.dp)
-            .clickable(role = Role.Button) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            .clickable(role = Role.Button) { context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

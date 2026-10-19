@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.bills
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -429,7 +430,7 @@ private fun PayeeCard(
                         .clickable(role = Role.Button) {
                             val url = "https://sepolia.basescan.org/address/${payee.address}"
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
+                            context.startActivitySafe(intent)
                         }
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -530,7 +531,7 @@ private fun ObligationCard(
                                 .heightIn(min = 48.dp)
                                 .clickable(role = Role.Button) {
                                     val url = "https://sepolia.basescan.org/tx/$payTx"
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                    context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 }
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,

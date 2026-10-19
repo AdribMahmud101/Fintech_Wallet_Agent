@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.agent
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -649,7 +650,7 @@ private fun DecodedActionCard(
                         .clickable(role = Role.Button) {
                             val url = "https://sepolia.basescan.org/tx/${action.txHash}"
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
+                            context.startActivitySafe(intent)
                         }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,

@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.judge
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -298,7 +299,7 @@ private fun ContractAddressRow(label: String, address: String) {
                 IconButton(
                     onClick = {
                         val url = "https://sepolia.basescan.org/address/$address"
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     },
                     modifier = Modifier.size(48.dp),
                 ) {
@@ -420,7 +421,7 @@ private fun EvidenceRowCard(row: EvidenceRow) {
                     .clickable(role = Role.Button) {
                         val url = row.explorerUrl.ifEmpty { "https://sepolia.basescan.org/tx/${row.txHash}" }
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        context.startActivity(intent)
+                        context.startActivitySafe(intent)
                     }
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,

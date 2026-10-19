@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.components
 
+import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -204,7 +205,7 @@ fun TxLink(
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                runCatching { context.startActivity(intent) }
+                runCatching { context.startActivitySafe(intent) }
             }
             .heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 2.dp)
             .semantics {
