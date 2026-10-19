@@ -1,6 +1,11 @@
 package app.fusion.wallet.agent
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
@@ -10,7 +15,7 @@ import org.json.JSONObject
 import java.io.File
 
 /** adb-only evidence harness, debug source set. Never accepts keys or candidate overrides. */
-class AgentControlActivity : Activity() {
+class AgentControlActivity : ComponentActivity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +37,18 @@ class AgentControlActivity : Activity() {
             }
             Log.i("FusionPlanner", if (mode == "m1") "M1 $result" else "DRY_RUN complete; error=${result.optString("error")}")
             status.text = result.toString(2)
+            if (mode != "m1" && !result.has("error")) setContent {
+                app.fusion.wallet.ui.theme.FusionWalletTheme {
+                    Surface(Modifier.fillMaxSize()) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Fusion Wallet · AI Agent", style = MaterialTheme.typography.headlineSmall)
+                            Text("Live Base Sepolia · ${android.os.Build.MODEL}", style = MaterialTheme.typography.bodyMedium)
+                            AgentRunCard { dryRun -> AgentRuntime.run(this@AgentControlActivity,
+                                app.fusion.wallet.data.ChainWalletRepository.fromAssets(this@AgentControlActivity), dryRun) }
+                        }
+                    }
+                }
+            }
         }
     }
     override fun onDestroy() { scope.cancel(); super.onDestroy() }

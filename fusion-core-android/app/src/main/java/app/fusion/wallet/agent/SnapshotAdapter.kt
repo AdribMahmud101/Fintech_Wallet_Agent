@@ -8,7 +8,7 @@ import org.json.JSONObject
 /** Translates K4 integer DTOs; missing module/queue words are read at the SAME block. */
 internal object SnapshotAdapter {
     fun build(state: WalletState, deployment: Deployment, reader: ChainReader): JSONObject {
-        check(state.source == DataSource.LIVE && state.status == LoadStatus.READY && !state.isStale()) { "Live snapshot is stale or unavailable" }
+        check(state.source == DataSource.LIVE && state.status == LoadStatus.READY && !state.isStale()) { "Live snapshot is stale or unavailable: age=${System.currentTimeMillis() - (state.capturedAtEpochMillis ?: 0)}ms, blockLag=${(state.observedHeadBlock ?: 0) - (state.blockNumber ?: 0)}" }
         val block = requireNotNull(state.blockNumber)
         check(reader.chainId() == 84532L)
         val header = reader.block(ChainReader.tag(block))

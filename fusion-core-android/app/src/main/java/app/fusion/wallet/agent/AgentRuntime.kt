@@ -52,10 +52,23 @@ object AgentRuntime {
         check(dryRun) { "Broadcast runtime is not installed; use dry-run" }
         val manifest = context.assets.open("deployments/84532.json").bufferedReader().use { it.readText() }
         val deployment = Deployment.parse(manifest)
-        repository.refresh()
-        val state = repository.state.value
+        // A new on-chain commitment can precede the next APK asset update. Reuse
+        // K4's public repository constructor with operator-provisioned public bills;
+        // both K4 accounting and Rust's rebuilt Merkle root must match live state.
+        val billsFile = File(context.filesDir, "agent/obligations.json")
+        val decisionRepository = if (billsFile.isFile) {
+            check(billsFile.length() <= 65_536) { "Bill metadata exceeds limit" }
+            ChainWalletRepository(manifest, billsFile.readText(), AgentNetwork.readOnly(context, deployment.rpcUrl))
+        } else repository
+        decisionRepository.refresh()
+        var state = decisionRepository.state.value
+        if (state.status == LoadStatus.READY && state.isStale()) {
+            decisionRepository.refresh()
+            state = decisionRepository.state.value
+        }
+        check(state.status == LoadStatus.READY) { "Live snapshot unavailable: ${state.error}" }
         check(state.accountingMatches == true) { "ACCOUNTING_MISMATCH: commitment or unpaid total differs" }
-        val reader = ChainReader(JsonRpcClient(deployment.rpcUrl))
+        val reader = ChainReader(AgentNetwork.readOnly(context, deployment.rpcUrl))
         val snapshot = SnapshotAdapter.build(state, deployment, reader)
         val module = requireNotNull(state.module)
         val allBills = SnapshotAdapter.obligations(state)
@@ -88,7 +101,7 @@ object AgentRuntime {
             .put("mandateHash", module.mandateHash).put("candidateSetDigest", set.getString("candidateSetDigest"))
             .put("candidateSet", JSONArray().apply { (0 until list.length()).forEach { put(summary(list.getJSONObject(it))) }; put(summary(set.getJSONObject("hold"))) })
             .put("planner", JSONObject().put("kind", "mnn+ahem-g@android").put("host", "device")
-                .put("modelId", "LFM2.5-230M-MNN").put("modelSha256", hashes.getString("llm.mnn.weight"))
+                .put("modelId", "LFM2.5-230M-MNN").put("modelSha256", hashes.getString("llm.mnn"))
                 .put("libllmSha256", hashes.getString("libllm.so")).put("libMnnSha256", hashes.getString("libMNN.so"))
                 .put("ahem", JSONObject().put("g", JSONObject().put("mode", "ENFORCED").put("vetoes", stats.getLong("vetoes"))
                     .put("retries", stats.getLong("retries")).put("forcedTokens", stats.getLong("forcedTokens")))
@@ -103,7 +116,7 @@ object AgentRuntime {
         val report = JSONObject().put("source", "APP").put("dryRun", dryRun).put("planner", passport.getJSONObject("planner"))
             .put("snapshot", snapshot).put("candidateSet", set).put("chosenCandidate", candidate)
             .put("decisionHash", hash).put("passportJson", canonical).put("preview", preview).put("model", model)
-            .put("rates", rates).put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
+            .put("rates", rates).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
         val dir = File(context.filesDir, "agent").apply { mkdirs() }
         File(dir, "m2_passport.json").writeText(canonical)
         File(dir, "last_tick.json").writeText(report.toString())
@@ -113,6 +126,6 @@ object AgentRuntime {
 
     internal fun checked(raw: String): JSONObject = JSONObject(raw).also { check(it.optBoolean("ok")) { it.optJSONObject("error")?.toString() ?: "Core rejected request" } }
     private fun summary(c: JSONObject) = JSONObject().put("label", c.getString("label")).put("id", c.getString("id"))
-        .put("kind", if (c.getString("label") == "H") "HOLD" else listOf("DEPOSIT", "WITHDRAW", "REBALANCE", "PAY_OBLIGATION")[c.getInt("kind")])
+        .put("kind", listOf("DEPOSIT", "WITHDRAW", "REBALANCE", "PAY_OBLIGATION")[c.getInt("kind")])
         .put("assets", c.getJSONObject("action").getString("assets")).put("reason", c.getString("reason"))
 }
