@@ -28,6 +28,7 @@ import app.fusion.wallet.ui.auth.ProfileSheet
 import app.fusion.wallet.ui.components.FusionBottomBar
 import app.fusion.wallet.ui.components.NavRoute
 import app.fusion.wallet.ui.i18n.AppLocale
+import app.fusion.wallet.ui.bills.BillsScreen
 import app.fusion.wallet.ui.proof.ProofScreen
 import app.fusion.wallet.ui.shell.FusionTopBar
 import app.fusion.wallet.ui.splash.FusionSplashScreen
@@ -97,7 +98,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                         Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
                             when (target) {
                                 NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
-                                NavRoute.Bills -> TreasuryScreen(vm = mainVm)
+                                NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
                                 NavRoute.Safety, NavRoute.Proof -> ProofScreen()
                                 NavRoute.Judge -> ProofScreen()
