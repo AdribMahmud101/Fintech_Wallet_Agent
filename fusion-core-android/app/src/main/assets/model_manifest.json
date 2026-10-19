@@ -1,0 +1,59 @@
+{
+  "modelName": "LFM2.5-230M",
+  "format": "MNN",
+  "quantization": "4-bit",
+  "totalSize": 131379776,
+  "files": [
+    {
+      "name": "config.json",
+      "size": 873,
+      "sha256": "9cd1d048291fbbbf0b78977c78978d4ce0aa03bc26652ecf163b8e3395bcba20",
+      "urls": [
+        "http://127.0.0.1:8888/config.json",
+        "http://192.168.0.102:8888/config.json",
+        "https://huggingface.co/taobao-mnn/LFM2.5-230M-MNN/resolve/main/config.json"
+      ],
+      "fallbackContent": "{\n    \"llm_model\": \"llm.mnn\",\n    \"llm_weight\": \"llm.mnn.weight\",\n    \"backend_type\": \"cpu\",\n    \"thread_num\": 4,\n    \"precision\": \"low\",\n    \"memory\": \"low\",\n    \"use_template\": false,\n    \"sampler_type\": \"mixed\",\n    \"temperature\": 0.7,\n    \"top_k\": 20,\n    \"top_p\": 0.8,\n    \"min_p\": 0.05,\n    \"tfs_z\": 1.0,\n    \"typical\": 0.95,\n    \"repetition_penalty\": 1.1,\n    \"presence_penalty\": 0.0,\n    \"frequency_penalty\": 0.0,\n    \"penalty_window\": 0,\n    \"n_gram\": 8,\n    \"ngram_factor\": 1.0,\n    \"tokenizer_file\": \"tokenizer.mtok\",\n    \"prompt_template\": \"<|im_start|>system\\nYou are Victor, a direct and knowledgeable offline assistant. Always answer the user's question immediately - give your best factual answer. Never ask clarifying questions or list categories. Just respond with the answer directly.<|im_end|>\\n<|im_start|>user\\n%s<|im_end|>\\n<|im_start|>assistant\\n\"\n}"
+    },
+    {
+      "name": "llm_config.json",
+      "size": 5321,
+      "sha256": "6a7990f75c1677f0e4c06e0eff2dfeedcbdf524398c4d01fa328733a6dab8576",
+      "urls": [
+        "http://127.0.0.1:8888/llm_config.json",
+        "http://192.168.0.102:8888/llm_config.json",
+        "https://huggingface.co/taobao-mnn/LFM2.5-230M-MNN/resolve/main/llm_config.json"
+      ]
+    },
+    {
+      "name": "llm.mnn",
+      "size": 285824,
+      "sha256": "9ddd326541c3cb1e5e137ec717a91e5f3542c5ae2c1aa59046c180792544a907",
+      "urls": [
+        "http://127.0.0.1:8888/llm.mnn",
+        "http://192.168.0.102:8888/llm.mnn",
+        "https://huggingface.co/taobao-mnn/LFM2.5-230M-MNN/resolve/main/llm.mnn"
+      ]
+    },
+    {
+      "name": "llm.mnn.weight",
+      "size": 129416998,
+      "sha256": "fa00d3462646b58d98010ff88b5d1c2309a17560f8ead4e4b6d2133002976719",
+      "urls": [
+        "http://127.0.0.1:8888/llm.mnn.weight",
+        "http://192.168.0.102:8888/llm.mnn.weight",
+        "https://huggingface.co/taobao-mnn/LFM2.5-230M-MNN/resolve/main/llm.mnn.weight"
+      ]
+    },
+    {
+      "name": "tokenizer.mtok",
+      "size": 1670760,
+      "sha256": "27525a7106438ff554018e28448284b33c18275380d3780f4bed64361dfd6433",
+      "urls": [
+        "http://127.0.0.1:8888/tokenizer.mtok",
+        "http://192.168.0.102:8888/tokenizer.mtok",
+        "https://huggingface.co/taobao-mnn/LFM2.5-230M-MNN/resolve/main/tokenizer.mtok"
+      ]
+    }
+  ]
+}
