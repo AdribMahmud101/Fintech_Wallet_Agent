@@ -55,7 +55,7 @@ fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, mo
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FusionBrandLockup(height = 22.dp)
-            StatusPill(label = stringResource(R.string.badge_testnet), tone = Tone.Warn)
+            StatusPill(label = stringResource(R.string.badge_network), tone = Tone.Warn)
             if (demoData) StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
         }
         if (user != null) {

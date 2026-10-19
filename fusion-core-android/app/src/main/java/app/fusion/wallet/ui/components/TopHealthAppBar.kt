@@ -46,8 +46,15 @@ import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
 import app.fusion.wallet.ui.theme.Obsidian
 
-/** Three destinations: what you have (Treasury), what the AI does (Agent), the evidence (Proof). */
-enum class NavRoute { Treasury, Agent, Proof }
+/** Four spec destinations: Treasury, Bills, Agent, Safety; plus Judge mode. */
+enum class NavRoute {
+    Treasury,
+    Bills,
+    Agent,
+    Safety,
+    Judge,
+    @Deprecated("Use Safety") Proof;
+}
 
 /**
  * `layout.md` §2 TopAppBar — brand, active address, a daily-velocity sliver, and the two
@@ -178,8 +185,9 @@ fun FusionBottomBar(
     val surfaces = FusionTheme.surfaces
     val tabs = listOf(
         TabSpec(NavRoute.Treasury, R.string.nav_treasury, Icons.Filled.AccountBalance),
+        TabSpec(NavRoute.Bills, R.string.nav_bills, Icons.Filled.ReceiptLong),
         TabSpec(NavRoute.Agent, R.string.nav_agent, Icons.Filled.SmartToy),
-        TabSpec(NavRoute.Proof, R.string.nav_proof, Icons.Filled.VerifiedUser),
+        TabSpec(NavRoute.Safety, R.string.nav_proof, Icons.Filled.Shield),
     )
 
     Row(
@@ -189,19 +197,21 @@ fun FusionBottomBar(
             // Edge-to-edge: without this the tabs sit under the system navigation buttons and
             // the right-hand tab cannot be tapped on 3-button-nav devices.
             .navigationBarsPadding()
-            .padding(vertical = 6.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         tabs.forEach { tab ->
-            val active = tab.route == selected
+            val active = tab.route == selected ||
+                (tab.route == NavRoute.Safety && selected == NavRoute.Proof)
             Column(
                 modifier = Modifier
+                    .weight(1f)
                     .background(
                         if (active) surfaces.level2 else surfaces.canvas,
                         RoundedCornerShape(FusionDims.radiusSmall),
                     )
                     .clickableSurface { onSelect(tab.route) }
-                    .padding(horizontal = 26.dp, vertical = 7.dp),
+                    .padding(horizontal = 4.dp, vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
@@ -215,6 +225,7 @@ fun FusionBottomBar(
                     text = stringResource(tab.labelRes),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (active) MaterialTheme.colorScheme.onSurface else Accessible.TextMuted,
+                    maxLines = 1,
                 )
             }
         }

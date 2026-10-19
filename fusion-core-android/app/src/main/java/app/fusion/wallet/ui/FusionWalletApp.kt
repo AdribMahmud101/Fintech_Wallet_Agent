@@ -55,8 +55,10 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
         FusionWalletTheme {
             val auth: AuthViewModel = viewModel()
             val vm: AccountantViewModel = viewModel()
+            val mainVm: MainViewModel = viewModel()
             val authState by auth.state.collectAsStateWithLifecycle()
             val state by vm.state.collectAsStateWithLifecycle()
+            val walletState by mainVm.state.collectAsStateWithLifecycle()
             val user = authState.user
 
             var routeName by rememberSaveable { mutableStateOf(NavRoute.Treasury.name) }
@@ -64,7 +66,12 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             var profileOpen by rememberSaveable { mutableStateOf(false) }
 
             // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
-            LaunchedEffect(user?.role) { vm.setRole(user?.role) }
+            LaunchedEffect(user?.role) {
+                vm.setRole(user?.role)
+                if (user?.role == app.fusion.wallet.accountant.data.UserRole.AUDITOR) {
+                    routeName = NavRoute.Judge.name
+                }
+            }
             LaunchedEffect(user == null) { if (user == null) { profileOpen = false; routeName = NavRoute.Treasury.name } }
 
             // Splash has a floor so it never flashes for one frame; it also waits for the session and first data read.
@@ -83,15 +90,17 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                 }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, demoData = state.demoData) },
+                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
                     bottomBar = { FusionBottomBar(selected = route, onSelect = { routeName = it.name }) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
                         Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
                             when (target) {
-                                NavRoute.Treasury -> TreasuryScreen()
+                                NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
+                                NavRoute.Bills -> TreasuryScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen()
-                                NavRoute.Proof -> ProofScreen()
+                                NavRoute.Safety, NavRoute.Proof -> ProofScreen()
+                                NavRoute.Judge -> ProofScreen()
                             }
                         }
                     }
@@ -102,6 +111,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                         onName = auth::setName, onAvatar = auth::setAvatar,
                         onSignOut = { profileOpen = false; auth.signOut() },
                         onDismiss = { profileOpen = false },
+                        onOpenJudge = { routeName = NavRoute.Judge.name },
                     )
                 }
             }

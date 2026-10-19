@@ -252,4 +252,100 @@
     <string name="ag_stat_blocked">已拦截</string>
     <string name="pf_stat_none">—</string>
     <string name="ag_today">今日</string>
+
+    <!-- K5 Real-State UI Strings (Chinese) -->
+    <string name="nav_bills">账单与收款方</string>
+    <string name="nav_judge">裁判模式</string>
+    <string name="badge_network">Base Sepolia · 测试网</string>
+    <string name="stale_data_warning">数据可能已过期：显示区块 #%1$s（%2$s前）</string>
+    <string name="refresh_button">刷新</string>
+    <string name="view_on_basescan">在 BaseScan 查看</string>
+    <string name="explorer_link">BaseScan 浏览器</string>
+    <string name="accounting_mismatch_warning">账目不匹配：%1$s</string>
+
+    <!-- Treasury -->
+    <string name="tr_hero_total">总资产</string>
+    <string name="tr_last_refresh_block">区块 #%1$s</string>
+    <string name="tr_block_unconfirmed">区块 —</string>
+    <string name="tr_four_buckets_title">资金四桶</string>
+    <string name="tr_bucket_reserve">账单预留（Reserve）</string>
+    <string name="tr_bucket_owed">应付账款合计</string>
+    <string name="tr_bucket_buffer">安全垫（Buffer）</string>
+    <string name="tr_bucket_surplus">闲置资金（Surplus）</string>
+    <string name="tr_bucket_shortfall">资金缺口</string>
+    <string name="tr_vaults_title">金库持仓</string>
+    <string name="tr_vaults_empty">暂无金库持仓。</string>
+    <string name="tr_vault_shares">份额：%1$s</string>
+    <string name="tr_vault_assets">资产：%1$s %2$s</string>
+    <string name="tr_vault_max_withdraw">最大可取：%1$s %2$s</string>
+    <string name="tr_vault_exposure_cap">限额：%1$s %2$s</string>
+    <string name="tr_vault_simulated">模拟</string>
+    <string name="tr_vault_real">真实</string>
+
+    <!-- Agent -->
+    <string name="ag_stop_button">停止</string>
+    <string name="ag_stop_confirm_title">停止智能体？</string>
+    <string name="ag_stop_confirm_body">确认停止智能体？已发送的操作可能仍会执行完成。重新启动需要双人确认。</string>
+    <string name="ag_stop_confirm_action">确认停止</string>
+    <string name="ag_stop_cancel_action">取消</string>
+    <string name="ag_stop_not_wired">守护者暂停：监控版本中未接入</string>
+    <string name="ag_queue_title">排队中操作</string>
+    <string name="ag_queue_empty">队列为空 · 暂无等待中的操作</string>
+    <string name="ag_ready_in">等待执行：%1$s</string>
+    <string name="ag_ready_now">就绪可执行</string>
+    <string name="ag_expired">已过期</string>
+    <string name="ag_recent_actions_title">智能体操作动态</string>
+    <string name="ag_recent_empty">暂无已执行操作。</string>
+    <string name="ag_decision_hash">决策 %1$s</string>
+    <string name="ag_tier_autonomous">自动执行（第1级）</string>
+    <string name="ag_tier_delayed">延迟等待（第2级）</string>
+    <string name="ag_tier_owner">多签批准（第3级）</string>
+
+    <!-- Bills & Vendors -->
+    <string name="bv_title">账单与收款方</string>
+    <string name="bv_subtitle">已验证收款方及链上保护账单</string>
+    <string name="bv_tab_payees">收款方</string>
+    <string name="bv_tab_bills">账单</string>
+    <string name="bv_payee_active">已生效</string>
+    <string name="bv_payee_cooling">冷静期</string>
+    <string name="bv_payee_cooling_countdown">%1$s 后可用</string>
+    <string name="bv_payee_cancelled">已取消</string>
+    <string name="bv_payee_sanctioned">受制裁（测试名单）</string>
+    <string name="bv_bec_warning">警告：收款账户信息已更新。冷静期截止至 %1$s，以防范商业邮件诈骗（BEC）和未授权收款方替换。在冷静期结束前，智能体无法向此收款方付款。</string>
+    <string name="bv_empty_payees">暂无注册收款方。</string>
+    <string name="bv_empty_bills">暂无记录账单。</string>
+    <string name="bv_bill_paid">已付</string>
+    <string name="bv_bill_due">到期日：%1$s</string>
+    <string name="bv_bill_scheduled">已保护</string>
+
+    <!-- Safety -->
+    <string name="safe_title">安全</string>
+    <string name="safe_subtitle">被合约和策略防线阻截的攻击</string>
+    <string name="safe_blocked_count">已成功阻截 %1$s 次攻击</string>
+    <string name="safe_revert_evidence_title">阻截攻击记录</string>
+    <string name="safe_no_reverts">当前部署尚未观测到阻截事件。</string>
+    <string name="safe_emergency_unwind_title">紧急撤回</string>
+    <string name="safe_emergency_unwind_desc">一键将所有资产撤回至 Safe 并停止智能体。</string>
+    <string name="safe_emergency_unwind_btn">一键撤回</string>
+    <string name="safe_emergency_unwind_dialog_title">确认触发紧急撤回？</string>
+    <string name="safe_emergency_unwind_dialog_body">此操作将把所有金库资产赎回至 Safe 现金并停止智能体。任何一位所有者均可执行。</string>
+    <string name="safe_emergency_unwind_not_wired">紧急撤回：监控版本中未接入</string>
+
+    <!-- Judge Mode -->
+    <string name="judge_title">裁判模式</string>
+    <string name="judge_subtitle">完整链上存证账本与合约验证</string>
+    <string name="judge_verify_title">合约核验面板</string>
+    <string name="judge_safe_label">Safe 多签合约</string>
+    <string name="judge_module_label">Kavachi 模块</string>
+    <string name="judge_vault_a_label">金库 A（Aave waUSDC）</string>
+    <string name="judge_vault_b_label">金库 B（演示金库）</string>
+    <string name="judge_asset_label">资产代币（USDC）</string>
+    <string name="judge_sanctions_label">制裁名单（测试）</string>
+    <string name="judge_evidence_title">链上存证记录（%1$s条）</string>
+    <string name="judge_evidence_empty">未发现链上存证日志。</string>
+    <string name="judge_evidence_id">存证 #%1$s</string>
+    <string name="judge_proves">证明内容：%1$s</string>
+    <string name="judge_block_info">区块 #%1$s · 时间 %2$s</string>
+    <string name="judge_disclaimers_title">合规诚实声明（§21.2 明确不主张的内容）</string>
+    <string name="judge_disclaimer_content">• 经审计的合约：合约为竞赛原型，未经过正式商业审计。\n• 真实收益：Aave 测试 waUSDC 收益基于测试网流动性；演示金库收益明确为模拟数据。\n• 真实制裁筛查：使用测试名单，非 OFAC 实时名单。\n• 硬件隔离密钥：原型中使用软件环境托管。\n• 系统级沙箱隔离：S 阶段为单进程原型。\n• 模型决策：策略保证安全性，但不保证决策最优。\n• 7x24 无人值守：必须有人工监督者。</string>
 </resources>
