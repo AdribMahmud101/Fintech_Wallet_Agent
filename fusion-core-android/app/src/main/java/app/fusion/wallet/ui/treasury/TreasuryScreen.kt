@@ -56,6 +56,7 @@ import app.fusion.wallet.data.LoadStatus
 import app.fusion.wallet.data.Money
 import app.fusion.wallet.data.VaultPosition
 import app.fusion.wallet.data.WalletState
+import app.fusion.wallet.ui.Fmt
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.accountant.AccountantViewModel
 import app.fusion.wallet.ui.charts.SegmentBar
@@ -298,7 +299,7 @@ private fun TreasuryHeroTile(state: WalletState) {
 
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
-                text = totalBalance.display,
+                text = Fmt.usdc(totalBalance),
                 style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold,
@@ -326,7 +327,7 @@ private fun TreasuryHeroTile(state: WalletState) {
                     color = Muted,
                 )
                 Text(
-                    text = "${surplus.display} USDC",
+                    text = "${Fmt.usdc(surplus)} USDC",
                     style = MonoStyle.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),
                     color = Tone.Cash,
                 )
@@ -360,7 +361,7 @@ private fun TreasuryHeroTile(state: WalletState) {
             Spacer(Modifier.width(6.dp))
             Text(
                 text = if (isShort) {
-                    stringResource(R.string.tr_status_short, shortfall.display, "USDC")
+                    stringResource(R.string.tr_status_short, Fmt.usdc(shortfall), "USDC")
                 } else {
                     stringResource(R.string.tr_status_ok)
                 },
@@ -395,7 +396,7 @@ private fun FourBucketsTile(state: WalletState) {
         listOf(Tone.Bills, Tone.Earning, Tone.Cash)
     }
 
-    val description = "Four Buckets: Reserve ${b.reserve.display} USDC, Owed ${b.owed.display} USDC, Buffer ${b.buffer.display} USDC, Surplus ${b.surplus.display} USDC"
+    val description = "Four Buckets: Reserve ${Fmt.usdc(b.reserve)} USDC, Owed ${Fmt.usdc(b.owed)} USDC, Buffer ${Fmt.usdc(b.buffer)} USDC, Surplus ${Fmt.usdc(b.surplus)} USDC"
 
     BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
         CardTitle(stringResource(R.string.tr_four_buckets_title))
@@ -415,16 +416,16 @@ private fun FourBucketsTile(state: WalletState) {
             BucketItem(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 label = stringResource(R.string.tr_bucket_reserve),
-                amount = b.reserve.display,
+                amount = Fmt.usdc(b.reserve),
                 color = Tone.Bills,
-                detail = "Owed: ${b.owed.display}",
+                detail = "Owed: ${Fmt.usdc(b.owed)}",
             )
             BucketItem(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 label = stringResource(R.string.tr_bucket_owed),
-                amount = b.owed.display,
+                amount = Fmt.usdc(b.owed),
                 color = if (b.shortfall.raw > BigInteger.ZERO) Tone.Bad else MaterialTheme.colorScheme.onSurface,
-                detail = if (b.shortfall.raw > BigInteger.ZERO) "Short by ${b.shortfall.display}" else "Fully covered",
+                detail = if (b.shortfall.raw > BigInteger.ZERO) "Short by ${Fmt.usdc(b.shortfall)}" else "Fully covered",
             )
         }
 
@@ -434,14 +435,14 @@ private fun FourBucketsTile(state: WalletState) {
             BucketItem(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 label = stringResource(R.string.tr_bucket_buffer),
-                amount = b.buffer.display,
+                amount = Fmt.usdc(b.buffer),
                 color = Tone.Earning,
-                detail = "Target: ${b.bufferTarget.display}",
+                detail = "Target: ${Fmt.usdc(b.bufferTarget)}",
             )
             BucketItem(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 label = stringResource(R.string.tr_bucket_surplus),
-                amount = b.surplus.display,
+                amount = Fmt.usdc(b.surplus),
                 color = Tone.Cash,
                 detail = "Safe to deploy",
             )
@@ -549,7 +550,7 @@ private fun VaultRowItem(vault: VaultPosition) {
             ) {
                 Column {
                     Text(
-                        stringResource(R.string.tr_vault_assets, vault.assets.display, "USDC"),
+                        stringResource(R.string.tr_vault_assets, Fmt.usdc(vault.assets), "USDC"),
                         style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -561,12 +562,12 @@ private fun VaultRowItem(vault: VaultPosition) {
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        stringResource(R.string.tr_vault_max_withdraw, vault.maxWithdraw.display, "USDC"),
+                        stringResource(R.string.tr_vault_max_withdraw, Fmt.usdc(vault.maxWithdraw), "USDC"),
                         style = MonoStyle.copy(fontSize = 12.sp),
                         color = Tone.Cash,
                     )
                     Text(
-                        stringResource(R.string.tr_vault_exposure_cap, vault.exposureLimit.display, "USDC"),
+                        stringResource(R.string.tr_vault_exposure_cap, Fmt.usdc(vault.exposureLimit), "USDC"),
                         style = MonoStyle.copy(fontSize = 12.sp),
                         color = Muted,
                     )
@@ -614,7 +615,7 @@ private fun ObligationsSummaryTile(state: WalletState) {
             ) {
                 Column {
                     Text(
-                        "Next: ${nextBill.amount.display} USDC",
+                        "Next: ${Fmt.usdc(nextBill.amount)} USDC",
                         style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -637,7 +638,7 @@ private fun ObligationsSummaryTile(state: WalletState) {
             ) {
                 Column {
                     Text(
-                        "Owed: ${state.module.reserved.display} USDC",
+                        "Owed: ${Fmt.usdc(state.module.reserved)} USDC",
                         style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface,
                     )

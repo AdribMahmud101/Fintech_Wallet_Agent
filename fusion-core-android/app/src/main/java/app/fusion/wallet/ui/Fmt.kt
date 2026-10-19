@@ -12,6 +12,13 @@ object Fmt {
     fun money(raw: BigInteger, dec: Int): String =
         DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.US)).format(BigDecimal(raw).movePointLeft(dec).setScale(2, RoundingMode.HALF_UP))
 
+    /**
+     * Product-grade USDC amount for lists and tiles: grouped thousands, exactly two decimals,
+     * e.g. 2153000000 (6-dp units) -> "2,153.00". The exact six-decimal value stays available on
+     * detail views via [app.fusion.wallet.data.Money.display]; this is the everyday reading form.
+     */
+    fun usdc(money: app.fusion.wallet.data.Money): String = money(money.raw, 6)
+
     /** Whole-number amount, e.g. caps: 2,500. */
     fun whole(raw: BigInteger, dec: Int): String =
         DecimalFormat("#,##0", DecimalFormatSymbols(Locale.US)).format(BigDecimal(raw).movePointLeft(dec).setScale(0, RoundingMode.HALF_UP))

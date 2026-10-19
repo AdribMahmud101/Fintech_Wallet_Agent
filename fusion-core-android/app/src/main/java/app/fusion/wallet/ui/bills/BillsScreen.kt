@@ -73,6 +73,9 @@ import app.fusion.wallet.ui.common.Notice
 import app.fusion.wallet.ui.common.ScreenHeader
 import app.fusion.wallet.ui.common.StatTile
 import app.fusion.wallet.ui.common.Tone
+import app.fusion.wallet.ui.common.vendorName
+import app.fusion.wallet.data.AgentAction
+import app.fusion.wallet.data.QueuedAction
 import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.shorten
@@ -168,7 +171,7 @@ fun BillsScreen(
                 StatTile(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     label = "Total Owed",
-                    value = "${state.buckets?.owed?.display ?: "—"} USDC",
+                    value = "${state.buckets?.owed?.let { Fmt.usdc(it) } ?: "—"} USDC",
                     color = Tone.Bills,
                 )
                 StatTile(
@@ -268,7 +271,7 @@ fun BillsScreen(
                         if (isMismatch) {
                             Spacer(Modifier.height(6.dp))
                             Text(
-                                text = "Reserved on-chain: ${state.module!!.reserved.display} USDC (${state.module!!.obligationCount} bills)",
+                                text = "Reserved on-chain: ${Fmt.usdc(state.module!!.reserved)} USDC (${state.module!!.obligationCount} bills)",
                                 style = MonoStyle.copy(fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
@@ -277,7 +280,7 @@ fun BillsScreen(
                 }
             } else {
                 items(state.obligations, key = { it.id }) { obligation ->
-                    ObligationCard(obligation, state.payees, nowSeconds)
+                    ObligationCard(obligation, state.payees, state.queue, state.recentActions, nowSeconds)
                 }
             }
         }
@@ -325,7 +328,7 @@ private fun PayeeCard(
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = payee.label,
+                            text = vendorName(idHash = payee.id, address = payee.address),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -454,13 +457,30 @@ private fun PayeeCard(
 private fun ObligationCard(
     obligation: Obligation,
     payees: List<Payee>,
+    queue: List<QueuedAction>,
+    actions: List<AgentAction>,
     nowSeconds: Long,
 ) {
+    val context = LocalContext.current
     val payeeObj = payees.find { it.id == obligation.payeeId || it.address.equals(obligation.payeeId, ignoreCase = true) }
-    val payeeLabel = payeeObj?.label ?: shorten(obligation.payeeId)
+    val vendorLabel = vendorName(idHash = obligation.payeeId, address = payeeObj?.address)
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     val dueDateStr = remember(obligation.dueAt) { dateFormat.format(Date(obligation.dueAt * 1000)) }
     val isOverdue = !obligation.paid && nowSeconds > obligation.dueAt
+
+    // A matching on-chain payment gives us the receipt link; a queued action gives us Queued status.
+    val payeeAddr = payeeObj?.address
+    val payTx = if (obligation.paid && payeeAddr != null) {
+        actions.firstOrNull {
+            it.kind == app.fusion.wallet.data.ActionKind.PAY_OBLIGATION &&
+                it.amount.raw == obligation.amount.raw &&
+                it.payee?.equals(payeeAddr, ignoreCase = true) == true
+        }?.txHash
+    } else null
+    val isQueued = !obligation.paid && payeeAddr != null && queue.any {
+        it.kind == app.fusion.wallet.data.ActionKind.PAY_OBLIGATION &&
+            it.payee.equals(payeeAddr, ignoreCase = true)
+    }
 
     ObsidianCard(
         modifier = Modifier.fillMaxWidth(),
@@ -471,7 +491,7 @@ private fun ObligationCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(32.dp).clip(CircleShape).background(FusionTheme.surfaces.level2),
                     contentAlignment = Alignment.Center,
@@ -484,34 +504,64 @@ private fun ObligationCard(
                     )
                 }
                 Spacer(Modifier.width(10.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        text = "${obligation.amount.display} USDC",
-                        style = MonoStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                        text = vendorLabel,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
                     )
                     Text(
-                        text = "Vendor: $payeeLabel",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Muted,
+                        text = "${Fmt.usdc(obligation.amount)} USDC",
+                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
                         text = stringResource(R.string.bv_bill_due, dueDateStr),
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = if (isOverdue) Tone.Bad else Muted,
                     )
+                    if (payTx != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier
+                                .clickable(role = Role.Button) {
+                                    val url = "https://sepolia.basescan.org/tx/$payTx"
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.view_on_basescan),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = Accessible.AccentText,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Icon(
+                                Icons.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = Accessible.AccentText,
+                                modifier = Modifier.size(11.dp),
+                            )
+                        }
+                    }
                 }
             }
 
             StatusPill(
                 label = when {
                     obligation.paid -> stringResource(R.string.bv_bill_paid)
-                    isOverdue -> "OVERDUE"
+                    isOverdue -> stringResource(R.string.bv_bill_overdue)
+                    isQueued -> stringResource(R.string.bv_bill_queued)
                     else -> stringResource(R.string.bv_bill_scheduled)
                 },
                 tone = when {
                     obligation.paid -> Tone.Good
                     isOverdue -> Tone.Bad
+                    isQueued -> Tone.Earning
                     else -> Tone.Warn
                 },
             )

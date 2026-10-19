@@ -86,6 +86,10 @@ import app.fusion.wallet.ui.common.ScreenHeader
 import app.fusion.wallet.ui.common.StatTile
 import app.fusion.wallet.ui.common.TileLabel
 import app.fusion.wallet.ui.common.Tone
+import app.fusion.wallet.ui.common.actionTitle
+import app.fusion.wallet.ui.common.permissionTierLabel
+import app.fusion.wallet.ui.common.sourceChipLabel
+import app.fusion.wallet.ui.common.vendorName
 import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
 import app.fusion.wallet.ui.shorten
@@ -352,18 +356,18 @@ private fun PolicySummaryTile(
                 TileLabel("POLICY & LIMITS")
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "${dailyUsed.display} / ${policy.dailyLimit.display} USDC",
+                    "${Fmt.usdc(dailyUsed)} / ${Fmt.usdc(policy.dailyLimit)} USDC",
                     style = MonoStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    "Remaining: ${dailyRemaining.display} USDC",
+                    "Remaining: ${Fmt.usdc(dailyRemaining)} USDC",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
             }
             StatusPill(
-                label = policy.permissionTier.name,
+                label = permissionTierLabel(policy.permissionTier),
                 tone = Tone.Earning,
             )
         }
@@ -378,22 +382,22 @@ private fun PolicySummaryTile(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    "• Micro / Autonomous limit: ${policy.microMax.display} USDC",
+                    "• Micro / Autonomous limit: ${Fmt.usdc(policy.microMax)} USDC",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
                 Text(
-                    "• Delayed queue limit: ${policy.delayedMax.display} USDC (delay: ${policy.delaySeconds}s)",
+                    "• Delayed queue limit: ${Fmt.usdc(policy.delayedMax)} USDC (delay: ${policy.delaySeconds}s)",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
                 Text(
-                    "• Hard maximum: ${policy.hardMax.display} USDC",
+                    "• Hard maximum: ${Fmt.usdc(policy.hardMax)} USDC",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
                 Text(
-                    "• Operating buffer target: ${policy.operatingBuffer.display} USDC",
+                    "• Operating buffer target: ${Fmt.usdc(policy.operatingBuffer)} USDC",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
@@ -449,7 +453,11 @@ private fun QueuedActionItem(
     val isExpired = action.status == QueueStatus.EXPIRED || (action.expiresAt in 1..nowSeconds)
 
     val payeeObj = payees.find { it.address.equals(action.payee, ignoreCase = true) || it.id == action.payee }
-    val payeeLabel = payeeObj?.label ?: shorten(action.payee)
+    val vendor = if (action.kind == ActionKind.PAY_OBLIGATION) {
+        vendorName(idHash = payeeObj?.id ?: action.payee, address = payeeObj?.address ?: action.payee)
+    } else null
+    val title = actionTitle(action.kind, vendor, queued = true)
+    val toLabel = vendor ?: payeeObj?.let { vendorName(it.id, it.address) } ?: shorten(action.payee)
 
     ObsidianCard(
         modifier = Modifier.fillMaxWidth(),
@@ -470,7 +478,7 @@ private fun QueuedActionItem(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "${action.kind.name} · ${action.amount.display} USDC",
+                        text = "$title · ${Fmt.usdc(action.amount)} USDC",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -498,7 +506,7 @@ private fun QueuedActionItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "To: $payeeLabel",
+                    text = "To: $toLabel",
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                 )
@@ -530,7 +538,10 @@ private fun DecodedActionCard(
 ) {
     val context = LocalContext.current
     val payeeObj = state.payees.find { it.address.equals(action.payee, ignoreCase = true) || it.id == action.payee }
-    val payeeLabel = payeeObj?.label ?: action.payee?.let { shorten(it) } ?: "Contract"
+    val vendor = if (action.kind == ActionKind.PAY_OBLIGATION) {
+        vendorName(idHash = payeeObj?.id ?: action.payee, address = payeeObj?.address ?: action.payee)
+    } else null
+    val title = actionTitle(action.kind, vendor)
 
     val tierLabel = resolveTierLabel(action.amount, policy)
     val timeStr = remember(action.blockTime) {
@@ -565,23 +576,23 @@ private fun DecodedActionCard(
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "${action.kind.name} ${action.amount.display} USDC",
+                            text = title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            text = "To: $payeeLabel",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Muted,
+                            text = "${Fmt.usdc(action.amount)} USDC",
+                            style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
 
-                StatusPill(
-                    label = tierLabel,
-                    tone = Tone.Earning,
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(label = sourceChipLabel(action.source), tone = Muted)
+                    StatusPill(label = tierLabel, tone = Tone.Earning)
+                }
             }
 
             Spacer(Modifier.height(10.dp))
