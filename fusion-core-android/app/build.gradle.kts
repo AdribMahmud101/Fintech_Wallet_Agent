@@ -110,3 +110,41 @@ dependencies {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
+abstract class StashIconsTask : DefaultTask() {
+    @get:Inject
+    abstract val layout: ProjectLayout
+
+    @TaskAction
+    fun stash() {
+        val src = layout.projectDirectory.file("src/main/res/drawable/ICONS.md").asFile
+        val dst = layout.projectDirectory.file("build/ICONS.md.stash").asFile
+        if (src.exists()) {
+            dst.parentFile.mkdirs()
+            src.renameTo(dst)
+        }
+    }
+}
+
+abstract class RestoreIconsTask : DefaultTask() {
+    @get:Inject
+    abstract val layout: ProjectLayout
+
+    @TaskAction
+    fun restore() {
+        val src = layout.projectDirectory.file("build/ICONS.md.stash").asFile
+        val dst = layout.projectDirectory.file("src/main/res/drawable/ICONS.md").asFile
+        if (src.exists()) {
+            dst.parentFile.mkdirs()
+            src.renameTo(dst)
+        }
+    }
+}
+
+val stashIcons = tasks.register<StashIconsTask>("stashIcons")
+val restoreIcons = tasks.register<RestoreIconsTask>("restoreIcons")
+
+tasks.matching { it.name.contains("DebugResources") || it.name.contains("ReleaseResources") }.configureEach {
+    dependsOn(stashIcons)
+    finalizedBy(restoreIcons)
+}

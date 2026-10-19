@@ -53,13 +53,13 @@ fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, mo
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FusionBrandLockup(height = 22.dp)
             StatusPill(label = stringResource(R.string.badge_network), tone = Tone.Warn)
             if (demoData) StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
         }
         if (user != null) {
-            val label = stringResource(R.string.profile_open)
+            val label = stringResource(R.string.nav_settings)
             Box(
                 Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onProfile).semantics { role = Role.Button; contentDescription = label },
                 contentAlignment = Alignment.Center,

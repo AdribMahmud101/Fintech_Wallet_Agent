@@ -440,4 +440,60 @@
     <string name="perm_read_only">Monitor only</string>
     <string name="perm_owner">Owner-approved</string>
     <string name="perm_autonomous">Autonomous</string>
+
+    <!-- Navigation K23 -->
+    <string name="nav_home">Home</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_safety">Safety</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Activity Tab -->
+    <string name="act_title">Activity</string>
+    <string name="act_subtitle">On-chain transaction &amp; module timeline</string>
+    <string name="filter_all">All</string>
+    <string name="filter_agent">Agent</string>
+    <string name="filter_owner">Owner</string>
+    <string name="filter_app">App</string>
+    <string name="filter_blocked">Blocked</string>
+    <string name="act_empty_title">No activities found</string>
+    <string name="act_empty_desc">No on-chain actions match the selected filter.</string>
+    <string name="act_detail_title">Activity Details</string>
+    <string name="act_detail_passport">Passport Hash</string>
+    <string name="act_detail_block">Block Number</string>
+    <string name="act_detail_tx">Transaction Hash</string>
+    <string name="act_detail_gas">Gas</string>
+    <string name="act_detail_counterparty">Counterparty</string>
+    <string name="act_detail_copied">Copied to clipboard</string>
+
+    <!-- Home Bento K23 -->
+    <string name="home_hero_updated_ago">Updated %1$s</string>
+    <string name="home_hero_live">LIVE</string>
+    <string name="home_hero_cached">CACHED</string>
+    <string name="home_buckets_title">Treasury Buckets</string>
+    <string name="home_bucket_owed">Owed</string>
+    <string name="home_bucket_buffer">Buffer</string>
+    <string name="home_bucket_surplus">Surplus</string>
+    <string name="home_history_title">Balance History</string>
+    <string name="home_history_stat_title">On-Chain History</string>
+    <string name="home_history_stat_note">Fewer than 4 points on-chain. Current balance: %1$s USDC.</string>
+    <string name="home_agent_title">AI Agent</string>
+    <string name="home_agent_active">Active</string>
+    <string name="home_agent_paused">Paused</string>
+    <string name="home_agent_run">Run Agent</string>
+    <string name="home_agent_stop">Stop</string>
+    <string name="home_agent_stop_confirm_title">Guardian Emergency Stop</string>
+    <string name="home_agent_stop_confirm_desc">This calls requestPause() using the guardian key on Base Sepolia. The AI agent will be prevented from executing further transactions.</string>
+    <string name="home_agent_stop_confirm_action">Confirm Stop</string>
+    <string name="home_agent_last_decision">Last decision: %1$s</string>
+    <string name="home_agent_running">Running agent…</string>
+    <string name="home_agent_stopping">Stopping agent on-chain…</string>
+    <string name="home_vault_simulated">Simulated Yield</string>
+    <string name="home_vault_real">Live Aave</string>
+    <string name="home_next_bill_title">Next Obligation</string>
+    <string name="home_next_bill_none">No pending bills</string>
+    <string name="home_next_bill_due">Due in %1$s</string>
+    <string name="home_next_bill_overdue">Overdue by %1$s</string>
+    <string name="home_tier_instant">Instant</string>
+    <string name="home_tier_queued">Queued</string>
+    <string name="home_tier_approval">Owner Approval</string>
 </resources>

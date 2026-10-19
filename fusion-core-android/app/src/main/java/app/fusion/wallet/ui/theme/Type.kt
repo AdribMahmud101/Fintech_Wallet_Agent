@@ -13,14 +13,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
 import app.fusion.wallet.R
 
-/**
- * Type scale from `styling.md` §2: Inter for UI copy, JetBrains Mono for anything the
- * engine produced or anything technical — hashes, addresses, FFI log lines.
- *
- * Both are variable fonts, so weight is selected through the `wght` axis on API 26+. Below
- * 26 the axis is unavailable and Android renders each family's default instance, which is
- * why the fallback branch lists the same resources again without variation settings.
- */
+/** Variable-font helpers retained for legacy mono text styles. */
 @OptIn(ExperimentalTextApi::class)
 private fun variableFamily(
     resId: Int,
@@ -68,47 +61,17 @@ private val TrimmedLineHeight = LineHeightStyle(
 )
 
 val FusionTypography = Typography(
-    displaySmall = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.SemiBold,
-        fontSize = 30.sp, lineHeight = 36.sp,
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp, lineHeight = 28.sp,
-    ),
-    titleLarge = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp, lineHeight = 22.sp,
-    ),
-    titleMedium = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Medium,
-        fontSize = 14.sp, lineHeight = 20.sp,
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Normal,
-        fontSize = 14.sp, lineHeight = 20.sp,
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Normal,
-        fontSize = 14.sp, lineHeight = 20.sp,
-    ),
-    bodySmall = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Normal,
-        fontSize = 12.sp, lineHeight = 16.sp,
-    ),
-    labelLarge = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Medium,
-        fontSize = 12.sp, lineHeight = 16.sp,
-    ),
-    labelMedium = TextStyle(
-        fontFamily = InterFamily, fontWeight = FontWeight.Medium,
-        fontSize = 11.sp, lineHeight = 16.sp,
-    ),
-    labelSmall = TextStyle(
-        fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Medium,
-        fontSize = 11.sp, lineHeight = 16.sp,
-        letterSpacing = 0.5.sp,
-    ),
+    displaySmall = FusionType.HeadingLarge.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    headlineMedium = FusionType.HeadingMedium.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    titleLarge = FusionType.HeadingSmall.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    titleMedium = FusionType.HeadingSmall.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    titleSmall = FusionType.BodyMedium.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    bodyLarge = FusionType.BodyMedium.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    bodyMedium = FusionType.BodyMedium.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    bodySmall = FusionType.BodySmall.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    labelLarge = FusionType.BodyMedium.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    labelMedium = FusionType.BodySmall.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
+    labelSmall = FusionType.BodySmall.copy(color = androidx.compose.ui.graphics.Color.Unspecified),
 )
 
 /** Any hash, address, nonce or FFI log line. Tabular figures, mono, never wraps mid-token. */

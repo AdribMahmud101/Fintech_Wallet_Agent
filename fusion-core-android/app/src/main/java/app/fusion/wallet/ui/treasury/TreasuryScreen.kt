@@ -1,700 +1,253 @@
 package app.fusion.wallet.ui.treasury
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
-import app.fusion.wallet.data.DataSource
-import app.fusion.wallet.data.LoadStatus
-import app.fusion.wallet.data.Money
-import app.fusion.wallet.data.VaultPosition
-import app.fusion.wallet.data.WalletState
-import app.fusion.wallet.ui.Fmt
+import app.fusion.wallet.agent.AgentRuntime
+import app.fusion.wallet.data.*
+import app.fusion.wallet.signer.GuardianStopDialog
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.accountant.AccountantViewModel
-import app.fusion.wallet.ui.charts.SegmentBar
-import app.fusion.wallet.ui.common.BentoGap
-import app.fusion.wallet.ui.common.BentoRow
-import app.fusion.wallet.ui.common.BentoTile
-import app.fusion.wallet.ui.common.CardTitle
-import app.fusion.wallet.ui.common.Muted
-import app.fusion.wallet.ui.common.Notice
-import app.fusion.wallet.ui.common.ScreenHeader
-import app.fusion.wallet.ui.common.StatTile
-import app.fusion.wallet.ui.common.TileLabel
-import app.fusion.wallet.ui.common.Tone
-import app.fusion.wallet.ui.components.ObsidianCard
-import app.fusion.wallet.ui.components.StatusPill
-import app.fusion.wallet.ui.shorten
-import app.fusion.wallet.ui.theme.Accessible
-import app.fusion.wallet.ui.theme.FusionDims
-import app.fusion.wallet.ui.theme.FusionTheme
-import app.fusion.wallet.ui.theme.MonoStyle
+import app.fusion.wallet.ui.charts.*
+import app.fusion.wallet.ui.components.*
+import app.fusion.wallet.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.math.BigInteger
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-/**
- * Treasury (Home): renders purely from [WalletState] provided by [MainViewModel].
- * Features:
- * - Total balance
- * - The four buckets (reserve / owed / buffer / surplus) as a horizontal bar + breakdown
- * - Vault positions (Aave real waUSDC vs Demo vault SIMULATED yield)
- * - Network badge "Base Sepolia · TEST"
- * - Last-refresh block number
- * - Loading skeletons, empty, error, and accounting mismatch states
- */
 @Composable
-fun TreasuryScreen(
-    modifier: Modifier = Modifier,
-    vm: MainViewModel = viewModel(),
-) {
+fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val historyVm: BalanceHistoryViewModel = viewModel()
+    val history by historyVm.state.collectAsStateWithLifecycle()
+    val agent by AgentRuntime.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     var askOpen by rememberSaveable { mutableStateOf(false) }
-    var userDismissedError by rememberSaveable { mutableStateOf(false) }
-
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(BentoGap),
-    ) {
-        // Screen Header with Network Badge, Last-refresh Block, and Refresh button
-        item {
-            ScreenHeader(
-                title = stringResource(R.string.tr_title),
-                subtitle = stringResource(R.string.tr_subtitle),
-                trailing = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        if (state.refreshing && state.capturedAtEpochMillis != null) {
-                            StatusPill(
-                                label = stringResource(
-                                    R.string.chip_updated_ago,
-                                    Fmt.updatedAgo(state.capturedAtEpochMillis!!)
-                                ),
-                                tone = Tone.Warn,
-                            )
-                        } else if (state.isDisplayStale() && state.blockNumber != null) {
-                            StatusPill(
-                                label = stringResource(R.string.chip_stale),
-                                tone = Tone.Warn,
-                            )
-                        }
-                        if (state.source == DataSource.DEMO) {
-                            StatusPill(
-                                label = stringResource(R.string.badge_demo),
-                                tone = Tone.Earning,
-                            )
-                        }
-                        IconButton(
-                            onClick = { vm.refresh() },
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            if (state.refreshing && state.capturedAtEpochMillis == null) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Filled.Refresh,
-                                    contentDescription = stringResource(R.string.refresh_button),
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                    }
-                },
-            )
-        }
-
-        // Accounting Mismatch Warning
-        if (state.accountingMatches == false) {
-            item {
-                ObsidianCard(level = 2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Filled.Warning,
-                            contentDescription = null,
-                            tint = Tone.Warn,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = state.module?.obligationsRoot?.let { root ->
-                                stringResource(R.string.accounting_mismatch_unavailable, shorten(root))
-                            } ?: stringResource(R.string.accounting_mismatch_warning, state.accountingError ?: "DISCREPANCY"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Tone.Warn,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-        }
-
-        // RPC Error Notice
-        if (state.status == LoadStatus.ERROR && !userDismissedError) {
-            val errorMsg = state.error ?: "Can't reach the network"
-            item {
-                Notice(
-                    text = errorMsg,
-                    onDismiss = { userDismissedError = true },
-                )
-            }
-        }
-
-        // Loading State: skeletons, never zeros
-        if (state.status == LoadStatus.LOADING && state.treasury == null && state.buckets == null) {
-            item {
-                BentoTile(Modifier.fillMaxWidth(), padding = 18.dp) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            stringResource(R.string.tr_loading),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Muted,
-                        )
-                    }
-                }
-            }
-        } else if (state.treasury == null && state.buckets == null) {
-            // Empty State
-            item {
-                BentoTile(Modifier.fillMaxWidth(), padding = 18.dp) {
-                    Text(
-                        stringResource(R.string.tr_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Muted,
-                    )
-                }
-            }
-        } else {
-            // Hero Tile: Total balance + Spare Cash + Block Number
-            item {
-                TreasuryHeroTile(state)
-            }
-
-            // The Four Buckets as a Bar
-            item {
-                FourBucketsTile(state)
-            }
-
-            // Vault Positions
-            item {
-                VaultPositionsTile(state.vaults)
-            }
-
-            // Ask the Accountant Card
-            item {
-                AskTile(onClick = { askOpen = true })
-            }
-
-            // Upcoming Obligations / Bills Preview
-            if (state.obligations.isNotEmpty()) {
-                item {
-                    ObligationsSummaryTile(state)
-                }
-            }
-        }
+    var stopOpen by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    var stopHash by remember { mutableStateOf<String?>(null) }
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) { delay(1000); value = System.currentTimeMillis() }
     }
-
+    LaunchedEffect(state.evidence, state.recentActions) { historyVm.load(state) }
+    Box(modifier.fillMaxSize()) {
+        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            item {
+                // A title row contains only the bounded refresh action; freshness belongs in the hero.
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.nav_home), style = FusionType.HeadingMedium, maxLines = 1)
+                        Text(stringResource(R.string.tr_subtitle), style = FusionType.BodySmall)
+                    }
+                    IconButton(onClick = { vm.refresh(); historyVm.load(state, retry = true) }) {
+                        Icon(painterResource(R.drawable.ic_nav_refresh), stringResource(R.string.refresh_button))
+                    }
+                }
+            }
+            state.error?.let { error -> item {
+                BentoTile(Modifier.fillMaxWidth()) {
+                    Text(error, style = FusionType.BodySmall, color = FusionColors.Amber)
+                    TextButton(onClick = vm::refresh) { Text("Retry snapshot") }
+                }
+            } }
+            if (state.treasury == null && state.status == LoadStatus.LOADING) item {
+                SkeletonTile(height = 180.dp)
+            } else item { TreasuryHero(state, now) }
+            item { BucketsTile(state.buckets) }
+            item { BalanceAreaChart(history.points, state.buckets?.total?.raw,
+                loading = history.loading, note = history.note) }
+            item {
+                BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
+                    Text(stringResource(R.string.home_agent_title), style = FusionType.HeadingSmall)
+                    val module = state.module
+                    val status = when {
+                        module == null -> "Status unavailable"
+                        module.paused -> "Paused"
+                        !module.configured -> "Not configured"
+                        !module.sessionActive -> "Monitor only · no active session"
+                        else -> "Active"
+                    }
+                    StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
+                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${it.reason}" }
+                        ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { scope.launch { vm.runAgentTick(true) } }, enabled = !agent.running && state.treasury != null) {
+                            Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
+                        }
+                        OutlinedButton(onClick = { stopOpen = true }, enabled = module != null && !module.paused) {
+                            Text(stringResource(R.string.home_agent_stop), color = FusionColors.Red)
+                        }
+                    }
+                    Text("Dry run · live policy preview, no broadcast", style = FusionType.BodySmall)
+                    agent.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
+                    stopHash?.let { TxLink(it) }
+                }
+            }
+            if (state.vaults.isEmpty()) item {
+                BentoTile(Modifier.fillMaxWidth()) {
+                    Text("Vault positions", style = FusionType.HeadingSmall)
+                    Text("Vault balances unavailable until the chain snapshot loads.", style = FusionType.BodySmall)
+                }
+            } else state.vaults.forEach { vault -> item(key = "vault:${vault.id}") { VaultTile(vault) } }
+            item { NextBillTile(state, now / 1000) }
+            item {
+                BentoTile(Modifier.fillMaxWidth(), onClick = { askOpen = true }) {
+                    Text(stringResource(R.string.tr_ask_title), style = FusionType.HeadingSmall)
+                    Text(stringResource(R.string.tr_ask_hint), style = FusionType.BodySmall)
+                }
+            }
+        }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
     if (askOpen) {
-        val accountantVm: AccountantViewModel = viewModel()
-        AskAccountantSheet(vm = accountantVm, onDismiss = { askOpen = false })
+        val accountant: AccountantViewModel = viewModel()
+        AskAccountantSheet(vm = accountant, onDismiss = { askOpen = false })
+    }
+    if (stopOpen) GuardianStopDialog(requestPause = {
+        val result = vm.requestGuardianPause()
+        result.onSuccess { hash ->
+            stopHash = hash
+            scope.launch { snackbar.showSnackbar("Guardian pause confirmed · ${hash.take(10)}…") }
+        }
+        result
+    }, onDismiss = { stopOpen = false })
+}
+
+@Composable
+private fun TreasuryHero(state: WalletState, now: Long) {
+    BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_crypto_usdc), "USDC", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
+            Text("Total treasury", style = FusionType.HeadingSmall)
+        }
+        val total = state.buckets?.total?.raw
+        if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
+        else {
+            // Currency on a separate line keeps large exact amounts readable on a phone.
+            AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
+            Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_network_base), null, tint = Color.Unspecified, modifier = Modifier.size(20.dp))
+            StatusChip("Base Sepolia · TEST", FusionColors.Indigo)
+        }
+        val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
+        val source = when {
+            state.source == DataSource.DEMO -> "Demo data"
+            age == null -> "No snapshot yet"
+            state.isDisplayStale(now) || state.refreshing -> "Cached snapshot"
+            else -> "Live snapshot"
+        }
+        Text("$source${age?.let { " · Updated $it s ago" } ?: ""}${if (state.refreshing) " · refreshing" else ""}",
+            style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
+        state.blockNumber?.let { Text("Block $it", style = FusionType.NumberCaption) }
+        state.treasury?.let { Text("Safe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}", style = FusionType.BodySmall) }
+        if (state.accountingMatches == false) Text("Bill metadata does not match the on-chain commitment. ${state.accountingError.orEmpty()}",
+            style = FusionType.BodySmall, color = FusionColors.Amber)
     }
 }
 
-// ---- Hero Tile --------------------------------------------------------------------------------
-
 @Composable
-private fun TreasuryHeroTile(state: WalletState) {
-    val buckets = state.buckets
-    val treasury = state.treasury
-    val totalBalance = buckets?.total ?: treasury?.balance ?: Money.ZERO
-    val surplus = buckets?.surplus ?: Money.ZERO
-    val shortfall = buckets?.shortfall ?: Money.ZERO
-    val isShort = shortfall.raw > BigInteger.ZERO
-    val blockText = state.blockNumber?.let {
-        stringResource(R.string.tr_last_refresh_block, it.toString())
-    } ?: stringResource(R.string.tr_block_unconfirmed)
-
-    BentoTile(
-        modifier = Modifier.fillMaxWidth(),
-        tint = if (isShort) Tone.Bad else Tone.Good,
-        padding = 18.dp,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.tr_hero_total),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Muted,
-            )
-            Text(
-                blockText,
-                style = MonoStyle,
-                color = Muted,
-            )
-        }
-
-        Spacer(Modifier.height(4.dp))
-
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = Fmt.usdc(totalBalance),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = " USDC",
-                style = MaterialTheme.typography.titleMedium,
-                color = Muted,
-                modifier = Modifier.padding(bottom = 5.dp),
-            )
-        }
-
-        Spacer(Modifier.height(10.dp))
-
-        // Spare cash indicator
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    stringResource(R.string.tr_safe_to_deploy),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Muted,
-                )
-                Text(
-                    text = "${Fmt.usdc(surplus)} USDC",
-                    style = MonoStyle.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                    color = Tone.Cash,
-                )
-            }
-            treasury?.safeAddress?.let { addr ->
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "Safe",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Muted,
-                    )
-                    Text(
-                        text = shorten(addr),
-                        style = MonoStyle,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+private fun BucketsTile(buckets: Buckets?) {
+    BentoTile(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.home_buckets_title), style = FusionType.HeadingSmall)
+        if (buckets == null) { Text("Buckets unavailable until balances and policy load.", style = FusionType.BodySmall); return@BentoTile }
+        // Owed coverage, buffer and surplus partition Safe cash. Deployed vault assets are separate.
+        val values = listOf(buckets.reserve.raw, buckets.buffer.raw, buckets.surplus.raw)
+        val labels = listOf("Owed · covered", "Buffer", "Surplus")
+        val colors = listOf(FusionColors.Amber, FusionColors.Indigo, FusionColors.Green)
+        val total = values.fold(BigInteger.ZERO, BigInteger::add)
+        val summary = labels.zip(values).joinToString { (label, raw) -> "$label ${formatBigIntegerAmount(raw)} USDC" }
+        Canvas(Modifier.padding(vertical = 16.dp).fillMaxWidth().height(20.dp).semantics { contentDescription = "100 percent of Safe cash. $summary" }) {
+            var x = 0f
+            if (total.signum() == 0) drawRect(FusionColors.Border)
+            values.forEachIndexed { i, raw ->
+                val width = size.width * chartFraction(raw, total)
+                if (width > 0) {
+                    drawRect(colors[i], Offset(x, 0f), Size(width, size.height))
+                    // Numbered patterns: none / diagonal ticks / vertical ticks; labels below follow this order.
+                    if (i > 0) {
+                        var tick = x + 3.dp.toPx()
+                        while (tick < x + width) {
+                            drawLine(FusionColors.Bg.copy(alpha = .6f), Offset(tick, 0f),
+                                Offset(if (i == 1) (tick + 5.dp.toPx()).coerceAtMost(x + width) else tick, size.height), 1.dp.toPx())
+                            tick += 8.dp.toPx()
+                        }
+                    }
+                    x += width
                 }
             }
         }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Health Status Line
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (isShort) Icons.Filled.Warning else Icons.Filled.CheckCircle,
-                contentDescription = null,
-                tint = if (isShort) Tone.Bad else Tone.Good,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = if (isShort) {
-                    stringResource(R.string.tr_status_short, Fmt.usdc(shortfall), "USDC")
-                } else {
-                    stringResource(R.string.tr_status_ok)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isShort) Tone.Bad else Tone.Good,
-                fontWeight = FontWeight.Medium,
-            )
+        values.forEachIndexed { i, raw ->
+            Text("${i + 1}. ${labels[i]}", style = FusionType.BodySmall)
+            AmountText(raw, style = FusionType.NumberBody)
         }
-    }
-}
-
-// ---- The Four Buckets as a Bar ----------------------------------------------------------------
-
-@Composable
-private fun FourBucketsTile(state: WalletState) {
-    val b = state.buckets ?: return
-    val reserveRaw = b.reserve.raw.toFloat()
-    val owedRaw = b.owed.raw.toFloat()
-    val bufferRaw = b.buffer.raw.toFloat()
-    val surplusRaw = b.surplus.raw.toFloat()
-    val shortfallRaw = b.shortfall.raw.toFloat()
-
-    val values = if (shortfallRaw > 0f) {
-        listOf(reserveRaw, shortfallRaw, bufferRaw, surplusRaw)
-    } else {
-        listOf(reserveRaw, bufferRaw, surplusRaw)
-    }
-
-    val colors = if (shortfallRaw > 0f) {
-        listOf(Tone.Bills, Tone.Bad, Tone.Earning, Tone.Cash)
-    } else {
-        listOf(Tone.Bills, Tone.Earning, Tone.Cash)
-    }
-
-    val description = "Four Buckets: Reserve ${Fmt.usdc(b.reserve)} USDC, Owed ${Fmt.usdc(b.owed)} USDC, Buffer ${Fmt.usdc(b.buffer)} USDC, Surplus ${Fmt.usdc(b.surplus)} USDC"
-
-    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-        CardTitle(stringResource(R.string.tr_four_buckets_title))
-
-        // Horizontal Segment Bar
-        SegmentBar(
-            values = values,
-            colors = colors,
-            description = description,
-            modifier = Modifier.padding(vertical = 4.dp),
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        // Breakdown grid (2 rows x 2 columns)
-        BentoRow {
-            BucketItem(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                label = stringResource(R.string.tr_bucket_reserve),
-                amount = Fmt.usdc(b.reserve),
-                color = Tone.Bills,
-                detail = "Owed: ${Fmt.usdc(b.owed)}",
-            )
-            BucketItem(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                label = stringResource(R.string.tr_bucket_owed),
-                amount = Fmt.usdc(b.owed),
-                color = if (b.shortfall.raw > BigInteger.ZERO) Tone.Bad else MaterialTheme.colorScheme.onSurface,
-                detail = if (b.shortfall.raw > BigInteger.ZERO) "Short by ${Fmt.usdc(b.shortfall)}" else "Fully covered",
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        BentoRow {
-            BucketItem(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                label = stringResource(R.string.tr_bucket_buffer),
-                amount = Fmt.usdc(b.buffer),
-                color = Tone.Earning,
-                detail = "Target: ${Fmt.usdc(b.bufferTarget)}",
-            )
-            BucketItem(
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                label = stringResource(R.string.tr_bucket_surplus),
-                amount = Fmt.usdc(b.surplus),
-                color = Tone.Cash,
-                detail = "Safe to deploy",
-            )
-        }
+        if (total.signum() == 0) Text("No Safe cash in this snapshot.", style = FusionType.BodySmall)
+        Text("Total owed · ${formatBigIntegerAmount(buckets.owed.raw)} USDC", style = FusionType.BodySmall)
+        if (buckets.shortfall.raw.signum() > 0) Text("Uncovered owed · ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC",
+            color = FusionColors.Amber, style = FusionType.BodySmall)
+        Text("Vault assets · ${formatBigIntegerAmount(buckets.deployed.raw)} USDC (outside cash buckets)", style = FusionType.BodySmall)
     }
 }
 
 @Composable
-private fun BucketItem(
-    modifier: Modifier = Modifier,
-    label: String,
-    amount: String,
-    color: Color,
-    detail: String,
-) {
-    ObsidianCard(
-        modifier = modifier,
-        level = 2,
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = Muted,
-                maxLines = 1,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "$amount USDC",
-                style = MonoStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-                color = color,
-                maxLines = 1,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = Muted,
-                maxLines = 1,
-            )
+private fun VaultTile(vault: VaultPosition) {
+    BentoTile(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!vault.simulatedYield) Icon(painterResource(R.drawable.ic_brand_aave), "Aave", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
+            Text(vault.name, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f))
         }
+        StatusChip(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position", if (vault.simulatedYield) FusionColors.Amber else FusionColors.Green)
+        AmountText(vault.assets.raw, style = FusionType.NumberSmall, modifier = Modifier.padding(top = 8.dp))
+        Text("Withdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC", style = FusionType.BodySmall)
+        Text("Exposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC", style = FusionType.BodySmall)
+        Text("Shares · ${vault.sharesRaw}", style = FusionType.NumberCaption)
     }
 }
 
-// ---- Vault Positions --------------------------------------------------------------------------
-
 @Composable
-private fun VaultPositionsTile(vaults: List<VaultPosition>) {
-    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-        CardTitle(stringResource(R.string.tr_vaults_title))
-
-        if (vaults.isEmpty()) {
-            Text(
-                stringResource(R.string.tr_vaults_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Muted,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
+private fun NextBillTile(state: WalletState, now: Long) {
+    BentoTile(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.home_next_bill_title), style = FusionType.HeadingSmall)
+        val next = state.obligations.filterNot { it.paid }.minByOrNull { it.dueAt }
+        if (next == null) {
+            Text(when {
+                state.module == null -> "Bill data unavailable until the chain snapshot loads."
+                state.accountingMatches != true -> "Bill details unavailable: metadata does not match the on-chain commitment."
+                else -> "No pending bills in the verified commitment."
+            }, style = FusionType.BodySmall)
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                vaults.forEach { vault ->
-                    VaultRowItem(vault)
-                }
+            Text(state.payees.find { it.id.equals(next.payeeId, true) || it.address.equals(next.payeeId, true) }?.label
+                ?: "Vendor ${next.payeeId.take(12)}…", style = FusionType.BodyMedium)
+            AmountText(next.amount.raw, style = FusionType.NumberSmall)
+            val delta = next.dueAt - now
+            Text(if (delta < 0) "Overdue by ${(-delta) / 86400} days" else "Due in ${(delta + 86399) / 86400} days", style = FusionType.BodySmall)
+            val policy = state.module?.policy
+            val tier = when {
+                policy == null -> "Tier unavailable"
+                next.amount.raw <= policy.microMax.raw -> "Instant tier"
+                next.amount.raw <= policy.delayedMax.raw -> "Queued tier"
+                else -> "Owner approval tier"
             }
-        }
-    }
-}
-
-@Composable
-private fun VaultRowItem(vault: VaultPosition) {
-    ObsidianCard(
-        modifier = Modifier.fillMaxWidth(),
-        level = 2,
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    vault.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (vault.simulatedYield) {
-                    StatusPill(
-                        label = stringResource(R.string.tr_vault_simulated),
-                        tone = Tone.Warn,
-                    )
-                } else {
-                    StatusPill(
-                        label = stringResource(R.string.tr_vault_real),
-                        tone = Tone.Good,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text(
-                        stringResource(R.string.tr_vault_assets, Fmt.usdc(vault.assets), "USDC"),
-                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        stringResource(R.string.tr_vault_shares, vault.sharesRaw.toString()),
-                        style = MonoStyle.copy(fontSize = 12.sp),
-                        color = Muted,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        stringResource(R.string.tr_vault_max_withdraw, Fmt.usdc(vault.maxWithdraw), "USDC"),
-                        style = MonoStyle.copy(fontSize = 12.sp),
-                        color = Tone.Cash,
-                    )
-                    Text(
-                        stringResource(R.string.tr_vault_exposure_cap, Fmt.usdc(vault.exposureLimit), "USDC"),
-                        style = MonoStyle.copy(fontSize = 12.sp),
-                        color = Muted,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(4.dp))
-
-            Text(
-                shorten(vault.address),
-                style = MonoStyle.copy(fontSize = 11.sp),
-                color = Muted,
-            )
-        }
-    }
-}
-
-// ---- Obligations Summary Tile -----------------------------------------------------------------
-
-@Composable
-private fun ObligationsSummaryTile(state: WalletState) {
-    val obligations = state.obligations
-    val unpaid = obligations.filter { !it.paid }
-    val nextBill = unpaid.minByOrNull { it.dueAt }
-
-    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-        CardTitle(
-            stringResource(R.string.tr_bills),
-            trailing = if (obligations.isNotEmpty()) {
-                "${unpaid.size} unpaid / ${obligations.size} total"
-            } else if (state.module != null && state.module.obligationCount > BigInteger.ZERO) {
-                "${state.module.obligationCount} on chain"
-            } else {
-                "—"
-            },
-        )
-
-        if (nextBill != null) {
-            val dueFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-            val dueDateStr = dueFormat.format(Date(nextBill.dueAt * 1000))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(
-                        "Next: ${Fmt.usdc(nextBill.amount)} USDC",
-                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        "Due: $dueDateStr",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Tone.Bills,
-                    )
-                }
-                StatusPill(
-                    label = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) "OVERDUE" else "SCHEDULED",
-                    tone = if (System.currentTimeMillis() / 1000 > nextBill.dueAt) Tone.Bad else Tone.Good,
-                )
-            }
-        } else if (state.module != null && state.module.reserved.raw > BigInteger.ZERO) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column {
-                    Text(
-                        "Owed: ${Fmt.usdc(state.module.reserved)} USDC",
-                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        "Root: ${shorten(state.module.obligationsRoot)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Tone.Bills,
-                    )
-                }
-                StatusPill(
-                    label = "ON-CHAIN",
-                    tone = Tone.Warn,
-                )
-            }
-        }
-    }
-}
-
-// ---- Ask Tile ---------------------------------------------------------------------------------
-
-@Composable
-private fun AskTile(onClick: () -> Unit) {
-    BentoTile(Modifier.fillMaxWidth(), onClick = onClick, padding = 14.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(36.dp).clip(CircleShape).background(FusionTheme.surfaces.level2),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = Tone.Earning,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(
-                    stringResource(R.string.tr_ask_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    stringResource(R.string.tr_ask_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Muted,
-                )
-            }
+            StatusChip(tier, FusionColors.Amber)
         }
     }
 }

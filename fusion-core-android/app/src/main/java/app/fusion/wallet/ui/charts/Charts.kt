@@ -59,7 +59,7 @@ fun rememberChartProgress(): Float {
         runCatching { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
     }
     val a = remember { Animatable(if (reduced) 1f else 0f) }
-    LaunchedEffect(Unit) { if (!reduced) a.animateTo(1f, tween(700, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { if (!reduced) a.animateTo(1f, tween(200, easing = FastOutSlowInEasing)) }
     return a.value
 }
 

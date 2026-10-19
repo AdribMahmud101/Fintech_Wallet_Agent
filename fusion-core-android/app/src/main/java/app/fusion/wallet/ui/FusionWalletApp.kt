@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.ui.accountant.AccountantViewModel
+import app.fusion.wallet.ui.activity.ActivityScreen
+import app.fusion.wallet.ui.shell.ShellViewModel
 import app.fusion.wallet.ui.agent.AgentScreen
 import app.fusion.wallet.ui.auth.AuthViewModel
 import app.fusion.wallet.ui.auth.LoginScreen
@@ -63,18 +65,19 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             val walletState by mainVm.state.collectAsStateWithLifecycle()
             val user = authState.user
 
-            var routeName by rememberSaveable { mutableStateOf(NavRoute.Treasury.name) }
+            val shell: ShellViewModel = viewModel()
+            val routeName by shell.destination.collectAsStateWithLifecycle()
             val route = NavRoute.valueOf(routeName)
-            var profileOpen by rememberSaveable { mutableStateOf(false) }
+
 
             // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
             LaunchedEffect(user?.role) {
                 vm.setRole(user?.role)
                 if (user?.role == app.fusion.wallet.accountant.data.UserRole.AUDITOR) {
-                    routeName = NavRoute.Judge.name
+                    shell.navigate(NavRoute.Judge)
                 }
             }
-            LaunchedEffect(user == null) { if (user == null) { profileOpen = false; routeName = NavRoute.Treasury.name } }
+            LaunchedEffect(user == null) { if (user == null) { shell.navigate(NavRoute.Treasury) } }
 
             // Splash has a floor so it never flashes for one frame; it also waits for the session and first data read.
             var splashElapsed by rememberSaveable { mutableStateOf(false) }
@@ -87,33 +90,33 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             if (!authState.checking && user == null) {
                 LoginScreen(authState, lang, setLang, onSignIn = auth::signIn, onEdit = auth::clearError)
             } else if (user != null) {
-                BackHandler(enabled = profileOpen || route != NavRoute.Treasury) {
-                    if (profileOpen) profileOpen = false else routeName = NavRoute.Treasury.name
-                }
+                BackHandler(enabled = route != NavRoute.Treasury) { shell.navigate(NavRoute.Treasury) }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
-                    bottomBar = { FusionBottomBar(selected = route, onSelect = { routeName = it.name }) },
+                    topBar = { FusionTopBar(user = user, onProfile = { shell.navigate(NavRoute.Settings) }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
+                    bottomBar = { FusionBottomBar(selected = route, onSelect = shell::navigate) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
                         Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
                             when (target) {
                                 NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
+                                NavRoute.Activity -> ActivityScreen(vm = mainVm)
+                                NavRoute.Settings -> TreasuryScreen(vm = mainVm)
                                 NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
                                 NavRoute.Safety, NavRoute.Proof -> ProofScreen(vm = mainVm)
-                                NavRoute.Judge -> JudgeScreen(vm = mainVm, onBack = { routeName = NavRoute.Treasury.name })
+                                NavRoute.Judge -> JudgeScreen(vm = mainVm, onBack = { shell.navigate(NavRoute.Treasury) })
                             }
                         }
                     }
                 }
-                if (profileOpen) {
+                if (route == NavRoute.Settings) {
                     ProfileSheet(
                         user = user, lang = lang, onLang = setLang,
                         onName = auth::setName, onAvatar = auth::setAvatar,
-                        onSignOut = { profileOpen = false; auth.signOut() },
-                        onDismiss = { profileOpen = false },
-                        onOpenJudge = { routeName = NavRoute.Judge.name },
+                        onSignOut = { shell.navigate(NavRoute.Treasury); auth.signOut() },
+                        onDismiss = { shell.navigate(NavRoute.Treasury) },
+                        onOpenJudge = { shell.navigate(NavRoute.Judge) },
                     )
                 }
             }
