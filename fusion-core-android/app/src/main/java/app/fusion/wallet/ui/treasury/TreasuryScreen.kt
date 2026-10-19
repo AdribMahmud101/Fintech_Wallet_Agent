@@ -268,7 +268,9 @@ private fun TreasuryHeroTile(state: WalletState) {
     val surplus = buckets?.surplus ?: Money.ZERO
     val shortfall = buckets?.shortfall ?: Money.ZERO
     val isShort = shortfall.raw > BigInteger.ZERO
-    val blockText = state.blockNumber?.let { "#$it" } ?: "—"
+    val blockText = state.blockNumber?.let {
+        stringResource(R.string.tr_last_refresh_block, it.toString())
+    } ?: stringResource(R.string.tr_block_unconfirmed)
 
     BentoTile(
         modifier = Modifier.fillMaxWidth(),
@@ -286,7 +288,7 @@ private fun TreasuryHeroTile(state: WalletState) {
                 color = Muted,
             )
             Text(
-                stringResource(R.string.tr_last_refresh_block, blockText),
+                blockText,
                 style = MonoStyle,
                 color = Muted,
             )
