@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="k24_network_error">Network unavailable. Refresh to retry.</string>
+    <string name="k24_refreshing">Refreshing…</string>
+    <string name="k24_link_unavailable">No app can open this link.</string>
+    <string name="k24_pause_success">Guardian pause confirmed</string>
+    <string name="k24_pause_error">Guardian pause failed. Check the guardian key and network.</string>
+    <string name="k24_stopping">Stopping…</string>
+    <string name="k24_paused">Paused</string>
+    <string name="k24_stop_title">Stop the agent?</string>
+    <string name="k24_stop_explanation">The guardian signs a pause transaction. The agent is stopped only after the transaction confirms and the paused state is verified.</string>
+    <string name="k24_cancel">Cancel</string>
+    <string name="k24_view_tx">View transaction</string>
+    <string name="k24_show_flow">How it decides · expand</string>
+    <string name="k24_hide_flow">How it decides · collapse</string>
+    <string name="k24_agent_controls">Agent controls</string>
+    <string name="k24_dry_run">Dry run</string>
+    <string name="k24_run_agent">Run agent now</string>
+    <string name="k24_deciding">Deciding…</string>
+    <string name="k24_dry_explanation">Dry runs preview current policy. Live runs use the session signer and may broadcast a transaction.</string>
+    <string name="k24_latest_decision">Latest decision</string>
+    <string name="k24_no_decision">No decision recorded on this device. Run the agent to generate candidates and a passport.</string>
+    <string name="k24_daily_limit">Daily limit</string>
+    <string name="k24_policy_unavailable">Policy unavailable until a chain snapshot loads.</string>
+    <string name="k24_remaining">Remaining</string>
+    <string name="k24_decision_history">Decision history</string>
+    <string name="k24_live_title">Run the agent live?</string>
+    <string name="k24_live_explanation">This run may sign and broadcast a treasury action using the imported session key. The signer and contract enforce policy. Hold sends no transaction.</string>
+    <string name="k24_live_confirm">Confirm live run</string>
+    <string name="k24_candidates">Candidates</string>
+    <string name="k24_policy_checks">Policy checks</string>
+    <string name="k24_copy_hash">Copy passport hash</string>
+    <string name="k24_no_transaction">No transaction recorded for this decision.</string>
+    <string name="k24_manage_bills">Add vendor / commit bills</string>
+    <string name="k24_owner_explanation">Adding a vendor or changing the bill commitment requires both Safe owners (2-of-2). Open this treasury in Safe to propose and approve the action.</string>
+    <string name="k24_open_safe">Open treasury in Safe</string>
+    <string name="k24_safe_unavailable">Safe address unavailable. Load the deployment manifest to continue.</string>
+    <string name="k24_unwind_explanation">Emergency unwind requires both Safe owners (2-of-2). In Safe, propose the module emergency unwind, review the withdrawal legs, and collect both owner signatures. Guardian Stop only pauses the agent.</string>
+    <string name="k24_emergency_unwind">Emergency unwind · open Safe</string>
+</resources>

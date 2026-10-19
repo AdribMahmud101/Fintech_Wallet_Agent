@@ -1,0 +1,338 @@
+{
+  "source": "APP",
+  "dryRun": true,
+  "planner": {
+    "kind": "mnn+ahem-g@android",
+    "host": "device",
+    "modelId": "LFM2.5-230M-MNN",
+    "modelSha256": "9ddd326541c3cb1e5e137ec717a91e5f3542c5ae2c1aa59046c180792544a907",
+    "libllmSha256": "380dcf54a08487eba7e3c98beab30f7180227ff1280bfadf7608bf04f2d49eb7",
+    "libMnnSha256": "f011627beeb487256f05e9d3b6cc1c406a3996272dc191282fa5238a55a8fde9",
+    "ahem": {
+      "g": {
+        "mode": "ENFORCED",
+        "vetoes": 0,
+        "retries": 0,
+        "forcedTokens": 5
+      },
+      "l": {
+        "mode": "OFF"
+      }
+    }
+  },
+  "snapshot": {
+    "blockNumber": 48328937,
+    "blockHash": "0x456f6bd303bc5a2c43c4da9c0d4ac44f8115cb930c6e4f96ab9ab2b7aac32c88",
+    "blockTimestamp": 1792426162,
+    "safeCash": "9409001235",
+    "vaultAShares": "0",
+    "vaultAAssets": "0",
+    "vaultBShares": "0",
+    "vaultBAssets": "0",
+    "moduleState": {
+      "configured": true,
+      "paused": false,
+      "policyEpoch": "10",
+      "policyHash": "0xd23e010f3c36f64c006aaa5ac48cdb1932749b94473578ae4ccc4ee85024e1f3",
+      "mandateHash": "0x70c800ab83d2e996520afde6513aabf2eac7526144eab887b7199ff5aa9990d8",
+      "obligationsRoot": "0x4babe834df86564372eda4dea3205734324378b55561ccc62500f595dae7b9c6",
+      "reservedRaw": "0",
+      "obligationCount": "2",
+      "actionNonce": "9",
+      "dailyDayIndex": "20745",
+      "dailyUsedRaw": "2151000000",
+      "sessionId": "0x2f240b542e6f3d47e388905d809614a418977f1ad35615e136fd1870214aba27",
+      "sessionStartEpoch": "7",
+      "sessionKey": "0xb52cb48ec1cc5ad1171c83f162228e31752f87fa",
+      "sessionExpiresAt": 1792495028,
+      "sessionLimitRaw": "8000000000",
+      "sessionUsedRaw": "58000000"
+    },
+    "policy": {
+      "permissionTier": 2,
+      "operatingBufferRaw": "500000000",
+      "microMaxRaw": "10000000",
+      "delayedMaxRaw": "100000000",
+      "hardMaxRaw": "2500000000",
+      "dailyLimitRaw": "4000000000",
+      "delaySeconds": 180,
+      "maxShareSlippageBps": 50,
+      "guardian": "0x46b8e40eb9767bd46e03c5ecf398c10e1372251e",
+      "payeeDelaySeconds": 3600,
+      "payEarlyWindowSeconds": 259200,
+      "vaults": [
+        {
+          "vault": "0xf430cb6e2b85f99222fbfa6dfea18ff60fa6b32a",
+          "maxExposureRaw": "6000000000"
+        },
+        {
+          "vault": "0xf052c0ed8404adeaaea773a5f8ae4628134aff6d",
+          "maxExposureRaw": "6000000000"
+        }
+      ]
+    },
+    "queue": {
+      "exists": false,
+      "actionDigest": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "sessionId": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "readyAt": 0,
+      "expiresAt": 0,
+      "action": {
+        "kind": 0,
+        "sourceVault": "0x0000000000000000000000000000000000000000",
+        "destinationVault": "0x0000000000000000000000000000000000000000",
+        "assets": "0",
+        "minSharesOut": "0",
+        "maxSharesBurn": "0",
+        "obligationIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "payeeIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "recipient": "0x0000000000000000000000000000000000000000",
+        "dueAt": 0,
+        "expectedNonce": "0",
+        "policyEpoch": "0",
+        "deadline": 0,
+        "decisionHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  },
+  "candidateSet": {
+    "candidateSetDigest": "0x8c9d9caabec5d4f9a31a998f7da78330edea10e825220ce29fee8dae69207b77",
+    "candidates": [],
+    "hold": {
+      "action": {
+        "assets": "0",
+        "deadline": 1792426282,
+        "decisionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "destinationVault": "0x0000000000000000000000000000000000000000",
+        "dueAt": 0,
+        "expectedNonce": "9",
+        "kind": 0,
+        "maxSharesBurn": "0",
+        "minSharesOut": "0",
+        "obligationIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "payeeIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "policyEpoch": "10",
+        "recipient": "0x0000000000000000000000000000000000000000",
+        "sourceVault": "0x0000000000000000000000000000000000000000"
+      },
+      "afterBuckets": {
+        "deployed": "0",
+        "free": "9409001235",
+        "reserved": "0",
+        "shortfall": "0",
+        "sweepable": "8909001235",
+        "total": "9409001235"
+      },
+      "beforeBuckets": {
+        "deployed": "0",
+        "free": "9409001235",
+        "reserved": "0",
+        "shortfall": "0",
+        "sweepable": "8909001235",
+        "total": "9409001235"
+      },
+      "feeAssumptions": {
+        "feeRaw": "0"
+      },
+      "id": "0x7bb41c6cb419f07ab215d2976837a5c9f4a5d35bc144290f6814637004cf0fd2",
+      "kind": 0,
+      "label": "H",
+      "proof": [],
+      "reason": "HOLD",
+      "route": "INSTANT",
+      "tier": "INSTANT"
+    }
+  },
+  "chosenCandidate": {
+    "action": {
+      "assets": "0",
+      "deadline": 1792426282,
+      "decisionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "destinationVault": "0x0000000000000000000000000000000000000000",
+      "dueAt": 0,
+      "expectedNonce": "9",
+      "kind": 0,
+      "maxSharesBurn": "0",
+      "minSharesOut": "0",
+      "obligationIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "payeeIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "policyEpoch": "10",
+      "recipient": "0x0000000000000000000000000000000000000000",
+      "sourceVault": "0x0000000000000000000000000000000000000000"
+    },
+    "afterBuckets": {
+      "deployed": "0",
+      "free": "9409001235",
+      "reserved": "0",
+      "shortfall": "0",
+      "sweepable": "8909001235",
+      "total": "9409001235"
+    },
+    "beforeBuckets": {
+      "deployed": "0",
+      "free": "9409001235",
+      "reserved": "0",
+      "shortfall": "0",
+      "sweepable": "8909001235",
+      "total": "9409001235"
+    },
+    "feeAssumptions": {
+      "feeRaw": "0"
+    },
+    "id": "0x7bb41c6cb419f07ab215d2976837a5c9f4a5d35bc144290f6814637004cf0fd2",
+    "kind": 0,
+    "label": "H",
+    "proof": [],
+    "reason": "HOLD",
+    "route": "INSTANT",
+    "tier": "INSTANT"
+  },
+  "decisionHash": "0x0c75c7559ad65337c73606d0f2c49c6f263f2a7d5b411eae476dde5b657a6fdc",
+  "passportJson": "{\"candidateSet\":[{\"assets\":\"0\",\"id\":\"0x7bb41c6cb419f07ab215d2976837a5c9f4a5d35bc144290f6814637004cf0fd2\",\"kind\":\"DEPOSIT\",\"label\":\"H\",\"reason\":\"HOLD\"}],\"candidateSetDigest\":\"0x8c9d9caabec5d4f9a31a998f7da78330edea10e825220ce29fee8dae69207b77\",\"chainId\":84532,\"choiceId\":\"0x7bb41c6cb419f07ab215d2976837a5c9f4a5d35bc144290f6814637004cf0fd2\",\"choiceLabel\":\"H\",\"createdAtChain\":1792426162,\"mandateHash\":\"0x70c800ab83d2e996520afde6513aabf2eac7526144eab887b7199ff5aa9990d8\",\"module\":\"0xa560ec10259657e9badd297e68286d2838cd5a8f\",\"planner\":{\"ahem\":{\"g\":{\"forcedTokens\":5,\"mode\":\"ENFORCED\",\"retries\":0,\"vetoes\":0},\"l\":{\"mode\":\"OFF\"}},\"host\":\"device\",\"kind\":\"mnn+ahem-g@android\",\"libMnnSha256\":\"f011627beeb487256f05e9d3b6cc1c406a3996272dc191282fa5238a55a8fde9\",\"libllmSha256\":\"380dcf54a08487eba7e3c98beab30f7180227ff1280bfadf7608bf04f2d49eb7\",\"modelId\":\"LFM2.5-230M-MNN\",\"modelSha256\":\"9ddd326541c3cb1e5e137ec717a91e5f3542c5ae2c1aa59046c180792544a907\"},\"reasonCode\":\"HOLD\",\"route\":\"HOLD\",\"safe\":\"0x029869910714d9e09b854a2688311afd42fbb44e\",\"snapshot\":{\"block\":48328937,\"hash\":\"0x456f6bd303bc5a2c43c4da9c0d4ac44f8115cb930c6e4f96ab9ab2b7aac32c88\"},\"userGoalSha256\":\"0x5a93b7ec9a0a697f16623f51822eaf6a6d8dc35843bad3335d87c62c9dcbecd8\",\"version\":\"4.1\"}",
+  "preview": {
+    "actionDigest": "0x4d41b8480b16eb3568f0d2630cdbd69170ddaacd0deef47af4bbe73c8e72de80",
+    "afterBuckets": {
+      "deployed": "0",
+      "free": "9409001235",
+      "reserved": "0",
+      "shortfall": "0",
+      "sweepable": "8909001235",
+      "total": "9409001235"
+    },
+    "beforeBuckets": {
+      "deployed": "0",
+      "free": "9409001235",
+      "reserved": "0",
+      "shortfall": "0",
+      "sweepable": "8909001235",
+      "total": "9409001235"
+    },
+    "checks": [
+      {
+        "errorCode": null,
+        "message": "paused=true, tier=Autonomous, session_live=true",
+        "name": "Module live and authorized",
+        "ruleId": "RULE_1_LIFECYCLE",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "No active queue blocking",
+        "name": "Queue availability",
+        "ruleId": "RULE_2_QUEUE_GATE",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "nonce_ok=true, epoch_ok=true, deadline_ok=true, decision_hash_ok=true",
+        "name": "Nonce, Epoch, Deadline, and DecisionHash validity",
+        "ruleId": "RULE_3_METADATA",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "assets=0, hard_max=2500000000",
+        "name": "Action shape and hard max limit",
+        "ruleId": "RULE_4_SHAPE",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "daily_used=2151000000/4000000000, session_used=58000000/8000000000",
+        "name": "Daily and session usage caps",
+        "ruleId": "RULE_5_VELOCITY",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "tier=Instant, route=Instant",
+        "name": "Tier and route conditions",
+        "ruleId": "RULE_6_TIER_ROUTE",
+        "status": "PASS"
+      },
+      {
+        "errorCode": null,
+        "message": "Deposit satisfies reserve cushion",
+        "name": "Action kind invariant checks",
+        "ruleId": "RULE_7_KIND_SPECIFIC",
+        "status": "PASS"
+      }
+    ],
+    "exactAction": {
+      "assets": "0",
+      "deadline": 1792426282,
+      "decisionHash": "0x0c75c7559ad65337c73606d0f2c49c6f263f2a7d5b411eae476dde5b657a6fdc",
+      "destinationVault": "0x0000000000000000000000000000000000000000",
+      "dueAt": 0,
+      "expectedNonce": "9",
+      "kind": 0,
+      "maxSharesBurn": "0",
+      "minSharesOut": "0",
+      "obligationIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "payeeIdHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "policyEpoch": "10",
+      "recipient": "0x0000000000000000000000000000000000000000",
+      "sourceVault": "0x0000000000000000000000000000000000000000"
+    },
+    "passed": true,
+    "route": "INSTANT",
+    "tier": "INSTANT"
+  },
+  "model": {
+    "ahem": {
+      "g": {
+        "aborted": false,
+        "forcedTokens": 5,
+        "mode": "ahem-g",
+        "retries": 0,
+        "vetoes": 0
+      },
+      "l": {
+        "mode": "off"
+      }
+    },
+    "attempts": 1,
+    "candidateSetDigest": "0x8c9d9caabec5d4f9a31a998f7da78330edea10e825220ce29fee8dae69207b77",
+    "label": "H",
+    "modelCalls": 1,
+    "raw": "{\"choice\":\"H\"}",
+    "rawAttempts": [
+      "{\"choice\":\"H\"}"
+    ],
+    "rawValid": true,
+    "sampling": {
+      "type": "greedy"
+    },
+    "timings": {
+      "totalMs": 502.28843700000004,
+      "ttftMs": 461.036406
+    },
+    "load": {
+      "coldLoadMs": 853.769114,
+      "hashes": {
+        "config.json": "9cd1d048291fbbbf0b78977c78978d4ce0aa03bc26652ecf163b8e3395bcba20",
+        "libMNN.so": "f011627beeb487256f05e9d3b6cc1c406a3996272dc191282fa5238a55a8fde9",
+        "libMNN_CL.so": "00dfb35090db1e8d460cc17651a3a4298b3f63e0017e889e413bfd5cec8406b1",
+        "libMNN_Express.so": "b017c20cd19247f4bcb959ccc1361e44777ad5c56aec49e79b7b90f226f47afb",
+        "libMNN_Vulkan.so": "fbf4f2a354654d432146ffebd77e0a218148eedc8bb49835c11d67db2ce255bc",
+        "libllm.so": "380dcf54a08487eba7e3c98beab30f7180227ff1280bfadf7608bf04f2d49eb7",
+        "llm.mnn": "9ddd326541c3cb1e5e137ec717a91e5f3542c5ae2c1aa59046c180792544a907",
+        "llm.mnn.weight": "fa00d3462646b58d98010ff88b5d1c2309a17560f8ead4e4b6d2133002976719",
+        "llm_config.json": "6a7990f75c1677f0e4c06e0eff2dfeedcbdf524398c4d01fa328733a6dab8576",
+        "tokenizer.mtok": "27525a7106438ff554018e28448284b33c18275380d3780f4bed64361dfd6433"
+      },
+      "plannerKind": "mnn+ahem-g@android",
+      "sampling": {
+        "type": "greedy"
+      },
+      "state": "READY"
+    },
+    "process": "app.fusion.wallet:inference",
+    "pid": 5097,
+    "plannerKind": "mnn+ahem-g@android"
+  },
+  "rates": [],
+  "rpcTransport": "live HTTPS via edge loopback relay",
+  "device": "OnePlus CPH2447",
+  "android": "16"
+}

@@ -1,573 +1,167 @@
 package app.fusion.wallet.ui.bills
 
-import app.fusion.wallet.ui.common.startActivitySafe
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HourglassTop
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
-import app.fusion.wallet.data.DataSource
-import app.fusion.wallet.data.LoadStatus
-import app.fusion.wallet.data.Obligation
-import app.fusion.wallet.data.Payee
-import app.fusion.wallet.data.PayeeStatus
-import app.fusion.wallet.data.WalletState
-import app.fusion.wallet.ui.Fmt
+import app.fusion.wallet.data.*
 import app.fusion.wallet.ui.MainViewModel
-import app.fusion.wallet.ui.common.BentoGap
-import app.fusion.wallet.ui.common.BentoRow
-import app.fusion.wallet.ui.common.BentoTile
-import app.fusion.wallet.ui.common.CardTitle
-import app.fusion.wallet.ui.common.Muted
-import app.fusion.wallet.ui.common.Notice
-import app.fusion.wallet.ui.common.ScreenHeader
-import app.fusion.wallet.ui.common.StatTile
-import app.fusion.wallet.ui.common.Tone
+import app.fusion.wallet.ui.agent.*
 import app.fusion.wallet.ui.common.vendorName
-import app.fusion.wallet.data.AgentAction
-import app.fusion.wallet.data.QueuedAction
-import app.fusion.wallet.ui.components.ObsidianCard
-import app.fusion.wallet.ui.components.StatusPill
+import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.shorten
-import app.fusion.wallet.ui.theme.Accessible
-import app.fusion.wallet.ui.theme.FusionDims
-import app.fusion.wallet.ui.theme.FusionTheme
-import app.fusion.wallet.ui.theme.MonoStyle
+import app.fusion.wallet.ui.theme.*
+import java.math.BigInteger
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-/**
- * Bills & Vendors Screen:
- * - Payees with ACTIVE / COOLING badge and live cooling countdown
- * - "New bank details" payee shown as COOLING with the warning copy from §17 (BEC prevention)
- * - Obligations / Bills breakdown (Due soon, Scheduled, Paid)
- * - Loading, empty, and error states
- * - Fully localized EN / 中文 and accessible
- */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BillsScreen(
-    modifier: Modifier = Modifier,
-    vm: MainViewModel = viewModel(),
-) {
+fun BillsScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val nowSeconds by produceState(System.currentTimeMillis() / 1000) {
-        while (true) {
-            delay(1_000)
-            value = System.currentTimeMillis() / 1000
+    var showVendors by rememberSaveable { mutableStateOf(false) }
+    val now = screenNow()
+    val context = LocalContext.current
+    val reader = remember { BillEvidenceReader() }
+    val links by produceState(BillEvidence(), state.blockHash, state.evidence, state.queue) {
+        if (state.blockNumber != null && state.source == DataSource.LIVE) {
+            value = withContext(Dispatchers.IO) {
+                runCatching { reader.load(context, state) }.getOrElse { BillEvidence(error = it.message ?: "Receipt identifiers unavailable") }
+            }
         }
     }
-
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0 = Vendors, 1 = Bills
-    var userDismissedError by rememberSaveable { mutableStateOf(false) }
-
-    LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(BentoGap),
-    ) {
-        // Header
-        item {
-            ScreenHeader(
-                title = stringResource(R.string.bv_title),
-                subtitle = stringResource(R.string.bv_subtitle),
-                trailing = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        if (state.source == DataSource.DEMO) {
-                            StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
-                        }
-                        IconButton(
-                            onClick = { vm.refresh() },
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            if (state.refreshing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Filled.Refresh,
-                                    contentDescription = stringResource(R.string.refresh_button),
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                    }
-                },
-            )
-        }
-
-        // Error Banner
-        if (state.status == LoadStatus.ERROR && !userDismissedError) {
-            val errorMsg = state.error ?: "Can't reach the network"
+    val currentLinks = links.takeIf { it.blockHash == state.blockHash } ?: BillEvidence(error = links.error)
+    val safeUrl = rememberSafeUrl(state.treasury?.safeAddress)
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val feedback: (String) -> Unit = { scope.launch { snackbar.showSnackbar(it) } }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = FusionColors.Bg) { padding ->
+        LazyColumn(modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(FusionSpacing.gutter),
+            verticalArrangement = Arrangement.spacedBy(FusionSpacing.gutter)) {
+            item { Text(stringResource(R.string.bv_tab_bills), style = FusionType.HeadingLarge) }
+            item { BentoTile(Modifier.fillMaxWidth()) { SnapshotStatus(state, vm::refresh) } }
             item {
-                Notice(
-                    text = errorMsg,
-                    onDismiss = { userDismissedError = true },
-                )
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    SegmentedButton(selected = !showVendors, onClick = { showVendors = false }, shape = SegmentedButtonDefaults.itemShape(0, 2), modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.bv_tab_bills))
+                    }
+                    SegmentedButton(selected = showVendors, onClick = { showVendors = true }, shape = SegmentedButtonDefaults.itemShape(1, 2), modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.bv_tab_payees))
+                    }
+                }
             }
-        }
-
-        // Summary Bento Row
-        item {
-            BentoRow {
-                StatTile(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    label = "Total Owed",
-                    value = "${state.buckets?.owed?.let { Fmt.usdc(it) } ?: "—"} USDC",
-                    color = Tone.Bills,
-                )
-                StatTile(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    label = "Active / Cooling",
-                    value = "${state.payees.count { it.status == PayeeStatus.ACTIVE }} / ${state.payees.count { it.status == PayeeStatus.COOLING }}",
-                    color = if (state.payees.any { it.status == PayeeStatus.COOLING }) Tone.Warn else Tone.Good,
-                )
+            if (state.accountingError != null && !showVendors) item {
+                BentoTile(Modifier.fillMaxWidth()) { Text(state.accountingError.orEmpty(), style = FusionType.BodyMedium, color = FusionColors.Amber) }
             }
-        }
-
-        // Sub-Tab Row
-        item {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = FusionTheme.surfaces.canvas,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = {
-                        Text(
-                            "${stringResource(R.string.bv_tab_payees)} (${state.payees.size})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    },
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = {
-                        Text(
-                            "${stringResource(R.string.bv_tab_bills)} (${state.obligations.size})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                        )
-                    },
-                )
+            if (links.error != null) item {
+                BentoTile(Modifier.fillMaxWidth()) { Text("Receipt / queue detail unavailable: ${links.error}", style = FusionType.BodySmall, color = FusionColors.Amber) }
             }
-        }
-
-        // Loading State
-        if (state.status == LoadStatus.LOADING && state.payees.isEmpty() && state.obligations.isEmpty()) {
+            if (showVendors) {
+                if (state.payees.isEmpty()) item {
+                    if (state.status == LoadStatus.LOADING) SkeletonTile(height = 180.dp) else BentoTile(Modifier.fillMaxWidth()) {
+                        Text(if (state.status == LoadStatus.ERROR) "Vendor registry unavailable; refresh to retry" else "No vendors observed in the registry", style = FusionType.BodyMedium)
+                    }
+                }
+                items(state.payees, key = { it.id }) { payee -> val registrationTx = currentLinks.registrationTxByPayee[payee.id.lowercase()]
+                    val registeredAt = state.evidence.firstOrNull { it.kind == "PayeeAdded" && it.txHash == registrationTx }?.blockTime
+                    VendorCard(payee, registeredAt, now, registrationTx, feedback) }
+            } else {
+                if (state.obligations.isEmpty()) item {
+                    if (state.status == LoadStatus.LOADING) SkeletonTile(height = 180.dp) else BentoTile(Modifier.fillMaxWidth()) {
+                        Text(when {
+                            state.accountingMatches != true -> "Bills unavailable until metadata matches the on-chain commitment"
+                            else -> "No committed bills"
+                        }, style = FusionType.BodyMedium)
+                    }
+                }
+                items(state.obligations, key = { it.id }) { bill -> BillCard(bill, state, currentLinks, now) }
+            }
             item {
-                BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            stringResource(R.string.tr_loading),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Muted,
-                        )
-                    }
-                }
-            }
-        } else if (selectedTab == 0) {
-            // Vendors List
-            if (state.payees.isEmpty()) {
-                item {
-                    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-                        Text(
-                            stringResource(R.string.bv_empty_payees),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Muted,
-                        )
-                    }
-                }
-            } else {
-                items(state.payees, key = { it.id }) { payee ->
-                    PayeeCard(payee, nowSeconds)
-                }
-            }
-        } else {
-            // Bills List
-            if (state.obligations.isEmpty()) {
-                item {
-                    val isMismatch = state.accountingMatches == false && state.module != null
-                    BentoTile(Modifier.fillMaxWidth(), tint = if (isMismatch) Tone.Warn else null, padding = 16.dp) {
-                        Text(
-                            text = if (isMismatch) {
-                                stringResource(R.string.accounting_mismatch_unavailable, shorten(state.module!!.obligationsRoot))
-                            } else {
-                                stringResource(R.string.bv_empty_bills)
-                            },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isMismatch) Tone.Warn else Muted,
-                        )
-                        if (isMismatch) {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                text = "Reserved on-chain: ${Fmt.usdc(state.module!!.reserved)} USDC (${state.module!!.obligationCount} bills)",
-                                style = MonoStyle.copy(fontSize = 13.sp),
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-            } else {
-                items(state.obligations, key = { it.id }) { obligation ->
-                    ObligationCard(obligation, state.payees, state.queue, state.recentActions, nowSeconds)
+                BentoTile(Modifier.fillMaxWidth()) {
+                    Icon(painterResource(R.drawable.ic_brand_safe), contentDescription = "Safe", modifier = Modifier.size(32.dp), tint = androidx.compose.ui.graphics.Color.Unspecified)
+                    Text(stringResource(R.string.k24_manage_bills), style = FusionType.HeadingSmall)
+                    Text(stringResource(R.string.k24_owner_explanation), style = FusionType.BodyMedium)
+                    if (safeUrl != null) ExternalAction(stringResource(R.string.k24_open_safe), safeUrl, feedback)
+                    else Text(stringResource(R.string.k24_safe_unavailable), style = FusionType.BodySmall)
                 }
             }
         }
     }
 }
 
-// ---- Payee Card -------------------------------------------------------------------------------
-
 @Composable
-private fun PayeeCard(
-    payee: Payee,
-    nowSeconds: Long,
-) {
-    val context = LocalContext.current
-    val isCooling = payee.status == PayeeStatus.COOLING
-    val remaining = payee.activeAt - nowSeconds
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
-    val activeAtStr = remember(payee.activeAt) {
-        if (payee.activeAt > 0) dateFormat.format(Date(payee.activeAt * 1000)) else ""
-    }
-
-    ObsidianCard(
-        modifier = Modifier.fillMaxWidth(),
-        level = if (isCooling) 2 else 1,
-    ) {
-        Column(Modifier.padding(14.dp)) {
-            // Top Row: Label + Status Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(FusionTheme.surfaces.level2),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            if (isCooling) Icons.Filled.HourglassTop else Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = if (isCooling) Tone.Warn else Tone.Good,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = vendorName(idHash = payee.id, address = payee.address),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = shorten(payee.address),
-                            style = MonoStyle.copy(fontSize = 12.sp),
-                            color = Muted,
-                        )
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (payee.sanctioned) {
-                        StatusPill(
-                            label = stringResource(R.string.bv_payee_sanctioned),
-                            tone = Tone.Bad,
-                        )
-                    }
-                    StatusPill(
-                        label = when (payee.status) {
-                            PayeeStatus.ACTIVE -> stringResource(R.string.bv_payee_active)
-                            PayeeStatus.COOLING -> stringResource(R.string.bv_payee_cooling)
-                            PayeeStatus.CANCELLED -> stringResource(R.string.bv_payee_cancelled)
-                        },
-                        tone = when (payee.status) {
-                            PayeeStatus.ACTIVE -> Tone.Good
-                            PayeeStatus.COOLING -> Tone.Warn
-                            PayeeStatus.CANCELLED -> Tone.Bad
-                        },
-                    )
-                }
+private fun BillCard(bill: Obligation, state: WalletState, links: BillEvidence, now: Long) {
+    val payee = state.payees.firstOrNull { it.id.equals(bill.payeeId, true) || it.address.equals(bill.payeeId, true) }
+    val name = vendorName(bill.payeeId, payee?.address)
+    val date = remember(bill.dueAt) { SimpleDateFormat("yyyy-MM-dd HH:mm z", Locale.getDefault()).format(Date(bill.dueAt * 1_000)) }
+    val queue = state.queue.singleOrNull { it.kind == ActionKind.PAY_OBLIGATION && it.expiresAt >= now && it.status != QueueStatus.EXPIRED }
+        ?.takeIf { links.queuedBillId.equals(bill.id, true) }
+    BentoTile(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(FusionColors.SurfaceRaised), contentAlignment = Alignment.Center) {
+                Text(name.take(1).uppercase(), style = FusionType.HeadingSmall)
             }
-
-            // Cooling countdown & §17 Warning Copy
-            if (isCooling) {
-                Spacer(Modifier.height(10.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(FusionDims.radiusSmall))
-                        .background(Tone.Warn.copy(alpha = 0.12f))
-                        .border(FusionDims.hairline, Tone.Warn.copy(alpha = 0.4f), RoundedCornerShape(FusionDims.radiusSmall))
-                        .padding(10.dp),
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Warning,
-                                contentDescription = null,
-                                tint = Tone.Warn,
-                                modifier = Modifier.size(16.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = if (remaining > 0) {
-                                    stringResource(R.string.bv_payee_cooling_countdown, Fmt.duration(remaining))
-                                } else {
-                                    "Cooling completed · pending chain activation"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Tone.Warn,
-                            )
-                        }
-
-                        Spacer(Modifier.height(4.dp))
-
-                        // Warning copy from §17
-                        Text(
-                            text = stringResource(R.string.bv_bec_warning, activeAtStr),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            lineHeight = 16.sp,
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Footer: Explorer link + Label Hash
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "ID: ${payee.id.take(8)}…",
-                    style = MonoStyle.copy(fontSize = 11.sp),
-                    color = Muted,
-                )
-
-                Row(
-                    modifier = Modifier
-                        .clickable(role = Role.Button) {
-                            val url = "https://sepolia.basescan.org/address/${payee.address}"
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivitySafe(intent)
-                        }
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.explorer_link),
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = Accessible.AccentText,
-                    )
-                    Spacer(Modifier.width(2.dp))
-                    Icon(
-                        Icons.Filled.OpenInNew,
-                        contentDescription = null,
-                        tint = Accessible.AccentText,
-                        modifier = Modifier.size(11.dp),
-                    )
-                }
-            }
+            Text(name, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(painterResource(R.drawable.ic_crypto_usdc), contentDescription = null, modifier = Modifier.size(24.dp), tint = androidx.compose.ui.graphics.Color.Unspecified)
+            AmountText(bill.amount.raw)
+        }
+        Text("Due $date", style = FusionType.BodySmall)
+        StatusChip(when {
+            bill.paid -> "Paid"
+            queue != null -> queueStatusText(queue, now)
+            else -> "Due"
+        }, if (bill.paid) FusionColors.Green else FusionColors.Amber)
+        if (bill.paid) {
+            links.paymentTxByBill[bill.id.lowercase()]?.let { TxLink(it) }
+                ?: Text("Paid on-chain · receipt not in loaded history", style = FusionType.BodySmall)
+        }
+        if (!bill.paid && queue == null && state.queue.any { it.kind == ActionKind.PAY_OBLIGATION } && links.queuedBillId == null) {
+            Text("A payment is queued; its bill identifier is unavailable", style = FusionType.BodySmall)
         }
     }
 }
 
-// ---- Obligation Card --------------------------------------------------------------------------
-
 @Composable
-private fun ObligationCard(
-    obligation: Obligation,
-    payees: List<Payee>,
-    queue: List<QueuedAction>,
-    actions: List<AgentAction>,
-    nowSeconds: Long,
-) {
-    val context = LocalContext.current
-    val payeeObj = payees.find { it.id == obligation.payeeId || it.address.equals(obligation.payeeId, ignoreCase = true) }
-    val vendorLabel = vendorName(idHash = obligation.payeeId, address = payeeObj?.address)
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-    val dueDateStr = remember(obligation.dueAt) { dateFormat.format(Date(obligation.dueAt * 1000)) }
-    val isOverdue = !obligation.paid && nowSeconds > obligation.dueAt
-
-    // A matching on-chain payment gives us the receipt link; a queued action gives us Queued status.
-    val payeeAddr = payeeObj?.address
-    val payTx = if (obligation.paid && payeeAddr != null) {
-        actions.firstOrNull {
-            it.kind == app.fusion.wallet.data.ActionKind.PAY_OBLIGATION &&
-                it.amount.raw == obligation.amount.raw &&
-                it.payee?.equals(payeeAddr, ignoreCase = true) == true
-        }?.txHash
-    } else null
-    val isQueued = !obligation.paid && payeeAddr != null && queue.any {
-        it.kind == app.fusion.wallet.data.ActionKind.PAY_OBLIGATION &&
-            it.payee.equals(payeeAddr, ignoreCase = true)
-    }
-
-    ObsidianCard(
-        modifier = Modifier.fillMaxWidth(),
-        level = 1,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(32.dp).clip(CircleShape).background(FusionTheme.surfaces.level2),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Filled.ReceiptLong,
-                        contentDescription = null,
-                        tint = if (obligation.paid) Tone.Good else Tone.Bills,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = vendorLabel,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = "${Fmt.usdc(obligation.amount)} USDC",
-                        style = MonoStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.bv_bill_due, dueDateStr),
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = if (isOverdue) Tone.Bad else Muted,
-                    )
-                    if (payTx != null) {
-                        Spacer(Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .clickable(role = Role.Button) {
-                                    val url = "https://sepolia.basescan.org/tx/$payTx"
-                                    context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.view_on_basescan),
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = Accessible.AccentText,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Spacer(Modifier.width(3.dp))
-                            Icon(
-                                Icons.Filled.OpenInNew,
-                                contentDescription = null,
-                                tint = Accessible.AccentText,
-                                modifier = Modifier.size(11.dp),
-                            )
-                        }
-                    }
-                }
+private fun VendorCard(payee: Payee, registeredAt: Long?, now: Long, registrationTx: String?, onError: (String) -> Unit) {
+    val name = vendorName(payee.id, payee.address)
+    val cooling = payee.status != PayeeStatus.CANCELLED && payee.activeAt > now
+    BentoTile(Modifier.fillMaxWidth()) {
+        Text(name, style = FusionType.HeadingSmall)
+        Text(shorten(payee.address), style = FusionType.NumberBody)
+        StatusChip(when { payee.status == PayeeStatus.CANCELLED -> "CANCELLED"; cooling -> "COOLING · ${countdownText(payee.activeAt, now)}"; else -> "ACTIVE" },
+            if (payee.status == PayeeStatus.CANCELLED) FusionColors.Red else if (cooling) FusionColors.Amber else FusionColors.Green)
+        if (cooling) {
+            val remaining = remainingSeconds(payee.activeAt, now)
+            val duration = registeredAt?.let { remainingSeconds(payee.activeAt, it) }
+            val bps = duration?.takeIf { it > 0 }?.let { duration ->
+                gaugeBasisPoints(BigInteger.valueOf(remaining), BigInteger.valueOf(duration))
             }
-
-            StatusPill(
-                label = when {
-                    obligation.paid -> stringResource(R.string.bv_bill_paid)
-                    isOverdue -> stringResource(R.string.bv_bill_overdue)
-                    isQueued -> stringResource(R.string.bv_bill_queued)
-                    else -> stringResource(R.string.bv_bill_scheduled)
-                },
-                tone = when {
-                    obligation.paid -> Tone.Good
-                    isOverdue -> Tone.Bad
-                    isQueued -> Tone.Earning
-                    else -> Tone.Warn
-                },
-            )
+            EvidenceRing(bps, "Vendor cooling time remaining: ${countdownText(payee.activeAt, now)}")
+            Text("${countdownText(payee.activeAt, now)} remaining", style = FusionType.BodyMedium)
+            Text(if (duration == null) "Cooling duration unavailable until registration receipt loads" else "Remaining fraction of the registered cooling period", style = FusionType.BodySmall)
         }
+        StatusChip(if (payee.sanctioned) "Sanctions check · BLOCKED" else "Sanctions check · clear", if (payee.sanctioned) FusionColors.Red else FusionColors.Green)
+        registrationTx?.let { TxLink(it) } ?: Text("Registration receipt not in loaded history", style = FusionType.BodySmall)
+        ExternalAction("View vendor on BaseScan", "https://sepolia.basescan.org/address/${payee.address}", onError)
     }
 }
