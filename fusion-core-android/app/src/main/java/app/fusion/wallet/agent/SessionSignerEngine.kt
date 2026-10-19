@@ -1,0 +1,130 @@
+package app.fusion.wallet.agent
+
+import app.fusion.wallet.chain.Abi
+import app.fusion.wallet.chain.Views
+import app.fusion.wallet.chain.ModuleEvents
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.json.JSONArray
+import org.json.JSONObject
+import java.math.BigInteger
+
+internal interface SessionJournal {
+    fun load(): JSONObject?
+    fun save(pending: JSONObject)
+    fun clear()
+    fun recordConfirmed(result: JSONObject) {}
+}
+
+/** No caller-supplied tx. Verify -> simulate -> bounded fees -> sign -> journal -> send -> receipt. */
+internal class SessionSignerEngine(
+    private val module: String,
+    private val session: String,
+    private val rpc: (String, JSONArray) -> Any,
+    private val lease: () -> String,
+    private val verify: (JSONObject) -> JSONObject,
+    private val sign: (JSONObject, String) -> JSONObject,
+    private val journal: SessionJournal,
+    private val pause: suspend () -> Unit = { delay(2000) },
+) {
+    private val mutex = Mutex()
+    suspend fun execute(report: JSONObject): JSONObject = mutex.withLock {
+        check(report.opt("dryRun") == false) { "DRY_RUN_CANNOT_BROADCAST" }
+        check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
+        check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(84532)) { "WRONG_CHAIN" }
+        journal.load()?.let { old ->
+            val receipt = receipt(old.getString("txHash"))
+            if (receipt != null) {
+                val confirmed = confirm(old, receipt)
+                journal.clear()
+                check(old.getString("decisionHash") == report.getString("decisionHash")) { "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN" }
+                return@withLock confirmed
+            }
+            error("PENDING_SESSION_ATTEMPT: ${old.getString("txHash")}")
+        }
+        val checked = verify(report)
+        check(checked.getString("to").equals(module, true)) { "MODULE_MISMATCH" }
+        val data = checked.getString("data")
+        check(data.contains(checked.getString("decisionHash").removePrefix("0x"), true)) { "PASSPORT_HASH_MISMATCH" }
+        val call = JSONObject().put("from", session).put("to", module).put("value", "0x0").put("data", data)
+        val simulated = rpc("eth_call", JSONArray().put(call).put("latest")).toString()
+        check(simulated.equals(checked.getString("actionDigest"), true)) { "SIMULATION_DIGEST_MISMATCH" }
+        val feeInputs = listOf(
+            "eth_getTransactionCount" to JSONArray().put(session).put("pending"),
+            "eth_getBlockByNumber" to JSONArray().put("latest").put(false),
+            "eth_maxPriorityFeePerGas" to JSONArray(),
+            "eth_getBalance" to JSONArray().put(session).put("pending"),
+        ).map { (method, params) -> rpc(method, params) }
+        val nonce = q(feeInputs[0].toString()).longValueExact()
+        val block = feeInputs[1] as JSONObject
+        val tip = q(feeInputs[2].toString()).max(BigInteger.valueOf(1_000_000))
+        val fee = q(block.getString("baseFeePerGas")) * BigInteger.valueOf(2) + tip
+        check(fee <= BigInteger.valueOf(10_000_000_000)) { "FEE_LIMIT" }
+        val estimate = q(rpc("eth_estimateGas", JSONArray().put(call)).toString())
+        val gas = (estimate * BigInteger.valueOf(120) / BigInteger.valueOf(100)).max(BigInteger.valueOf(100_000))
+        check(gas <= BigInteger.valueOf(1_000_000)) { "GAS_LIMIT" }
+        check(q(feeInputs[3].toString()) >= gas * fee) { "SESSION_NEEDS_GAS" }
+        authority(report, checked)
+        check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
+        val prepared = JSONObject().put("chainId", 84532).put("nonce", nonce).put("to", module).put("value", "0")
+            .put("data", data).put("gasLimit", gas.longValueExact()).put("maxFeePerGas", fee.longValueExact()).put("maxPriorityFeePerGas", tip.longValueExact())
+        val signed = sign(prepared, session)
+        val raw = signed.getString("rawTx"); val hash = signed.getString("txHash")
+        check(AgentCrypto.hashHex(AgentCrypto.bytes(raw)).equals(hash, true)) { "SIGNED_HASH_MISMATCH" }
+        val pending = JSONObject().put("txHash", hash).put("rawTx", raw).put("to", module).put("from", session)
+            .put("data", data).put("decisionHash", checked.getString("decisionHash")).put("actionDigest", checked.getString("actionDigest"))
+            .put("action", checked.getJSONObject("action")).put("passportJson", report.getString("passportJson"))
+            .put("requestId", report.getString("requestId"))
+        // The helper will independently refuse sendRawTransaction unless its flock is still held.
+        check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
+        authority(report, checked)
+        journal.save(pending)
+        try {
+            check(rpc("eth_sendRawTransaction", JSONArray().put(raw)).toString().equals(hash, true)) { "BROADCAST_HASH_MISMATCH" }
+        } catch (_: Exception) { /* Lost reply or already-known: only the receipt proves success. */ }
+        var mined: JSONObject? = null
+        repeat(60) { if (mined == null) { mined = receipt(hash); if (mined == null) pause() } }
+        val confirmed = confirm(pending, mined ?: error("PENDING_SESSION_ATTEMPT: $hash"))
+        journal.clear()
+        confirmed
+    }
+    private fun authority(report: JSONObject, checked: JSONObject) {
+        val block = rpc("eth_getBlockByNumber", JSONArray().put("latest").put(false)) as JSONObject
+        val height = q(block.getString("number")).longValueExact()
+        val time = q(block.getString("timestamp")).longValueExact()
+        val original = report.getJSONObject("snapshot")
+        check(height >= original.getLong("blockNumber") && height-original.getLong("blockNumber") < 5) { "STALE_STATE_OR_UNSUPPORTED_ROUTE" }
+        val state = Abi(rpc("eth_call", JSONArray().put(JSONObject().put("to", module).put("data", Views.STATE)).put(block.getString("number"))).toString()).requireSize(17)
+        val action = checked.getJSONObject("action")
+        check(state.bool(0) && !state.bool(1) && state.address(13).equals(session, true) && state.long(14) > time) { "SESSION_INACTIVE" }
+        check(state.uint(8).toString() == action.getString("expectedNonce") && state.uint(2).toString() == action.getString("policyEpoch") &&
+            state.bytes32(4) == original.getJSONObject("moduleState").getString("mandateHash") && action.getLong("deadline") >= time) { "STALE_STATE_OR_UNSUPPORTED_ROUTE" }
+    }
+    private fun receipt(hash: String): JSONObject? = rpc("eth_getTransactionReceipt", JSONArray().put(hash)).let { if (it == JSONObject.NULL) null else it as JSONObject }
+    private fun confirm(pending: JSONObject, receipt: JSONObject): JSONObject {
+        val hash = pending.getString("txHash")
+        check(receipt.getString("transactionHash").equals(hash, true) && receipt.getString("from").equals(session, true) && receipt.getString("to").equals(module, true)) { "RECEIPT_MISMATCH" }
+        if (q(receipt.getString("status")) != BigInteger.ONE) { journal.clear(); error("SESSION_TX_REVERTED: $hash") }
+        val block = rpc("eth_getBlockByNumber", JSONArray().put(receipt.getString("blockNumber")).put(false)) as JSONObject
+        check(block.getString("hash").equals(receipt.getString("blockHash"), true)) { "REORG" }
+        val tx = rpc("eth_getTransactionByHash", JSONArray().put(hash)) as JSONObject
+        check(tx.getString("input").equals(pending.getString("data"), true) && tx.getString("from").equals(session, true) && tx.getString("to").equals(module, true)) { "RECEIPT_MISMATCH" }
+        val logs = receipt.getJSONArray("logs")
+        val action = pending.getJSONObject("action")
+        val event = (0 until logs.length()).map { logs.getJSONObject(it) }.singleOrNull {
+            val topics = it.getJSONArray("topics")
+            it.getString("address").equals(module, true) && topics.length() == 4 && topics.getString(0).equals(ModuleEvents.EXECUTED, true) &&
+                topics.getString(1).equals(pending.getString("actionDigest"), true) && topics.getString(3).equals(pending.getString("decisionHash"), true)
+        } ?: error("EVENT_MISMATCH")
+        val eventData = Abi(event.getString("data")).requireSize(8)
+        check(eventData.int(0) == action.getInt("kind") && eventData.uint(1).toString() == action.getString("assets") &&
+            Abi(event.getJSONArray("topics").getString(2)).uint(0).toString() == action.getString("expectedNonce")) { "EVENT_MISMATCH" }
+        return JSONObject().put("txHash", hash).put("status", 1).put("receipt", receipt).put("transaction", tx)
+            .put("decisionHash", pending.getString("decisionHash")).put("actionDigest", pending.getString("actionDigest"))
+            .put("passportJson", pending.getString("passportJson")).put("from", session).put("to", module).also(journal::recordConfirmed)
+    }
+    private fun q(value: String): BigInteger {
+        require(Regex("0x[0-9a-fA-F]+").matches(value)); return BigInteger(value.drop(2), 16).also { require(it.signum() >= 0 && it.bitLength() <= 256) }
+    }
+}
