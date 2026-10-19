@@ -32,7 +32,7 @@ import app.fusion.wallet.ui.components.NavRoute
 import app.fusion.wallet.ui.i18n.AppLocale
 import app.fusion.wallet.ui.bills.BillsScreen
 import app.fusion.wallet.ui.judge.JudgeScreen
-import app.fusion.wallet.ui.proof.ProofScreen
+import app.fusion.wallet.ui.safety.SafetyScreen
 import app.fusion.wallet.ui.shell.FusionTopBar
 import app.fusion.wallet.ui.splash.FusionSplashScreen
 import app.fusion.wallet.ui.theme.FusionWalletTheme
@@ -104,7 +104,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                                 NavRoute.Settings -> TreasuryScreen(vm = mainVm)
                                 NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
-                                NavRoute.Safety, NavRoute.Proof -> ProofScreen(vm = mainVm)
+                                NavRoute.Safety, NavRoute.Proof -> SafetyScreen(vm = mainVm)
                                 NavRoute.Judge -> JudgeScreen(vm = mainVm, onBack = { shell.navigate(NavRoute.Treasury) })
                             }
                         }

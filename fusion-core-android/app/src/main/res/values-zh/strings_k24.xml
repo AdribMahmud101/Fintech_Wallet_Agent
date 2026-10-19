@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="k24_network_error">网络不可用，请刷新重试。</string>
+    <string name="k24_refreshing">正在刷新…</string>
+    <string name="k24_link_unavailable">没有可打开此链接的应用。</string>
+    <string name="k24_pause_success">守护者暂停已确认</string>
+    <string name="k24_pause_error">暂停失败，请检查守护者密钥和网络。</string>
+    <string name="k24_stopping">正在停止…</string>
+    <string name="k24_paused">已暂停</string>
+    <string name="k24_stop_title">停止代理？</string>
+    <string name="k24_stop_explanation">守护者将签署暂停交易。只有交易确认并验证暂停状态后，代理才会停止。</string>
+    <string name="k24_cancel">取消</string>
+    <string name="k24_view_tx">查看交易</string>
+    <string name="k24_show_flow">决策流程 · 展开</string>
+    <string name="k24_hide_flow">决策流程 · 收起</string>
+    <string name="k24_agent_controls">代理控制</string>
+    <string name="k24_dry_run">试运行</string>
+    <string name="k24_run_agent">立即运行代理</string>
+    <string name="k24_deciding">正在决策…</string>
+    <string name="k24_dry_explanation">试运行仅预览当前策略。实际运行使用会话签名器，可能广播交易。</string>
+    <string name="k24_latest_decision">最新决策</string>
+    <string name="k24_no_decision">此设备尚无决策。运行代理以生成候选动作和决策护照。</string>
+    <string name="k24_daily_limit">每日限额</string>
+    <string name="k24_policy_unavailable">读取链上快照后才能显示策略。</string>
+    <string name="k24_remaining">剩余</string>
+    <string name="k24_decision_history">决策历史</string>
+    <string name="k24_live_title">实际运行代理？</string>
+    <string name="k24_live_explanation">本次运行可能使用已导入的会话密钥签署并广播资金操作。签名器和合约会执行策略检查。保持不动不会发送交易。</string>
+    <string name="k24_live_confirm">确认实际运行</string>
+    <string name="k24_candidates">候选动作</string>
+    <string name="k24_policy_checks">策略检查</string>
+    <string name="k24_copy_hash">复制决策护照哈希</string>
+    <string name="k24_no_transaction">此决策没有交易记录。</string>
+    <string name="k24_manage_bills">添加供应商 / 提交账单</string>
+    <string name="k24_owner_explanation">添加供应商或更改账单承诺需要两位 Safe 所有者共同批准（2/2）。请在 Safe 中打开此金库并提出和批准操作。</string>
+    <string name="k24_open_safe">在 Safe 中打开金库</string>
+    <string name="k24_safe_unavailable">Safe 地址不可用，请先读取部署清单。</string>
+    <string name="k24_unwind_explanation">紧急撤资需要两位 Safe 所有者共同批准（2/2）。在 Safe 中提出模块紧急撤资，检查各项提款并收集双方签名。守护者停止仅暂停代理。</string>
+    <string name="k24_emergency_unwind">紧急撤资 · 打开 Safe</string>
+</resources>
