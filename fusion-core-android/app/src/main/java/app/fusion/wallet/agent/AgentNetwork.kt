@@ -20,6 +20,22 @@ internal object AgentNetwork {
             relay(context, method, params)
         }
     }
+    fun batch(context: Context, calls: List<Pair<String, JSONArray>>): List<Any> {
+        val params = JSONArray().apply { calls.forEach { (method, args) -> put(JSONObject().put("method", method).put("params", args)) } }
+        val replies = relay(context, "batch", params) as JSONArray
+        val byId = (0 until replies.length()).map { replies.getJSONObject(it) }.associateBy { it.getInt("id") }
+        return calls.indices.map { id ->
+            val r = byId[id] ?: error("Missing RPC batch response")
+            check(!r.has("error")) { "Read batch rejected ${calls[id].first}" }
+            r.get("result")
+        }
+    }
+    fun requireLease(context: Context): String {
+        val config = JSONObject(File(context.filesDir, "agent/edge_rpc.json").readText())
+        val result = relay(context, "lease", JSONArray()) as JSONObject
+        check(result.getBoolean("held") && result.getString("requestId") == config.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
+        return result.getString("requestId")
+    }
     fun relay(context: Context, method: String, params: JSONArray): Any {
         val config = JSONObject(File(context.filesDir, "agent/edge_rpc.json").readText())
         require(config.getString("host") == "127.0.0.1")

@@ -21,7 +21,7 @@ fun AgentRunCard(runTick: suspend (Boolean) -> Result<AgentTickResult>) {
                 if (state.running) { CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
                 Text(if (state.running) "Deciding…" else "Run agent now")
             }
-            Text("Dry run · previews live state without broadcasting", style = MaterialTheme.typography.bodySmall)
+            Text(if (state.result?.dryRun == false) "Agent tick under the session lock" else "Dry run · previews live state without broadcasting", style = MaterialTheme.typography.bodySmall)
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             state.result?.let { r ->
                 Text("${r.choiceLabel} · ${r.reason} · ${r.route}", style = MaterialTheme.typography.titleSmall)

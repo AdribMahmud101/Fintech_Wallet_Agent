@@ -343,7 +343,7 @@ internal inline fun<T, reified E: Throwable> uniffiTraitInterfaceCallWithError(
         }
     }
 }
-// Initial value and increment amount for handles. 
+// Initial value and increment amount for handles.
 // These ensure that Kotlin-generated handles always have the lowest bit set
 private const val UNIFFI_HANDLEMAP_INITIAL = 1.toLong()
 private const val UNIFFI_HANDLEMAP_DELTA = 2.toLong()
@@ -353,7 +353,7 @@ private const val UNIFFI_HANDLEMAP_DELTA = 2.toLong()
 // This is used pass an opaque 64-bit handle representing a foreign object to the Rust code.
 internal class UniffiHandleMap<T: Any> {
     private val map = ConcurrentHashMap<Long, T>()
-    // Start 
+    // Start
     private val counter = java.util.concurrent.atomic.AtomicLong(UNIFFI_HANDLEMAP_INITIAL)
 
     val size: Int
@@ -690,44 +690,48 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_validate_output(
     ): Int
+    external fun uniffi_fusion_android_core_checksum_func_verify_for_signing(
+    ): Int
     external fun ffi_fusion_android_core_uniffi_contract_version(
     ): Int
 
-        
+
 }
 
 internal object UniffiLib {
-    
+
 
     init {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "fusion_android_core"))
-        
+
     }
 
     internal fun ensureInitialized() = Unit
-    external fun uniffi_fusion_android_core_fn_func_build_commitment(`obligations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_build_commitment(`obligations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_build_passport(`decision`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_build_passport(`decision`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_candidates(`snapshotJson`: RustBuffer.ByValue,`billsJson`: RustBuffer.ByValue,`payeesJson`: RustBuffer.ByValue,`proofsJson`: RustBuffer.ByValue,`ratesJson`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_candidates(`snapshotJson`: RustBuffer.ByValue,`billsJson`: RustBuffer.ByValue,`payeesJson`: RustBuffer.ByValue,`proofsJson`: RustBuffer.ByValue,`ratesJson`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_encode_call(`kind`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_encode_call(`kind`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_planner_prompt(`set`: RustBuffer.ByValue,`goal`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_planner_prompt(`set`: RustBuffer.ByValue,`goal`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_preview(`candidateJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`decisionHash`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_preview(`candidateJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`decisionHash`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_validate_output(`raw`: RustBuffer.ByValue,`set`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_validate_output(`raw`: RustBuffer.ByValue,`set`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun ffi_fusion_android_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_fusion_android_core_fn_func_verify_for_signing(`reportJson`: RustBuffer.ByValue,`freshSnapshotJson`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun ffi_fusion_android_core_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun ffi_fusion_android_core_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun ffi_fusion_android_core_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
-    external fun ffi_fusion_android_core_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_fusion_android_core_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -735,7 +739,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_u8(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Int
     external fun ffi_fusion_android_core_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -743,7 +747,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_i8(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Byte
     external fun ffi_fusion_android_core_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -751,7 +755,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_u16(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Int
     external fun ffi_fusion_android_core_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -759,7 +763,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_i16(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Short
     external fun ffi_fusion_android_core_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -767,7 +771,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_u32(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Int
     external fun ffi_fusion_android_core_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -775,7 +779,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_i32(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Int
     external fun ffi_fusion_android_core_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -783,7 +787,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_u64(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Long
     external fun ffi_fusion_android_core_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -791,7 +795,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_i64(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Long
     external fun ffi_fusion_android_core_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -799,7 +803,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_f32(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Float
     external fun ffi_fusion_android_core_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -807,7 +811,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_f64(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Double
     external fun ffi_fusion_android_core_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -815,7 +819,7 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_rust_buffer(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun ffi_fusion_android_core_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
     ): Unit
@@ -823,10 +827,10 @@ internal object UniffiLib {
     ): Unit
     external fun ffi_fusion_android_core_rust_future_free_void(`handle`: Long,
     ): Unit
-    external fun ffi_fusion_android_core_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun ffi_fusion_android_core_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus,
     ): Unit
 
-        
+
 }
 
 private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
@@ -862,6 +866,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_validate_output() and 0xFFFF) != 41416) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_fusion_android_core_checksum_func_verify_for_signing() and 0xFFFF) != 20716) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -939,7 +946,7 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
         }
     }
 
-/** 
+/**
  * Placeholder object used to signal that we're constructing an interface with a FFI handle.
  *
  * This is the first argument for interface constructors that input a raw handle. It exists is that
@@ -950,7 +957,7 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
  * */
 object UniffiWithHandle
 
-/** 
+/**
  * Used to instantiate an interface without an actual pointer, for fakes in tests, mostly.
  *
  * @suppress
@@ -1048,30 +1055,30 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_build_commitment(
-    
-        
+
+
         FfiConverterString.lower(`obligations`),_status)
 }
     )
     }
-    
+
  fun `buildPassport`(`decision`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_build_passport(
-    
-        
+
+
         FfiConverterString.lower(`decision`),_status)
 }
     )
     }
-    
+
  fun `candidates`(`snapshotJson`: kotlin.String, `billsJson`: kotlin.String, `payeesJson`: kotlin.String, `proofsJson`: kotlin.String, `ratesJson`: kotlin.String, `safe`: kotlin.String, `module`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_candidates(
-    
-        
+
+
         FfiConverterString.lower(`snapshotJson`),
         FfiConverterString.lower(`billsJson`),
         FfiConverterString.lower(`payeesJson`),
@@ -1082,37 +1089,37 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 }
     )
     }
-    
+
  fun `encodeCall`(`kind`: kotlin.String, `args`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_encode_call(
-    
-        
+
+
         FfiConverterString.lower(`kind`),
         FfiConverterString.lower(`args`),_status)
 }
     )
     }
-    
+
  fun `plannerPrompt`(`set`: kotlin.String, `goal`: kotlin.String?): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_planner_prompt(
-    
-        
+
+
         FfiConverterString.lower(`set`),
         FfiConverterOptionalString.lower(`goal`),_status)
 }
     )
     }
-    
+
  fun `preview`(`candidateJson`: kotlin.String, `snapshotJson`: kotlin.String, `decisionHash`: kotlin.String, `safe`: kotlin.String, `module`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_preview(
-    
-        
+
+
         FfiConverterString.lower(`candidateJson`),
         FfiConverterString.lower(`snapshotJson`),
         FfiConverterString.lower(`decisionHash`),
@@ -1121,30 +1128,49 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
 }
     )
     }
-    
+
  fun `signPrepared`(`tx`: kotlin.String, `key`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_sign_prepared(
-    
-        
+
+
         FfiConverterString.lower(`tx`),
         FfiConverterString.lower(`key`),_status)
 }
     )
     }
-    
+
  fun `validateOutput`(`raw`: kotlin.String, `set`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_validate_output(
-    
-        
+
+
         FfiConverterString.lower(`raw`),
         FfiConverterString.lower(`set`),_status)
 }
     )
     }
-    
+
+
+        /**
+         * A constrained signer input: bind immutable app report to its original set and
+         * passport, then re-preview the exact action against an independently fresh read.
+         * Returns only an instantaneous Kavachi call; no generic transaction endpoint.
+         */ fun `verifyForSigning`(`reportJson`: kotlin.String, `freshSnapshotJson`: kotlin.String, `safe`: kotlin.String, `module`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_fusion_android_core_fn_func_verify_for_signing(
+
+
+        FfiConverterString.lower(`reportJson`),
+        FfiConverterString.lower(`freshSnapshotJson`),
+        FfiConverterString.lower(`safe`),
+        FfiConverterString.lower(`module`),_status)
+}
+    )
+    }
+
 
 

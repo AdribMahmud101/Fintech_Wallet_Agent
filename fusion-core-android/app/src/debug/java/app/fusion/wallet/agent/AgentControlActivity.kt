@@ -25,19 +25,21 @@ class AgentControlActivity : ComponentActivity() {
             val mode = intent.getStringExtra("mode") ?: "m1"
             val result = try {
                 if (mode == "m1") PlannerClient.fixedProbe(this@AgentControlActivity)
+                else if (mode == "probe-suite") GateProbeSuite.run(this@AgentControlActivity)
                 else {
                     val tick = AgentRuntime.run(this@AgentControlActivity,
-                        app.fusion.wallet.data.ChainWalletRepository.fromAssets(this@AgentControlActivity), true).getOrThrow()
+                        app.fusion.wallet.data.ChainWalletRepository.fromAssets(this@AgentControlActivity), mode != "broadcast").getOrThrow()
                     JSONObject(tick.reportJson)
                 }
             }
             catch (e: Exception) { JSONObject().put("error", e.message ?: "Probe failed") }
+            intent.getStringExtra("requestId")?.let { result.put("requestId", it) }
             withContext(Dispatchers.IO) {
                 File(filesDir, if (mode == "m1") "agent/m1.json" else "agent/control_result.json").apply { parentFile!!.mkdirs(); writeText(result.toString()) }
             }
-            Log.i("FusionPlanner", if (mode == "m1") "M1 $result" else "DRY_RUN complete; error=${result.optString("error")}")
+            Log.i("FusionPlanner", if (mode == "m1") "M1 $result" else "$mode complete; error=${result.optString("error")}")
             status.text = result.toString(2)
-            if (mode != "m1" && !result.has("error")) setContent {
+            if (result.has("passportJson") && !result.has("error")) setContent {
                 app.fusion.wallet.ui.theme.FusionWalletTheme {
                     Surface(Modifier.fillMaxSize()) {
                         Column(Modifier.padding(horizontal = 20.dp, vertical = 48.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

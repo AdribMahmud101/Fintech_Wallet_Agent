@@ -49,7 +49,7 @@ object AgentRuntime {
     }
 
     private suspend fun decide(context: Context, repository: WalletRepository, dryRun: Boolean): AgentTickResult {
-        check(dryRun) { "Broadcast runtime is not installed; use dry-run" }
+        val requestId = if (dryRun) null else AgentNetwork.requireLease(context)
         val manifest = context.assets.open("deployments/84532.json").bufferedReader().use { it.readText() }
         val deployment = Deployment.parse(manifest)
         // A new on-chain commitment can precede the next APK asset update. Reuse
@@ -69,7 +69,13 @@ object AgentRuntime {
         check(state.status == LoadStatus.READY) { "Live snapshot unavailable: ${state.error}" }
         check(state.accountingMatches == true) { "ACCOUNTING_MISMATCH: commitment or unpaid total differs" }
         val reader = ChainReader(AgentNetwork.readOnly(context, deployment.rpcUrl))
-        val snapshot = SnapshotAdapter.build(state, deployment, reader)
+        var snapshot = SnapshotAdapter.build(state, deployment, reader)
+        if (!dryRun) {
+            val fresh = SignerSnapshot.read(context, JSONObject(manifest), snapshot)
+            check(fresh.getJSONObject("moduleState").getString("mandateHash") == snapshot.getJSONObject("moduleState").getString("mandateHash") &&
+                fresh.getJSONObject("moduleState").getString("actionNonce") == snapshot.getJSONObject("moduleState").getString("actionNonce")) { "Live state changed; rerun agent" }
+            snapshot = fresh
+        }
         val module = requireNotNull(state.module)
         val allBills = SnapshotAdapter.obligations(state)
         val commitment = checked(buildCommitment(allBills.toString()))
@@ -96,8 +102,8 @@ object AgentRuntime {
         val candidate = if (choice == "H") set.getJSONObject("hold") else (0 until list.length()).map { list.getJSONObject(it) }.single { it.getString("label") == choice }
         val stats = model.getJSONObject("ahem").getJSONObject("g")
         val hashes = model.getJSONObject("load").getJSONObject("hashes")
-        val passport = JSONObject().put("version", "4.1").put("chainId", 84532).put("safe", deployment.safe).put("module", deployment.module)
-            .put("snapshot", JSONObject().put("block", state.blockNumber).put("hash", state.blockHash))
+        val passport = JSONObject().put("version", "4.1").put("chainId", 84532).put("safe", JSONObject(manifest).getString("safe")).put("module", JSONObject(manifest).getString("module"))
+            .put("snapshot", JSONObject().put("block", snapshot.getLong("blockNumber")).put("hash", snapshot.getString("blockHash")))
             .put("mandateHash", module.mandateHash).put("candidateSetDigest", set.getString("candidateSetDigest"))
             .put("candidateSet", JSONArray().apply { (0 until list.length()).forEach { put(summary(list.getJSONObject(it))) }; put(summary(set.getJSONObject("hold"))) })
             .put("planner", JSONObject().put("kind", "mnn+ahem-g@android").put("host", "device")
@@ -108,20 +114,28 @@ object AgentRuntime {
                     .put("l", JSONObject().put("mode", "OFF"))))
             .put("userGoalSha256", "0x" + MessageDigest.getInstance("SHA-256").digest(GOAL.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) })
             .put("choiceLabel", choice).put("choiceId", candidate.getString("id")).put("reasonCode", validated.getString("reasonCode"))
-            .put("route", if (choice == "H") "HOLD" else candidate.getString("route")).put("createdAtChain", state.blockTime)
+            .put("route", if (choice == "H") "HOLD" else candidate.getString("route")).put("createdAtChain", snapshot.getLong("blockTimestamp"))
         val built = checked(buildPassport(passport.toString()))
         val canonical = built.getString("passportJson")
         val hash = built.getString("decisionHash")
         val preview = checked(preview(candidate.toString(), snapshot.toString(), hash, deployment.safe, deployment.module)).getJSONObject("result")
-        val report = JSONObject().put("source", "APP").put("dryRun", dryRun).put("planner", passport.getJSONObject("planner"))
+        val report = JSONObject().put("source", "APP").put("requestId", requestId ?: JSONObject.NULL).put("dryRun", dryRun).put("planner", passport.getJSONObject("planner"))
             .put("snapshot", snapshot).put("candidateSet", set).put("chosenCandidate", candidate)
             .put("decisionHash", hash).put("passportJson", canonical).put("preview", preview).put("model", model)
             .put("rates", rates).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
         val dir = File(context.filesDir, "agent").apply { mkdirs() }
-        File(dir, "m2_passport.json").writeText(canonical)
+        File(dir, if (dryRun) "m2_passport.json" else "last_passport.json").writeText(canonical)
         File(dir, "last_tick.json").writeText(report.toString())
+        val execution = if (!dryRun && choice != "H") {
+            check(preview.getBoolean("passed")) { "Policy preview blocked execution" }
+            val signed = SessionSignerClient.execute(context, report)
+            check(!signed.has("error")) { signed.optString("error", "SESSION_SIGNER_FAILED") }
+            report.put("execution", signed).put("txHash", signed.getString("txHash"))
+            File(dir, "last_tick.json").writeText(report.toString())
+            signed
+        } else null
         return AgentTickResult(choice, validated.getString("reasonCode"), passport.getString("route"), hash, canonical,
-            requireNotNull(state.blockNumber), preview.getBoolean("passed"), model.getJSONObject("timings").getDouble("totalMs"), stats.getLong("vetoes"), dryRun, report.toString())
+            snapshot.getLong("blockNumber"), preview.getBoolean("passed"), model.getJSONObject("timings").getDouble("totalMs"), stats.getLong("vetoes"), dryRun, report.toString(), execution?.getString("txHash"))
     }
 
     internal fun checked(raw: String): JSONObject = JSONObject(raw).also { check(it.optBoolean("ok")) { it.optJSONObject("error")?.toString() ?: "Core rejected request" } }
