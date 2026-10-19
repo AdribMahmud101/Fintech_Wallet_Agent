@@ -34,6 +34,13 @@ class MainViewModel @JvmOverloads constructor(
     }
 
     fun refresh() { viewModelScope.launch { repository.refresh() } }
+
+    /** Returns only after a successful Base Sepolia receipt and paused-state check. */
+    suspend fun requestGuardianPause(): Result<String> {
+        val result = app.fusion.wallet.signer.GuardianSignerClient.requestPause(getApplication())
+        if (result.isSuccess) refresh()
+        return result
+    }
 }
 
 /* Compatibility declarations for the old, unmounted DemoData.kt previews (owned by K5).
