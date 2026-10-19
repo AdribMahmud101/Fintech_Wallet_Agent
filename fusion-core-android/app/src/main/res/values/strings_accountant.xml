@@ -404,11 +404,11 @@
     <string name="ago_hours">%1$s h</string>
 
     <!-- K21: Safety tab, honest scorecard -->
-    <string name="safe_tile_stopped">attacks stopped</string>
-    <string name="safe_tile_succeeded">attacks succeeded</string>
+    <string name="safe_tile_stopped">Stopped</string>
+    <string name="safe_tile_succeeded">Succeeded</string>
     <string name="safe_tile_stop">Stop</string>
-    <string name="safe_stop_armed">armed</string>
-    <string name="safe_stop_paused">paused</string>
+    <string name="safe_stop_armed">Armed</string>
+    <string name="safe_stop_paused">Paused</string>
     <string name="safe_count_pair">%1$s / %2$s</string>
     <string name="safe_measured_on">Measured %1$s · %2$s scenarios</string>
     <string name="safe_onchain_title">Blocked on-chain (reverted)</string>

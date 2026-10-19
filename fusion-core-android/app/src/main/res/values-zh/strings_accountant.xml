@@ -383,8 +383,8 @@
     <string name="ago_hours">%1$s小时</string>
 
     <!-- K21：安全页诚实计分卡 -->
-    <string name="safe_tile_stopped">已拦截攻击</string>
-    <string name="safe_tile_succeeded">得逞攻击</string>
+    <string name="safe_tile_stopped">已拦截</string>
+    <string name="safe_tile_succeeded">得逞</string>
     <string name="safe_tile_stop">停止</string>
     <string name="safe_stop_armed">已就绪</string>
     <string name="safe_stop_paused">已暂停</string>
