@@ -29,6 +29,7 @@ import app.fusion.wallet.ui.components.FusionBottomBar
 import app.fusion.wallet.ui.components.NavRoute
 import app.fusion.wallet.ui.i18n.AppLocale
 import app.fusion.wallet.ui.bills.BillsScreen
+import app.fusion.wallet.ui.judge.JudgeScreen
 import app.fusion.wallet.ui.proof.ProofScreen
 import app.fusion.wallet.ui.shell.FusionTopBar
 import app.fusion.wallet.ui.splash.FusionSplashScreen
@@ -101,7 +102,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                                 NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
                                 NavRoute.Safety, NavRoute.Proof -> ProofScreen(vm = mainVm)
-                                NavRoute.Judge -> ProofScreen()
+                                NavRoute.Judge -> JudgeScreen(vm = mainVm, onBack = { routeName = NavRoute.Treasury.name })
                             }
                         }
                     }
