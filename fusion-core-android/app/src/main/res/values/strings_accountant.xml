@@ -371,4 +371,73 @@
     <string name="judge_block_info">Block #%1$s · Time %2$s</string>
     <string name="judge_disclaimers_title">Honest Disclosures (§21.2 What We Don\'t Claim)</string>
     <string name="judge_disclaimer_content">• Audited contracts: contracts are competition prototypes, not formally audited.\n• Real yield: Aave test waUSDC yield is testnet liquidity; demo vault yield is explicitly simulated.\n• Real sanctions screening: uses a mock test list, not real OFAC feeds.\n• Hardware-backed Ethereum keys: keys stored in software in this prototype.\n• OS-level app separation: single-process prototype at stage S.\n• Model choices: policy guarantees safety; optimality is not guaranteed.\n• Unattended 24/7 operation: human supervisor required.</string>
+
+    <!-- K21: vendors (readable names from the K2 script; registry stores only a label hash) -->
+    <string name="vendor_acme">Acme Cloud</string>
+    <string name="vendor_payroll">Payroll</string>
+    <string name="vendor_newbank">New bank details</string>
+    <string name="vendor_fallback">Vendor %1$s</string>
+    <string name="vendor_unknown">Vendor</string>
+
+    <!-- K21: plain-language action titles -->
+    <string name="act_pay">Paid bill</string>
+    <string name="act_pay_vendor">Paid bill · %1$s</string>
+    <string name="act_pay_queued">Queued payment</string>
+    <string name="act_deposit">Moved surplus to Aave vault</string>
+    <string name="act_withdraw">Withdrew to cash</string>
+    <string name="act_rebalance">Moved money between vaults</string>
+    <string name="act_held">Held — needs a human</string>
+
+    <!-- K21: labelled chips (never a bare dot) -->
+    <string name="chip_src_agent">Agent</string>
+    <string name="chip_src_script">Script</string>
+    <string name="chip_src_app">App</string>
+    <string name="chip_tier_instant">Instant</string>
+    <string name="chip_tier_queued">Queued</string>
+    <string name="chip_tier_approval">Needs approval</string>
+
+    <!-- K21: first-paint freshness chip -->
+    <string name="chip_updated_ago">Updated %1$s ago · refreshing</string>
+    <string name="chip_refreshing_cached">Cached · refreshing</string>
+    <string name="ago_seconds">%1$ss</string>
+    <string name="ago_minutes">%1$s min</string>
+    <string name="ago_hours">%1$s h</string>
+
+    <!-- K21: Safety tab, honest scorecard -->
+    <string name="safe_tile_stopped">Stopped</string>
+    <string name="safe_tile_succeeded">Succeeded</string>
+    <string name="safe_tile_stop">Stop</string>
+    <string name="safe_stop_armed">Armed</string>
+    <string name="safe_stop_paused">Paused</string>
+    <string name="safe_count_pair">%1$s / %2$s</string>
+    <string name="safe_measured_on">Measured %1$s · %2$s scenarios</string>
+    <string name="safe_onchain_title">Blocked on-chain (reverted)</string>
+    <string name="safe_onchain_empty">No recorded on-chain reverts in the evidence file.</string>
+    <string name="safe_arena_title">Attack scenarios</string>
+    <string name="safe_known_limits_title">Known limits (honest)</string>
+    <string name="safe_known_limits_empty">Every scenario in the corpus was stopped.</string>
+    <string name="safe_sc_stopped">Stopped</string>
+    <string name="safe_sc_escaped">Escaped</string>
+    <string name="safe_sc_not_impl">Not implemented</string>
+    <string name="safe_stopped_at">Stopped at the %1$s</string>
+    <string name="safe_tried">Tried: %1$s</string>
+    <string name="safe_layer_contract">on-chain contract</string>
+    <string name="safe_layer_rules">rules engine</string>
+    <string name="safe_layer_grammar">AI action grammar</string>
+    <string name="safe_layer_validator">output validator</string>
+    <string name="safe_layer_signer">signer</string>
+    <string name="safe_layer_reflex">price reflex, then contract</string>
+    <string name="safe_layer_journal">durable journal</string>
+    <string name="safe_unwind_owner_title">Emergency Unwind</string>
+    <string name="safe_unwind_owner_tag">Owner action</string>
+    <string name="safe_unwind_owner_body">Run from the Safe app (2-of-2 owners). This pulls every vault position back to Safe cash and halts the agent; it needs both owner keys, so it cannot be triggered from this read-only wallet.</string>
+
+    <!-- K21: bills status -->
+    <string name="bv_bill_queued">Queued</string>
+    <string name="bv_bill_overdue">Overdue</string>
+
+    <!-- K21: agent permission tier -->
+    <string name="perm_read_only">Monitor only</string>
+    <string name="perm_owner">Owner-approved</string>
+    <string name="perm_autonomous">Autonomous</string>
 </resources>

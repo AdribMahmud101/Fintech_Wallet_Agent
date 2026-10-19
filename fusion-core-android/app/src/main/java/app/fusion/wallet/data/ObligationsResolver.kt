@@ -33,6 +33,7 @@ object DefaultObligationsCandidateSource : ObligationsCandidateSource {
         val urls = mutableListOf(
             "$GITHUB_RAW_BASE/agent/obligations-84532.json",
             "$GITHUB_RAW_BASE/agent/obligations.json",
+            "$GITHUB_RAW_BASE/demo/obligations.json",
         )
         try {
             val text = fetchCandidate(GITHUB_API_AGENT)
@@ -57,9 +58,18 @@ class ObligationsResolver(
 ) {
     private val cache = mutableMapOf<String, String>()
 
-    fun resolve(onChainRoot: String, bundledJson: String?): String? {
-        // 1. Try bundled file
-        if (bundledJson != null) {
+    fun resolve(onChainRoot: String, bundledJson: String?): String? =
+        resolve(onChainRoot, listOf(bundledJson))
+
+    /**
+     * Resolve the current on-chain commitment root against every bundled candidate (K2 + K9 agent
+     * demo files), then the cache, then GitHub raw. The on-chain root moves when the agent commits a
+     * newer bill set, so a single bundled file is not enough — we try them all before giving up.
+     */
+    fun resolve(onChainRoot: String, bundledJsons: List<String?>): String? {
+        // 1. Try every bundled file
+        for (bundledJson in bundledJsons) {
+            if (bundledJson == null) continue
             try {
                 val obj = JSONObject(bundledJson)
                 if (obj.optString("root").equals(onChainRoot, ignoreCase = true)) {

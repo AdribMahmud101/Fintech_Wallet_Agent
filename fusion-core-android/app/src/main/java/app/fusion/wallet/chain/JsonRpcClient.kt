@@ -10,6 +10,9 @@ import org.json.JSONObject
 /** Injectable read-only transport. No signing, key handling, or transaction RPC exists here. */
 fun interface RpcTransport {
     fun request(method: String, params: JSONArray): Any
+    fun batch(calls: List<Pair<String, JSONArray>>): List<Any> {
+        return calls.map { (method, params) -> request(method, params) }
+    }
 }
 
 class RpcException(message: String, val httpStatus: Int? = null, val rpcCode: Int? = null) : IOException(message)
@@ -46,6 +49,52 @@ class JsonRpcClient(val rpcUrl: String = "https://sepolia.base.org") : RpcTransp
             connection.disconnect()
         }
     }
+
+    override fun batch(calls: List<Pair<String, JSONArray>>): List<Any> {
+        if (calls.isEmpty()) return emptyList()
+        val idToIndex = mutableMapOf<Long, Int>()
+        val payload = JSONArray()
+        calls.forEachIndexed { index, (method, params) ->
+            require(method in READ_METHODS) { "Unsupported read-only RPC method: $method" }
+            val id = nextId.incrementAndGet()
+            idToIndex[id] = index
+            payload.put(JSONObject().put("jsonrpc", "2.0").put("id", id).put("method", method).put("params", params))
+        }
+        val connection = URL(rpcUrl).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 20_000
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            if (connection.responseCode !in 200..299) {
+                val detail = connection.errorStream?.bufferedReader()?.use { it.readText().take(512) }.orEmpty()
+                throw RpcException("batch HTTP ${connection.responseCode}: $detail", httpStatus = connection.responseCode)
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val responseArray = JSONArray(body)
+            val results = arrayOfNulls<Any>(calls.size)
+            for (i in 0 until responseArray.length()) {
+                val resp = responseArray.getJSONObject(i)
+                val id = resp.getLong("id")
+                val targetIndex = idToIndex[id] ?: throw IOException("Unexpected RPC batch response id: $id")
+                if (resp.has("error")) {
+                    val err = resp.getJSONObject("error")
+                    throw RpcException("batch call [${calls[targetIndex].first}]: ${err.optString("message")}", rpcCode = err.optInt("code"))
+                }
+                val res = resp.opt("result")?.takeUnless { it == JSONObject.NULL }
+                    ?: throw IOException("batch call [${calls[targetIndex].first}] returned no result")
+                results[targetIndex] = res
+            }
+            return results.mapIndexed { idx, res ->
+                res ?: throw IOException("Missing RPC batch result for call [${calls[idx].first}]")
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     companion object {
         private val READ_METHODS = setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber")
     }
@@ -67,6 +116,15 @@ class ChainReader(private val rpc: RpcTransport) {
     fun call(to: String, data: String, block: Long): Abi = Abi(
         rpc.request("eth_call", JSONArray().put(JSONObject().put("to", to).put("data", data)).put(tag(block))).toString(),
     )
+    fun batchCalls(calls: List<Pair<String, String>>, block: Long): List<Abi> {
+        if (calls.isEmpty()) return emptyList()
+        val blockTag = tag(block)
+        val rpcCalls = calls.map { (to, data) ->
+            "eth_call" to JSONArray().put(JSONObject().put("to", to).put("data", data)).put(blockTag)
+        }
+        val rawResults = rpc.batch(rpcCalls)
+        return rawResults.map { Abi(it.toString()) }
+    }
     fun logs(address: String, from: Long, through: Long): List<ChainLog> {
         val result = mutableListOf<ChainLog>()
         var start = from

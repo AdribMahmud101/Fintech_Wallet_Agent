@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -206,12 +207,14 @@ fun FusionBottomBar(
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = 48.dp)
                     .background(
                         if (active) surfaces.level2 else surfaces.canvas,
                         RoundedCornerShape(FusionDims.radiusSmall),
                     )
                     .clickableSurface { onSelect(tab.route) }
                     .padding(horizontal = 4.dp, vertical = 7.dp),
+                verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(

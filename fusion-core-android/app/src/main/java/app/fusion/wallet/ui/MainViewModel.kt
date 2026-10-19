@@ -5,13 +5,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.fusion.wallet.BuildConfig
 import app.fusion.wallet.data.ChainWalletRepository
+import app.fusion.wallet.data.SafetyData
+import app.fusion.wallet.data.SafetyEvidence
 import app.fusion.wallet.data.WalletRepository
 import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.ui.model.PreFlightReport
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** SL4: live monitor only. Approval and stop requests belong to the signer integration. */
 class MainViewModel @JvmOverloads constructor(
@@ -21,9 +27,16 @@ class MainViewModel @JvmOverloads constructor(
     val state: StateFlow<WalletState> = repository.state
     val walletState: StateFlow<WalletState> = state
 
+    private val mutableSafety = MutableStateFlow(SafetyData())
+    /** Safety-tab evidence, parsed once from bundled files; counts are never from live logs. */
+    val safety: StateFlow<SafetyData> = mutableSafety.asStateFlow()
+
     init {
         require(BuildConfig.DEBUG || repository is ChainWalletRepository) {
             "Release builds require ChainWalletRepository"
+        }
+        viewModelScope.launch {
+            mutableSafety.value = withContext(Dispatchers.IO) { SafetyEvidence.fromAssets(getApplication()) }
         }
         viewModelScope.launch {
             while (isActive) {

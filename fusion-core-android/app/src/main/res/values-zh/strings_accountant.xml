@@ -350,4 +350,73 @@
     <string name="judge_block_info">区块 #%1$s · 时间 %2$s</string>
     <string name="judge_disclaimers_title">合规诚实声明（§21.2 明确不主张的内容）</string>
     <string name="judge_disclaimer_content">• 经审计的合约：合约为竞赛原型，未经过正式商业审计。\n• 真实收益：Aave 测试 waUSDC 收益基于测试网流动性；演示金库收益明确为模拟数据。\n• 真实制裁筛查：使用测试名单，非 OFAC 实时名单。\n• 硬件隔离密钥：原型中使用软件环境托管。\n• 系统级沙箱隔离：S 阶段为单进程原型。\n• 模型决策：策略保证安全性，但不保证决策最优。\n• 7x24 无人值守：必须有人工监督者。</string>
+
+    <!-- K21：收款方（可读名称来自 K2 脚本；注册表仅存标签哈希） -->
+    <string name="vendor_acme">Acme Cloud</string>
+    <string name="vendor_payroll">工资发放</string>
+    <string name="vendor_newbank">新银行账户</string>
+    <string name="vendor_fallback">收款方 %1$s</string>
+    <string name="vendor_unknown">收款方</string>
+
+    <!-- K21：通俗操作标题 -->
+    <string name="act_pay">已付账单</string>
+    <string name="act_pay_vendor">已付账单 · %1$s</string>
+    <string name="act_pay_queued">排队中的付款</string>
+    <string name="act_deposit">将闲置资金存入 Aave 金库</string>
+    <string name="act_withdraw">赎回为现金</string>
+    <string name="act_rebalance">在金库之间调拨资金</string>
+    <string name="act_held">已暂挂——需要人工处理</string>
+
+    <!-- K21：带文字标签的小标签（绝不只显示圆点） -->
+    <string name="chip_src_agent">智能体</string>
+    <string name="chip_src_script">脚本</string>
+    <string name="chip_src_app">应用</string>
+    <string name="chip_tier_instant">即时</string>
+    <string name="chip_tier_queued">排队</string>
+    <string name="chip_tier_approval">需批准</string>
+
+    <!-- K21：首屏新鲜度标签 -->
+    <string name="chip_updated_ago">%1$s前更新 · 刷新中</string>
+    <string name="chip_refreshing_cached">缓存数据 · 刷新中</string>
+    <string name="ago_seconds">%1$s秒</string>
+    <string name="ago_minutes">%1$s分钟</string>
+    <string name="ago_hours">%1$s小时</string>
+
+    <!-- K21：安全页诚实计分卡 -->
+    <string name="safe_tile_stopped">已拦截</string>
+    <string name="safe_tile_succeeded">得逞</string>
+    <string name="safe_tile_stop">停止</string>
+    <string name="safe_stop_armed">已就绪</string>
+    <string name="safe_stop_paused">已暂停</string>
+    <string name="safe_count_pair">%1$s / %2$s</string>
+    <string name="safe_measured_on">测量于 %1$s · 共 %2$s 个场景</string>
+    <string name="safe_onchain_title">链上已拦截（交易回滚）</string>
+    <string name="safe_onchain_empty">存证文件中暂无链上回滚记录。</string>
+    <string name="safe_arena_title">攻击场景</string>
+    <string name="safe_known_limits_title">已知限制（诚实披露）</string>
+    <string name="safe_known_limits_empty">语料库中的每个场景都被拦截。</string>
+    <string name="safe_sc_stopped">已拦截</string>
+    <string name="safe_sc_escaped">逃逸</string>
+    <string name="safe_sc_not_impl">未实现</string>
+    <string name="safe_stopped_at">由%1$s拦截</string>
+    <string name="safe_tried">尝试：%1$s</string>
+    <string name="safe_layer_contract">链上合约</string>
+    <string name="safe_layer_rules">规则引擎</string>
+    <string name="safe_layer_grammar">AI 动作语法</string>
+    <string name="safe_layer_validator">输出校验器</string>
+    <string name="safe_layer_signer">签名器</string>
+    <string name="safe_layer_reflex">价格反射，再到合约</string>
+    <string name="safe_layer_journal">持久化日志</string>
+    <string name="safe_unwind_owner_title">紧急撤回</string>
+    <string name="safe_unwind_owner_tag">所有者操作</string>
+    <string name="safe_unwind_owner_body">请在 Safe 应用中执行（2/2 多签）。此操作会将所有金库仓位撤回到 Safe 现金并停止智能体；它需要两把所有者密钥，因此无法在这个只读钱包中触发。</string>
+
+    <!-- K21：账单状态 -->
+    <string name="bv_bill_queued">排队中</string>
+    <string name="bv_bill_overdue">逾期</string>
+
+    <!-- K21：智能体权限等级 -->
+    <string name="perm_read_only">仅监控</string>
+    <string name="perm_owner">需所有者批准</string>
+    <string name="perm_autonomous">自主执行</string>
 </resources>
