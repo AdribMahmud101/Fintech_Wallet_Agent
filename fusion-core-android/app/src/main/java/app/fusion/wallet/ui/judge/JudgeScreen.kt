@@ -106,10 +106,6 @@ fun JudgeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        StatusPill(
-                            label = stringResource(R.string.badge_network),
-                            tone = Tone.Warn,
-                        )
                         if (state.source == DataSource.DEMO) {
                             StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
                         }
