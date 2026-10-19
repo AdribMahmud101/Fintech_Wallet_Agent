@@ -5,6 +5,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import android.os.Build
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -32,22 +35,28 @@ object FusionColors {
     val Red = Color(0xFFE5484D)
 }
 
+@OptIn(ExperimentalTextApi::class)
+private fun weightedFont(resource: Int, weight: FontWeight): Font =
+    if (Build.VERSION.SDK_INT >= 26) Font(resource, weight,
+        variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+    else Font(resource, weight)
+
 object FusionType {
     val SpaceGrotesk = FontFamily(
-        Font(R.font.space_grotesk, FontWeight.Normal),
-        Font(R.font.space_grotesk, FontWeight.Medium),
-        Font(R.font.space_grotesk, FontWeight.SemiBold),
-        Font(R.font.space_grotesk, FontWeight.Bold),
+        weightedFont(R.font.space_grotesk, FontWeight.Normal),
+        weightedFont(R.font.space_grotesk, FontWeight.Medium),
+        weightedFont(R.font.space_grotesk, FontWeight.SemiBold),
+        weightedFont(R.font.space_grotesk, FontWeight.Bold),
     )
     val PlexSans = FontFamily(
-        Font(R.font.ibm_plex_sans, FontWeight.Normal),
-        Font(R.font.ibm_plex_sans, FontWeight.Medium),
-        Font(R.font.ibm_plex_sans, FontWeight.SemiBold),
+        weightedFont(R.font.ibm_plex_sans, FontWeight.Normal),
+        weightedFont(R.font.ibm_plex_sans, FontWeight.Medium),
+        weightedFont(R.font.ibm_plex_sans, FontWeight.SemiBold),
     )
     val JetBrainsMono = FontFamily(
-        Font(R.font.jetbrains_mono, FontWeight.Normal),
-        Font(R.font.jetbrains_mono, FontWeight.Medium),
-        Font(R.font.jetbrains_mono, FontWeight.SemiBold),
+        weightedFont(R.font.jetbrains_mono, FontWeight.Normal),
+        weightedFont(R.font.jetbrains_mono, FontWeight.Medium),
+        weightedFont(R.font.jetbrains_mono, FontWeight.SemiBold),
     )
 
     // Type scale: 32 / 24 / 18 / 15 / 13 sp

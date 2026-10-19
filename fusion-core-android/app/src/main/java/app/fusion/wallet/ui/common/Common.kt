@@ -52,12 +52,10 @@ fun severityColor(s: Severity): Color = when (s) {
 
 @Composable
 fun ScreenHeader(title: String, subtitle: String, trailing: (@Composable () -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
-        }
-        trailing?.invoke()
+    Column(Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
+        if (trailing != null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { trailing() }
     }
 }
 

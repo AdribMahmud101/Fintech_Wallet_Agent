@@ -9,15 +9,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.foundation.isSystemInDarkTheme
 
-/**
- * The Obsidian colour scheme.
- *
- * The app is dark-only by design (`layout.md` §4: "dark color scheme defaults"), so there is
- * no light scheme to fall back to — `CanvasBackground #08090C` is the brand.
- */
+/** Dark obsidian scheme; the shared Fusion tokens also style legacy screens. */
 private val ObsidianColorScheme = darkColorScheme(
     primary = Accessible.ButtonFill,
-    onPrimary = Obsidian.TextPrimary,
+    onPrimary = FusionColors.Bg,
     primaryContainer = Obsidian.SurfaceLevel3,
     onPrimaryContainer = Obsidian.TextPrimary,
 

@@ -419,4 +419,60 @@
     <string name="perm_read_only">仅监控</string>
     <string name="perm_owner">需所有者批准</string>
     <string name="perm_autonomous">自主执行</string>
+
+    <!-- Navigation K23 -->
+    <string name="nav_home">首页</string>
+    <string name="nav_activity">动态</string>
+    <string name="nav_safety">安全</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Activity Tab -->
+    <string name="act_title">活动动态</string>
+    <string name="act_subtitle">链上交易与合约事件时间线</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_agent">智能体</string>
+    <string name="filter_owner">多签所有者</string>
+    <string name="filter_app">应用</string>
+    <string name="filter_blocked">已拦截</string>
+    <string name="act_empty_title">暂无活动记录</string>
+    <string name="act_empty_desc">当前筛选条件下未发现链上操作。</string>
+    <string name="act_detail_title">交易详情</string>
+    <string name="act_detail_passport">决策通行证哈希</string>
+    <string name="act_detail_block">区块高度</string>
+    <string name="act_detail_tx">交易哈希</string>
+    <string name="act_detail_gas">Gas消耗</string>
+    <string name="act_detail_counterparty">交易对手</string>
+    <string name="act_detail_copied">已复制到剪贴板</string>
+
+    <!-- Home Bento K23 -->
+    <string name="home_hero_updated_ago">%1$s前更新</string>
+    <string name="home_hero_live">实时</string>
+    <string name="home_hero_cached">缓存</string>
+    <string name="home_buckets_title">国库资金分配</string>
+    <string name="home_bucket_owed">应付账单</string>
+    <string name="home_bucket_buffer">安全缓冲</string>
+    <string name="home_bucket_surplus">可调配盈余</string>
+    <string name="home_history_title">资金余额走势</string>
+    <string name="home_history_stat_title">链上资金概况</string>
+    <string name="home_history_stat_note">链上历史点不足4个。当前余额：%1$s USDC。</string>
+    <string name="home_agent_title">AI 智能体</string>
+    <string name="home_agent_active">运行中</string>
+    <string name="home_agent_paused">已暂停</string>
+    <string name="home_agent_run">运行智能体</string>
+    <string name="home_agent_stop">紧急停止</string>
+    <string name="home_agent_stop_confirm_title">Guardian 紧急停止</string>
+    <string name="home_agent_stop_confirm_desc">将调用 Base Sepolia 链上的 requestPause() 暂停模块。AI 智能体将无法继续执行交易。</string>
+    <string name="home_agent_stop_confirm_action">确认停止</string>
+    <string name="home_agent_last_decision">最近决策：%1$s</string>
+    <string name="home_agent_running">智能体决策执行中…</string>
+    <string name="home_agent_stopping">正在链上暂停智能体…</string>
+    <string name="home_vault_simulated">模拟收益</string>
+    <string name="home_vault_real">Aave 实盘</string>
+    <string name="home_next_bill_title">下一笔账单</string>
+    <string name="home_next_bill_none">暂无待付账单</string>
+    <string name="home_next_bill_due">%1$s后到期</string>
+    <string name="home_next_bill_overdue">已逾期 %1$s</string>
+    <string name="home_tier_instant">即时支付</string>
+    <string name="home_tier_queued">排队延迟</string>
+    <string name="home_tier_approval">需多签审批</string>
 </resources>

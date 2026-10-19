@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.AccountBalance
@@ -52,6 +53,8 @@ enum class NavRoute {
     Treasury,
     Bills,
     Agent,
+    Activity,
+    Settings,
     Safety,
     Judge,
     @Deprecated("Use Safety") Proof;
@@ -100,7 +103,7 @@ fun TopHealthAppBar(
             actions = {
                 IconButton(onClick = onOpenTerminal) {
                     Icon(
-                        Icons.Filled.ReceiptLong,
+                        Icons.Rounded.ReceiptLong,
                         contentDescription = stringResource(R.string.open_terminal),
                         modifier = Modifier.size(20.dp),
                     )
@@ -166,7 +169,7 @@ fun TopHealthAppBar(
 private data class TabSpec(
     val route: NavRoute,
     val labelRes: Int,
-    val icon: ImageVector,
+    val icon: Int,
 )
 
 /**
@@ -185,10 +188,11 @@ fun FusionBottomBar(
 ) {
     val surfaces = FusionTheme.surfaces
     val tabs = listOf(
-        TabSpec(NavRoute.Treasury, R.string.nav_treasury, Icons.Filled.AccountBalance),
-        TabSpec(NavRoute.Bills, R.string.nav_bills, Icons.Filled.ReceiptLong),
-        TabSpec(NavRoute.Agent, R.string.nav_agent, Icons.Filled.SmartToy),
-        TabSpec(NavRoute.Safety, R.string.nav_proof, Icons.Filled.Shield),
+        TabSpec(NavRoute.Treasury, R.string.nav_home, R.drawable.ic_nav_home),
+        TabSpec(NavRoute.Bills, R.string.nav_bills, R.drawable.ic_nav_receipt_long),
+        TabSpec(NavRoute.Agent, R.string.nav_agent, R.drawable.ic_nav_smart_toy),
+        TabSpec(NavRoute.Activity, R.string.nav_activity, R.drawable.ic_nav_history),
+        TabSpec(NavRoute.Safety, R.string.nav_safety, R.drawable.ic_nav_shield),
     )
 
     Row(
@@ -218,7 +222,7 @@ fun FusionBottomBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
-                    tab.icon,
+                    painter = androidx.compose.ui.res.painterResource(tab.icon),
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = if (active) MaterialTheme.colorScheme.onSurface else Accessible.TextMuted,
@@ -237,8 +241,4 @@ fun FusionBottomBar(
 
 /** Rippleless click: the design is flat, so the default ink would be out of key. */
 private fun Modifier.clickableSurface(onClick: () -> Unit): Modifier =
-    clickable(
-        interactionSource = null,
-        indication = null,
-        onClick = onClick,
-    )
+    clickable(onClick = onClick)

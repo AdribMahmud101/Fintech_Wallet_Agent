@@ -1,17 +1,1 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="32"
-    android:viewportHeight="32">
-    <!-- Base official network mark (Coinbase Base L2) -->
-    <path
-        android:fillColor="#0052FF"
-        android:pathData="M16,16m-16,0a16,16 0,1,1 32,0a16,16 0,1,1 -32,0" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M16,16m-15.5,0a15.5,15.5 0,1,1 31,0a15.5,15.5 0,1,1 -31,0" />
-    <path
-        android:fillColor="#0052FF"
-        android:fillType="evenOdd"
-        android:pathData="M32,16C32,24.8365 24.824,32 15.9721,32C7.57386,32 0.684242,25.5522 0,17.345H21.1853V14.6551H0C0.684242,6.44789 7.57386,0 15.9721,0C24.824,0 32,7.16344 32,16Z" />
-</vector>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="1280" android:viewportHeight="1280"><path android:fillColor="#0000FF" android:pathData="M0,101.12c0-34.64,0-51.95,6.53-65.28,6.25-12.76,16.56-23.07,29.32-29.32C49.17,0,66.48,0,101.12,0h1077.76c34.63,0,51.96,0,65.28,6.53,12.75,6.25,23.06,16.56,29.32,29.32,6.52,13.32,6.52,30.64,6.52,65.28v1077.76c0,34.63,0,51.96-6.52,65.28-6.26,12.75-16.57,23.06-29.32,29.32-13.32,6.52-30.65,6.52-65.28,6.52H101.12c-34.64,0-51.95,0-65.28-6.52-12.76-6.26-23.07-16.57-29.32-29.32-6.53-13.32-6.53-30.65-6.53-65.28V101.12Z" /></vector>

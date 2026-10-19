@@ -2,12 +2,6 @@ package app.fusion.wallet.ui.components
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -26,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +43,6 @@ import app.fusion.wallet.ui.theme.FusionShape
 import app.fusion.wallet.ui.theme.FusionSpacing
 import app.fusion.wallet.ui.theme.FusionType
 import java.math.BigInteger
-import java.text.NumberFormat
 import java.util.Locale
 
 /**
@@ -124,33 +117,13 @@ fun StatusChip(
  * No Float or Double money anywhere in the calculations.
  */
 fun formatBigIntegerAmount(raw: BigInteger, decimals: Int = 6, exact: Boolean = false): String {
-    val scale = BigInteger.TEN.pow(decimals)
-    val whole = raw.divide(scale)
-    val frac = raw.mod(scale)
-    val nf = NumberFormat.getNumberInstance(Locale.US)
-    val wholeStr = nf.format(whole)
-
-    return if (exact) {
-        val fracStr = frac.toString().padStart(decimals, '0')
-        "$wholeStr.$fracStr"
-    } else {
-        if (decimals <= 2) {
-            val fracStr = frac.toString().padStart(decimals, '0')
-            "$wholeStr.$fracStr"
-        } else {
-            val twoScale = BigInteger.TEN.pow(2)
-            val div = BigInteger.TEN.pow(decimals - 2)
-            val half = div.divide(BigInteger.valueOf(2))
-            val roundedFrac = (frac + half).divide(div)
-            if (roundedFrac >= twoScale) {
-                val adjustedWhole = whole + BigInteger.ONE
-                "${nf.format(adjustedWhole)}.00"
-            } else {
-                val frac2Str = roundedFrac.toString().padStart(2, '0')
-                "$wholeStr.$frac2Str"
-            }
-        }
-    }
+    require(decimals >= 0)
+    val value = java.math.BigDecimal(raw, decimals).setScale(
+        if (exact) decimals else 2, java.math.RoundingMode.HALF_UP
+    )
+    return java.text.DecimalFormat(if (exact && decimals == 0) "#,##0" else
+        "#,##0." + "0".repeat(if (exact) decimals else 2),
+        java.text.DecimalFormatSymbols(Locale.US)).format(value)
 }
 
 /**
@@ -233,7 +206,7 @@ fun TxLink(
                 }
                 runCatching { context.startActivity(intent) }
             }
-            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 2.dp)
             .semantics {
                 role = Role.Button
                 contentDescription = "View transaction $hash on block explorer"
@@ -263,16 +236,8 @@ fun SkeletonTile(
     modifier: Modifier = Modifier,
     height: Dp = 100.dp,
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "alpha",
-    )
+    // Static placeholder also respects the system's Remove animations setting.
+    val alpha = 0.6f
 
     BentoTile(
         modifier = modifier.fillMaxWidth().height(height),
