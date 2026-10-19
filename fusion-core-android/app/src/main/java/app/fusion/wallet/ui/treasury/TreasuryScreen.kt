@@ -115,10 +115,6 @@ fun TreasuryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        StatusPill(
-                            label = stringResource(R.string.badge_network),
-                            tone = Tone.Warn,
-                        )
                         if (state.isDisplayStale() && state.blockNumber != null) {
                             StatusPill(
                                 label = stringResource(R.string.chip_stale),
