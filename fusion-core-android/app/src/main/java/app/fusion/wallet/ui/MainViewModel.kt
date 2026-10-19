@@ -33,6 +33,9 @@ class MainViewModel @JvmOverloads constructor(
         }
     }
 
+    suspend fun runAgentTick(dryRun: Boolean): Result<app.fusion.wallet.agent.AgentTickResult> =
+        app.fusion.wallet.agent.AgentRuntime.run(getApplication(), repository, dryRun)
+
     fun refresh() { viewModelScope.launch { repository.refresh() } }
 
     /** Returns only after a successful Base Sepolia receipt and paused-state check. */

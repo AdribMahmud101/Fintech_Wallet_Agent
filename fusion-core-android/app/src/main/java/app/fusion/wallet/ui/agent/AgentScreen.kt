@@ -167,6 +167,8 @@ fun AgentScreen(
             )
         }
 
+        item { app.fusion.wallet.agent.AgentRunCard(vm::runAgentTick) }
+
         // RPC Error Notice
         if (state.status == LoadStatus.ERROR && !userDismissedError) {
             val errorMsg = state.error ?: "Can't reach the network"
