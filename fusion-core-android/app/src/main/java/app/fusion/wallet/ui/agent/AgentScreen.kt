@@ -1,12 +1,13 @@
 package app.fusion.wallet.ui.agent
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,59 +25,70 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
-import app.fusion.wallet.accountant.data.AgentDecisionEntity
-import app.fusion.wallet.accountant.data.AgentStatus
-import app.fusion.wallet.accountant.data.CheckState
-import app.fusion.wallet.accountant.data.DecisionKind
-import app.fusion.wallet.accountant.data.DecisionOrigin
-import app.fusion.wallet.accountant.data.DecisionStatus
-import app.fusion.wallet.accountant.data.MandateEntity
-import app.fusion.wallet.accountant.data.Tier
-import app.fusion.wallet.accountant.domain.Raw
+import app.fusion.wallet.data.ActionKind
+import app.fusion.wallet.data.AgentAction
+import app.fusion.wallet.data.DataSource
+import app.fusion.wallet.data.LoadStatus
+import app.fusion.wallet.data.Money
+import app.fusion.wallet.data.Policy
+import app.fusion.wallet.data.QueueStatus
+import app.fusion.wallet.data.QueuedAction
+import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.ui.Fmt
-import app.fusion.wallet.ui.accountant.AccountantViewModel
+import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.charts.RingGauge
 import app.fusion.wallet.ui.common.BentoGap
 import app.fusion.wallet.ui.common.BentoRow
 import app.fusion.wallet.ui.common.BentoTile
+import app.fusion.wallet.ui.common.CardTitle
 import app.fusion.wallet.ui.common.Expander
+import app.fusion.wallet.ui.common.Muted
+import app.fusion.wallet.ui.common.Notice
+import app.fusion.wallet.ui.common.ScreenHeader
 import app.fusion.wallet.ui.common.StatTile
 import app.fusion.wallet.ui.common.TileLabel
-import app.fusion.wallet.ui.common.Muted
-import app.fusion.wallet.ui.common.ScreenHeader
 import app.fusion.wallet.ui.common.Tone
+import app.fusion.wallet.ui.components.ObsidianCard
 import app.fusion.wallet.ui.components.StatusPill
+import app.fusion.wallet.ui.shorten
 import app.fusion.wallet.ui.theme.Accessible
 import app.fusion.wallet.ui.theme.FusionDims
 import app.fusion.wallet.ui.theme.FusionTheme
@@ -88,229 +100,591 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 
 /**
- * The AI as an accountable participant. Default view answers two questions in seconds: "what is
- * it allowed to do?" and "what did it do?". The how (per-layer checks, rationale, receipt) is one
- * tap away on each card.
+ * Agent Screen: renders purely from real [WalletState].
+ * Features:
+ * - Feed of agent actions as decoded cards (kind, amount, payee label, tier, status, decisionHash short form, BaseScan link)
+ * - Queued actions with live countdown to readyAt
+ * - Big Stop button (guardian pause) with confirmation dialog (shows "not wired" if ViewModel has no callback)
+ * - Loading, empty, and error states
+ * - DEMO badge if data is from DEMO source
  */
 @Composable
-fun AgentScreen(modifier: Modifier = Modifier, vm: AccountantViewModel = viewModel()) {
-    val s by vm.state.collectAsStateWithLifecycle()
-    val now by produceState(System.currentTimeMillis() / 1000) {
+fun AgentScreen(
+    modifier: Modifier = Modifier,
+    vm: MainViewModel = viewModel(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val nowSeconds by produceState(System.currentTimeMillis() / 1000) {
         while (true) {
             delay(1_000)
             value = System.currentTimeMillis() / 1000
         }
     }
-    val dec = s.snapshot?.unit?.decimals ?: 6
-    val unit = s.snapshot?.unit?.symbol ?: "USDC"
+
+    var showStopDialog by rememberSaveable { mutableStateOf(false) }
+    var stopNotWiredNotice by rememberSaveable { mutableStateOf<String?>(null) }
+    var userDismissedError by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(BentoGap),
     ) {
-        item { ScreenHeader(stringResource(R.string.ag_title), stringResource(R.string.ag_subtitle)) }
-        s.mandate?.let { m ->
+        // Header
+        item {
+            ScreenHeader(
+                title = stringResource(R.string.ag_title),
+                subtitle = stringResource(R.string.ag_subtitle),
+                trailing = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        if (state.source == DataSource.DEMO) {
+                            StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
+                        }
+                        IconButton(
+                            onClick = { vm.refresh() },
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            if (state.refreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Refresh,
+                                    contentDescription = stringResource(R.string.refresh_button),
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
+                },
+            )
+        }
+
+        // RPC Error Notice
+        if (state.status == LoadStatus.ERROR && !userDismissedError) {
+            val errorMsg = state.error ?: "Can't reach the network"
             item {
-                BentoRow {
-                    IdentityTile(Modifier.weight(1.3f).fillMaxHeight(), m, dec, unit)
-                    LimitTile(Modifier.weight(1f).fillMaxHeight(), m, dec)
+                Notice(
+                    text = errorMsg,
+                    onDismiss = { userDismissedError = true },
+                )
+            }
+        }
+
+        // Stop Action Notice (when Guardian pause is triggered)
+        stopNotWiredNotice?.let { noticeText ->
+            item {
+                Notice(
+                    text = noticeText,
+                    onDismiss = { stopNotWiredNotice = null },
+                )
+            }
+        }
+
+        // Big Stop Button (Guardian Pause)
+        item {
+            StopButtonCard(
+                isPaused = state.module?.paused == true,
+                onStopClick = { showStopDialog = true },
+            )
+        }
+
+        // Policy & Daily Velocity Summary (if module state available)
+        state.module?.let { mod ->
+            item {
+                PolicySummaryTile(mod.policy, mod.dailyUsed, mod.dailyRemaining, mod.paused)
+            }
+        }
+
+        // Pinned Queue Panel
+        item {
+            QueuePanel(state.queue, nowSeconds, state.payees)
+        }
+
+        // Feed Header
+        item {
+            Text(
+                text = stringResource(R.string.ag_recent_actions_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        // Actions Feed: Decoded Cards
+        if (state.status == LoadStatus.LOADING && state.recentActions.isEmpty() && state.queue.isEmpty()) {
+            item {
+                BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            stringResource(R.string.tr_loading),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Muted,
+                        )
+                    }
                 }
             }
-            item { StatsRow(s.decisions) }
-            item { RulesTile(m, dec, unit, now, s.caps.controlAgent) }
-        }
-        if (s.demoData) item { Text(stringResource(R.string.ag_demo_note), style = MaterialTheme.typography.bodySmall, color = Tone.Earning) }
-
-        item { Text(stringResource(R.string.ag_timeline), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold) }
-        if (s.decisions.isEmpty()) {
-            item { BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) { Text(stringResource(R.string.ag_empty), style = MaterialTheme.typography.bodyLarge, color = Muted) } }
+        } else if (state.recentActions.isEmpty()) {
+            item {
+                BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
+                    Text(
+                        stringResource(R.string.ag_recent_empty),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Muted,
+                    )
+                }
+            }
         } else {
-            items(s.decisions, key = { it.id }) { DecisionCard(it, now, s.caps.controlAgent) }
-        }
-    }
-}
-
-// ---- the agent: identity + the two rules that matter, full rules on request -------------------
-
-private fun statusTone(s: AgentStatus): Color = when (s) {
-    AgentStatus.ARMED -> Tone.Good
-    AgentStatus.PAUSED -> Tone.Warn
-    AgentStatus.HALTED -> Tone.Bad
-}
-
-private fun statusRes(s: AgentStatus) = when (s) {
-    AgentStatus.ARMED -> R.string.ag_status_ARMED
-    AgentStatus.PAUSED -> R.string.ag_status_PAUSED
-    AgentStatus.HALTED -> R.string.ag_status_HALTED
-}
-
-@Composable
-private fun IdentityTile(modifier: Modifier, m: MandateEntity, dec: Int, unit: String) {
-    fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
-    BentoTile(modifier) {
-        Box(Modifier.size(44.dp).clip(CircleShape).background(FusionTheme.surfaces.level3), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.SmartToy, contentDescription = null, tint = Tone.Earning, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(m.agentLabel, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-        Box(Modifier.padding(vertical = 6.dp)) { StatusPill(label = stringResource(statusRes(m.status)), tone = statusTone(m.status)) }
-        Text(stringResource(R.string.ag_summary_rules, whole(m.immediateMaxRaw), whole(m.delayedMaxRaw)), style = MaterialTheme.typography.bodySmall, color = Muted)
-    }
-}
-
-@Composable
-private fun LimitTile(modifier: Modifier, m: MandateEntity, dec: Int) {
-    val spent = Raw.parse(m.spentTodayRaw)
-    val limit = Raw.parse(m.dailyLimitRaw)
-    val frac = if (limit.signum() <= 0) 0f else (spent.multiply(BigInteger.valueOf(1000)).divide(limit).toInt() / 1000f).coerceIn(0f, 1f)
-    BentoTile(modifier) {
-        TileLabel(stringResource(R.string.ag_today))
-        Spacer(Modifier.height(8.dp))
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            RingGauge(
-                progress = frac, color = if (frac > 0.8f) Tone.Warn else Tone.Earning, size = 104.dp, stroke = 14.dp,
-                description = stringResource(R.string.cd_limit, Fmt.whole(spent, dec), Fmt.whole(limit, dec)),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(Fmt.whole(spent, dec), style = MonoStyle.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
-                    Text(stringResource(R.string.ag_ring_of, Fmt.whole(limit, dec)), style = MaterialTheme.typography.labelMedium, color = Muted)
-                }
+            items(state.recentActions, key = { it.id }) { action ->
+                DecodedActionCard(
+                    action = action,
+                    policy = state.module?.policy,
+                    state = state,
+                )
             }
         }
     }
-}
 
-@Composable
-private fun StatsRow(decisions: List<AgentDecisionEntity>) {
-    BentoRow {
-        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_done), decisions.count { it.status == DecisionStatus.EXECUTED }.toString(), Tone.Good)
-        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_waiting), decisions.count { it.status == DecisionStatus.QUEUED }.toString(), Tone.Warn)
-        StatTile(Modifier.weight(1f).fillMaxHeight(), stringResource(R.string.ag_stat_blocked), decisions.count { it.status == DecisionStatus.BLOCKED }.toString(), Tone.Bad)
+    // Stop Confirmation Dialog
+    if (showStopDialog) {
+        val notWiredMessage = stringResource(R.string.ag_stop_not_wired)
+        AlertDialog(
+            onDismissRequest = { showStopDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.ag_stop_confirm_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.ag_stop_confirm_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showStopDialog = false
+                        // Check if ViewModel exposes a pause callback; K4 has not provided one
+                        stopNotWiredNotice = notWiredMessage
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Tone.Bad),
+                ) {
+                    Text(stringResource(R.string.ag_stop_confirm_action), color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopDialog = false }) {
+                    Text(stringResource(R.string.ag_stop_cancel_action))
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
     }
 }
 
+// ---- Big Stop Button --------------------------------------------------------------------------
+
 @Composable
-private fun RulesTile(m: MandateEntity, dec: Int, unit: String, now: Long, canControl: Boolean) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    fun whole(raw: String) = "${Fmt.whole(Raw.parse(raw), dec)} $unit"
-    BentoTile(Modifier.fillMaxWidth(), padding = 14.dp) {
-        Expander(
-            label = stringResource(if (open) R.string.ag_rules_hide else R.string.ag_rules_show),
-            expanded = open, onToggle = { open = !open },
+private fun StopButtonCard(
+    isPaused: Boolean,
+    onStopClick: () -> Unit,
+) {
+    ObsidianCard(
+        modifier = Modifier.fillMaxWidth(),
+        level = 1,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(Modifier.padding(top = 4.dp)) {
-                Rule(Tone.Good, stringResource(R.string.ag_rule_auto, whole(m.immediateMaxRaw)))
-                Rule(Tone.Warn, stringResource(R.string.ag_rule_delay, whole(m.delayedMaxRaw), durationText(m.delaySeconds.toLong())))
-                Rule(Tone.Earning, stringResource(R.string.ag_rule_owner, whole(m.delayedMaxRaw)))
-                Rule(Tone.Bad, stringResource(R.string.ag_rule_hard, whole(m.hardMaxRaw), whole(m.dailyLimitRaw)))
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.ag_session, durationText(m.sessionExpiresAt - now)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(stringResource(R.string.ag_fingerprint), style = MaterialTheme.typography.bodySmall, color = Muted)
-                    Text(Fmt.short(m.policyHash), style = MonoStyle, color = MaterialTheme.colorScheme.onSurface)
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusPill(
+                        label = if (isPaused) stringResource(R.string.ag_status_PAUSED) else stringResource(R.string.ag_status_ARMED),
+                        tone = if (isPaused) Tone.Warn else Tone.Good,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Guardian Pause",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
-                Spacer(Modifier.height(10.dp))
-                if (canControl) {
-                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_pause)) }
-                    Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
-                } else {
-                    Text(stringResource(R.string.ag_view_only), style = MaterialTheme.typography.bodySmall, color = Muted)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Emergency circuit-breaker: stop all agent activity immediately.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+            }
+
+            Button(
+                onClick = onStopClick,
+                colors = ButtonDefaults.buttonColors(containerColor = Tone.Bad),
+                shape = RoundedCornerShape(FusionDims.radiusSmall),
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Block,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.ag_stop_button),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                )
+            }
+        }
+    }
+}
+
+// ---- Policy Summary Tile ----------------------------------------------------------------------
+
+@Composable
+private fun PolicySummaryTile(
+    policy: Policy,
+    dailyUsed: Money,
+    dailyRemaining: Money,
+    isPaused: Boolean,
+) {
+    var rulesOpen by rememberSaveable { mutableStateOf(false) }
+
+    BentoTile(Modifier.fillMaxWidth(), padding = 14.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                TileLabel("POLICY & LIMITS")
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "${dailyUsed.display} / ${policy.dailyLimit.display} USDC",
+                    style = MonoStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    "Remaining: ${dailyRemaining.display} USDC",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+            }
+            StatusPill(
+                label = policy.permissionTier.name,
+                tone = Tone.Earning,
+            )
+        }
+
+        Expander(
+            label = stringResource(if (rulesOpen) R.string.ag_rules_hide else R.string.ag_rules_show),
+            expanded = rulesOpen,
+            onToggle = { rulesOpen = !rulesOpen },
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    "• Micro / Autonomous limit: ${policy.microMax.display} USDC",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                Text(
+                    "• Delayed queue limit: ${policy.delayedMax.display} USDC (delay: ${policy.delaySeconds}s)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                Text(
+                    "• Hard maximum: ${policy.hardMax.display} USDC",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                Text(
+                    "• Operating buffer target: ${policy.operatingBuffer.display} USDC",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                Text(
+                    "• Guardian address: ${shorten(policy.guardian)}",
+                    style = MonoStyle.copy(fontSize = 11.sp),
+                    color = Muted,
+                )
+            }
+        }
+    }
+}
+
+// ---- Queue Panel ------------------------------------------------------------------------------
+
+@Composable
+private fun QueuePanel(
+    queue: List<QueuedAction>,
+    nowSeconds: Long,
+    payees: List<app.fusion.wallet.data.Payee>,
+) {
+    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
+        CardTitle(
+            stringResource(R.string.ag_queue_title),
+            trailing = if (queue.isNotEmpty()) "${queue.size} waiting" else null,
+        )
+
+        if (queue.isEmpty()) {
+            Text(
+                stringResource(R.string.ag_queue_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Muted,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                queue.forEach { queued ->
+                    QueuedActionItem(queued, nowSeconds, payees)
                 }
             }
         }
     }
 }
 
-/** "3 min", "22h 12m" in the current language (Fmt.duration's m:ss is only for live countdowns). */
 @Composable
-private fun durationText(seconds: Long): String {
-    val s = seconds.coerceAtLeast(0)
-    return when {
-        s >= 3600 -> stringResource(R.string.dur_hours_minutes, (s / 3600).toString(), ((s % 3600) / 60).toString())
-        s >= 60 -> stringResource(R.string.dur_minutes, (s / 60).toString())
-        else -> stringResource(R.string.dur_seconds, s.toString())
-    }
-}
+private fun QueuedActionItem(
+    action: QueuedAction,
+    nowSeconds: Long,
+    payees: List<app.fusion.wallet.data.Payee>,
+) {
+    val remainingSeconds = action.readyAt - nowSeconds
+    val isReady = remainingSeconds <= 0
+    val isExpired = action.status == QueueStatus.EXPIRED || (action.expiresAt in 1..nowSeconds)
 
-@Composable
-private fun Rule(color: Color, text: String) {
-    Row(Modifier.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(4.dp).height(18.dp).clip(RoundedCornerShape(2.dp)).background(color))
-        Text(text, Modifier.padding(start = 12.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-    }
-}
+    val payeeObj = payees.find { it.address.equals(action.payee, ignoreCase = true) || it.id == action.payee }
+    val payeeLabel = payeeObj?.label ?: shorten(action.payee)
 
-// ---- decisions: a plain sentence and an outcome; details on tap -------------------------------
-
-private fun outcomeTone(d: AgentDecisionEntity): Color = when (d.status) {
-    DecisionStatus.BLOCKED -> Tone.Bad
-    DecisionStatus.QUEUED -> Tone.Warn
-    DecisionStatus.EXECUTED -> Tone.Good
-    else -> Muted
-}
-
-private fun outcomeIcon(d: AgentDecisionEntity): ImageVector = when (d.status) {
-    DecisionStatus.BLOCKED -> Icons.Filled.Block
-    DecisionStatus.QUEUED -> Icons.Filled.HourglassTop
-    DecisionStatus.EXECUTED -> Icons.Filled.CheckCircle
-    else -> Icons.Filled.Remove
-}
-
-@Composable
-private fun DecisionCard(d: AgentDecisionEntity, now: Long, canControl: Boolean) {
-    var open by rememberSaveable(d.id) { mutableStateOf(false) }
-    val attack = d.origin == DecisionOrigin.ARENA_ATTACK
-    val tone = outcomeTone(d)
-    val time = SimpleDateFormat("HH:mm", Locale.US).format(Date(d.createdAt * 1000))
-
-    BentoTile(Modifier.fillMaxWidth(), padding = 0.dp) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(5.dp).fillMaxHeight().background(tone))
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { open = !open }
-                    .semantics { role = Role.Button }
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+    ObsidianCard(
+        modifier = Modifier.fillMaxWidth(),
+        level = 2,
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (attack) stringResource(R.string.ag_attack_title) else time,
-                        style = MaterialTheme.typography.bodySmall, color = if (attack) Tone.Bad else Muted,
-                        fontWeight = if (attack) FontWeight.SemiBold else FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
+                    Icon(
+                        Icons.Filled.HourglassTop,
+                        contentDescription = null,
+                        tint = if (isReady) Tone.Good else Tone.Warn,
+                        modifier = Modifier.size(16.dp),
                     )
-                    Icon(if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = Muted)
-                }
-                Text(decisionSentence(d), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 2.dp))
-                Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(outcomeIcon(d), contentDescription = null, tint = tone, modifier = Modifier.size(18.dp))
-                    Text(outcomeText(d, time, now), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium, color = tone, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "${action.kind.name} · ${action.amount.display} USDC",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
 
-                if (open) {
-                    Spacer(Modifier.height(12.dp))
-                    if (d.rationale.isNotBlank()) {
-                        Text(d.rationale, style = MaterialTheme.typography.bodyMedium, color = Muted, fontStyle = FontStyle.Italic)
-                        Spacer(Modifier.height(10.dp))
+                StatusPill(
+                    label = when {
+                        isExpired -> stringResource(R.string.ag_expired)
+                        isReady -> stringResource(R.string.ag_ready_now)
+                        else -> stringResource(R.string.ag_ready_in, Fmt.duration(remainingSeconds))
+                    },
+                    tone = when {
+                        isExpired -> Tone.Bad
+                        isReady -> Tone.Good
+                        else -> Tone.Warn
+                    },
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "To: $payeeLabel",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                Text(
+                    text = "Nonce: ${action.expectedNonce}",
+                    style = MonoStyle.copy(fontSize = 11.sp),
+                    color = Muted,
+                )
+            }
+
+            Spacer(Modifier.height(2.dp))
+
+            Text(
+                text = stringResource(R.string.ag_decision_hash, shorten(action.decisionHash)),
+                style = MonoStyle.copy(fontSize = 11.sp),
+                color = Muted,
+            )
+        }
+    }
+}
+
+// ---- Decoded Action Card ----------------------------------------------------------------------
+
+@Composable
+private fun DecodedActionCard(
+    action: AgentAction,
+    policy: Policy?,
+    state: WalletState,
+) {
+    val context = LocalContext.current
+    val payeeObj = state.payees.find { it.address.equals(action.payee, ignoreCase = true) || it.id == action.payee }
+    val payeeLabel = payeeObj?.label ?: action.payee?.let { shorten(it) } ?: "Contract"
+
+    val tierLabel = resolveTierLabel(action.amount, policy)
+    val timeStr = remember(action.blockTime) {
+        if (action.blockTime > 0) {
+            SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(action.blockTime * 1000))
+        } else ""
+    }
+
+    ObsidianCard(
+        modifier = Modifier.fillMaxWidth(),
+        level = 1,
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            // Top Row: Kind + Amount + Tier Pill
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(32.dp).clip(CircleShape).background(FusionTheme.surfaces.level2),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.SmartToy,
+                            contentDescription = null,
+                            tint = Tone.Earning,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
-                    Text(stringResource(tierRes(d.tier)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                    Text(stringResource(R.string.ag_by, d.chosenBy), style = MaterialTheme.typography.bodySmall, color = Muted)
-                    Spacer(Modifier.height(10.dp))
-                    Text(stringResource(R.string.ag_checks_label), style = MaterialTheme.typography.bodySmall, color = Muted)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Check(R.string.ag_chk_model, d.modelCheck)
-                        Check(R.string.ag_chk_rules, d.rustCheck)
-                        Check(R.string.ag_chk_signer, d.signerCheck)
-                        Check(R.string.ag_chk_contract, d.contractCheck)
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "${action.kind.name} ${action.amount.display} USDC",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "To: $payeeLabel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Muted,
+                        )
                     }
-                    if (d.status == DecisionStatus.QUEUED && canControl) {
-                        OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.padding(top = 10.dp).heightIn(min = 48.dp)) { Text(stringResource(R.string.ag_cancel)) }
-                        Text(stringResource(R.string.ag_controls_note), style = MaterialTheme.typography.bodySmall, color = Muted, modifier = Modifier.padding(top = 4.dp))
-                    }
-                    d.txHash?.let { Text(stringResource(R.string.ag_receipt, Fmt.short(it)), style = MonoStyle, color = Muted, modifier = Modifier.padding(top = 10.dp)) }
+                }
+
+                StatusPill(
+                    label = tierLabel,
+                    tone = Tone.Earning,
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Middle Row: Status + Block + Time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Tone.Good,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Confirmed · Block #${action.blockNumber}",
+                        style = MonoStyle.copy(fontSize = 12.sp),
+                        color = Tone.Good,
+                    )
+                }
+
+                if (timeStr.isNotEmpty()) {
+                    Text(
+                        text = timeStr,
+                        style = MonoStyle.copy(fontSize = 12.sp),
+                        color = Muted,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Bottom Row: decisionHash + BaseScan Link
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.ag_decision_hash, shorten(action.decisionHash)),
+                    style = MonoStyle.copy(fontSize = 11.sp),
+                    color = Muted,
+                )
+
+                // View on BaseScan clickable link
+                Row(
+                    modifier = Modifier
+                        .clickable(role = Role.Button) {
+                            val url = "https://sepolia.basescan.org/tx/${action.txHash}"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.view_on_basescan),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                        color = Accessible.AccentText,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Icon(
+                        Icons.Filled.OpenInNew,
+                        contentDescription = stringResource(R.string.view_on_basescan),
+                        tint = Accessible.AccentText,
+                        modifier = Modifier.size(12.dp),
+                    )
                 }
             }
         }
@@ -318,81 +692,11 @@ private fun DecisionCard(d: AgentDecisionEntity, now: Long, canControl: Boolean)
 }
 
 @Composable
-private fun outcomeText(d: AgentDecisionEntity, time: String, now: Long): String = when (d.status) {
-    DecisionStatus.EXECUTED -> stringResource(R.string.ag_out_EXECUTED, time)
-    DecisionStatus.QUEUED -> {
-        val left = (d.readyAt ?: now) - now
-        if (left <= 0) stringResource(R.string.ag_out_READY) else stringResource(R.string.ag_out_QUEUED, Fmt.duration(left))
-    }
-    DecisionStatus.BLOCKED -> stringResource(R.string.ag_out_BLOCKED, layerName(d.blockedBy ?: "CONTRACT"))
-    DecisionStatus.CANCELLED -> stringResource(R.string.ag_out_CANCELLED)
-    DecisionStatus.EXPIRED -> stringResource(R.string.ag_out_EXPIRED)
-    DecisionStatus.HELD -> stringResource(R.string.ag_out_HELD)
-    DecisionStatus.PROPOSED -> stringResource(R.string.ag_out_PROPOSED)
-}
-
-@Composable
-private fun decisionSentence(d: AgentDecisionEntity): String {
-    val amount = Fmt.money(Raw.parse(d.assetsRaw), d.decimals)
-    return when (d.kind) {
-        DecisionKind.HOLD -> stringResource(R.string.ag_kind_HOLD)
-        DecisionKind.SWEEP_TO_VAULT -> stringResource(R.string.ag_kind_SWEEP_TO_VAULT, amount, d.symbol, labelText(d.fromLabel), labelText(d.toLabel))
-        DecisionKind.WITHDRAW_TO_CASH -> stringResource(R.string.ag_kind_WITHDRAW_TO_CASH, amount, d.symbol, labelText(d.fromLabel), labelText(d.toLabel))
-        DecisionKind.REBALANCE -> stringResource(R.string.ag_kind_REBALANCE, amount, d.symbol, labelText(d.fromLabel), labelText(d.toLabel))
-    }
-}
-
-@Composable
-private fun labelText(key: String): String = when (key) {
-    "CASH" -> stringResource(R.string.lab_CASH)
-    "AAVE" -> stringResource(R.string.lab_AAVE)
-    "VAULT" -> stringResource(R.string.lab_VAULT)
-    "UNKNOWN" -> stringResource(R.string.lab_UNKNOWN)
-    else -> key
-}
-
-@Composable
-private fun layerName(blockedBy: String): String {
-    val base = blockedBy.substringBefore(':')
-    val reason = blockedBy.substringAfter(':', "")
-    val name = stringResource(
-        when (base) {
-            "MODEL" -> R.string.layer_MODEL
-            "RUST" -> R.string.layer_RUST
-            "SIGNER" -> R.string.layer_SIGNER
-            else -> R.string.layer_CONTRACT
-        },
-    )
-    return if (reason.isEmpty()) name else "$name ($reason)"
-}
-
-private fun tierRes(t: Tier) = when (t) {
-    Tier.IMMEDIATE -> R.string.ag_tier_IMMEDIATE
-    Tier.DELAYED -> R.string.ag_tier_DELAYED
-    Tier.OWNER_REQUIRED -> R.string.ag_tier_OWNER_REQUIRED
-}
-
-/** One safety layer's verdict. State is never colour-only: a symbol and a spoken description too. */
-@Composable
-private fun Check(labelRes: Int, state: CheckState) {
-    val (symbol, tone, descRes) = when (state) {
-        CheckState.PASS -> Triple("✓", Tone.Good, R.string.ag_chk_pass)
-        CheckState.FAIL -> Triple("✗", Tone.Bad, R.string.ag_chk_fail)
-        CheckState.SKIPPED -> Triple("–", Muted, R.string.ag_chk_skipped)
-    }
-    val label = stringResource(labelRes)
-    val desc = "$label: ${stringResource(descRes)}"
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(FusionDims.radiusSmall))
-            .background(FusionTheme.surfaces.level2)
-            .border(FusionDims.hairline, FusionTheme.surfaces.border, RoundedCornerShape(FusionDims.radiusSmall))
-            .padding(horizontal = 6.dp, vertical = 6.dp)
-            .semantics { contentDescription = desc },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(symbol, color = tone, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        Text(label, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+private fun resolveTierLabel(amount: Money, policy: Policy?): String {
+    if (policy == null) return stringResource(R.string.ag_tier_autonomous)
+    return when {
+        amount.raw <= policy.microMax.raw -> stringResource(R.string.ag_tier_autonomous)
+        amount.raw <= policy.delayedMax.raw -> stringResource(R.string.ag_tier_delayed)
+        else -> stringResource(R.string.ag_tier_owner)
     }
 }

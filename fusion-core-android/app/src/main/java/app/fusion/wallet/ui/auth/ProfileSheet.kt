@@ -67,6 +67,7 @@ import app.fusion.wallet.ui.theme.FusionTheme
 fun ProfileSheet(
     user: UserEntity, lang: String, onLang: (String) -> Unit,
     onName: (String) -> Unit, onAvatar: (Int, AvatarIcon) -> Unit, onSignOut: () -> Unit, onDismiss: () -> Unit,
+    onOpenJudge: (() -> Unit)? = null,
 ) {
     var name by remember(user.id) { mutableStateOf(user.displayName) }
     val caps = user.role.caps()
@@ -150,6 +151,15 @@ fun ProfileSheet(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(stringResource(R.string.profile_language), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 LangToggle(lang, onLang)
+            }
+
+            if (onOpenJudge != null) {
+                OutlinedButton(
+                    onClick = { onDismiss(); onOpenJudge() },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
+                    Text(stringResource(R.string.nav_judge), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
             }
 
             Spacer(Modifier.height(4.dp))

@@ -273,4 +273,100 @@
     <string name="ag_stat_blocked">Blocked</string>
     <string name="pf_stat_none">—</string>
     <string name="ag_today">Today</string>
+
+    <!-- K5 Real-State UI Strings -->
+    <string name="nav_bills">Bills &amp; Vendors</string>
+    <string name="nav_judge">Judge Mode</string>
+    <string name="badge_network">Base Sepolia · TEST</string>
+    <string name="stale_data_warning">Stale data: showing block #%1$s (%2$s ago)</string>
+    <string name="refresh_button">Refresh</string>
+    <string name="view_on_basescan">View on BaseScan</string>
+    <string name="explorer_link">BaseScan</string>
+    <string name="accounting_mismatch_warning">Accounting mismatch: %1$s</string>
+
+    <!-- Treasury -->
+    <string name="tr_hero_total">Total balance</string>
+    <string name="tr_last_refresh_block">Block #%1$s</string>
+    <string name="tr_block_unconfirmed">Block —</string>
+    <string name="tr_four_buckets_title">The Four Buckets</string>
+    <string name="tr_bucket_reserve">Set aside for bills (Reserve)</string>
+    <string name="tr_bucket_owed">Total bills owed</string>
+    <string name="tr_bucket_buffer">Safety cushion (Buffer)</string>
+    <string name="tr_bucket_surplus">Spare cash (Surplus)</string>
+    <string name="tr_bucket_shortfall">Shortfall</string>
+    <string name="tr_vaults_title">Vault Positions</string>
+    <string name="tr_vaults_empty">No vault positions deployed.</string>
+    <string name="tr_vault_shares">Shares: %1$s</string>
+    <string name="tr_vault_assets">Assets: %1$s %2$s</string>
+    <string name="tr_vault_max_withdraw">Max withdraw: %1$s %2$s</string>
+    <string name="tr_vault_exposure_cap">Cap: %1$s %2$s</string>
+    <string name="tr_vault_simulated">SIMULATED</string>
+    <string name="tr_vault_real">Real</string>
+
+    <!-- Agent -->
+    <string name="ag_stop_button">Stop</string>
+    <string name="ag_stop_confirm_title">Stop the agent?</string>
+    <string name="ag_stop_confirm_body">Stop the agent? Anything already sent may still complete. Restarting needs both of you.</string>
+    <string name="ag_stop_confirm_action">Stop Agent</string>
+    <string name="ag_stop_cancel_action">Dismiss</string>
+    <string name="ag_stop_not_wired">Guardian pause: not wired in monitor build</string>
+    <string name="ag_queue_title">Queued Actions</string>
+    <string name="ag_queue_empty">Queue empty · No actions waiting</string>
+    <string name="ag_ready_in">Ready in %1$s</string>
+    <string name="ag_ready_now">Ready to execute</string>
+    <string name="ag_expired">Expired</string>
+    <string name="ag_recent_actions_title">Agent Actions Feed</string>
+    <string name="ag_recent_empty">No actions executed yet.</string>
+    <string name="ag_decision_hash">Decision %1$s</string>
+    <string name="ag_tier_autonomous">Autonomous (Tier 1)</string>
+    <string name="ag_tier_delayed">Waits in queue (Tier 2)</string>
+    <string name="ag_tier_owner">Owner approval (Tier 3)</string>
+
+    <!-- Bills & Vendors -->
+    <string name="bv_title">Bills &amp; Vendors</string>
+    <string name="bv_subtitle">Verified vendors and obligations protected on-chain</string>
+    <string name="bv_tab_payees">Vendors</string>
+    <string name="bv_tab_bills">Bills</string>
+    <string name="bv_payee_active">ACTIVE</string>
+    <string name="bv_payee_cooling">COOLING</string>
+    <string name="bv_payee_cooling_countdown">Usable in %1$s</string>
+    <string name="bv_payee_cancelled">CANCELLED</string>
+    <string name="bv_payee_sanctioned">SANCTIONED (TEST LIST)</string>
+    <string name="bv_bec_warning">Warning: New bank details. Cooling period active until %1$s to prevent Business Email Compromise (BEC) and unauthorized payee substitution. The agent cannot pay this vendor until cooling completes.</string>
+    <string name="bv_empty_payees">No registered vendors.</string>
+    <string name="bv_empty_bills">No bills recorded.</string>
+    <string name="bv_bill_paid">Paid</string>
+    <string name="bv_bill_due">Due %1$s</string>
+    <string name="bv_bill_scheduled">Protected</string>
+
+    <!-- Safety -->
+    <string name="safe_title">Safety</string>
+    <string name="safe_subtitle">Attacks blocked by contract and policy guards</string>
+    <string name="safe_blocked_count">%1$s attacks blocked</string>
+    <string name="safe_revert_evidence_title">Blocked Attack Attempts</string>
+    <string name="safe_no_reverts">No revert events observed on this deployment.</string>
+    <string name="safe_emergency_unwind_title">Emergency Unwind</string>
+    <string name="safe_emergency_unwind_desc">Pull everything back into the Safe and stop the agent.</string>
+    <string name="safe_emergency_unwind_btn">Emergency Unwind</string>
+    <string name="safe_emergency_unwind_dialog_title">Trigger Emergency Unwind?</string>
+    <string name="safe_emergency_unwind_dialog_body">This will withdraw all vault positions back to Safe cash and halt the agent. Any one owner can execute this.</string>
+    <string name="safe_emergency_unwind_not_wired">Emergency unwind: not wired in monitor build</string>
+
+    <!-- Judge Mode -->
+    <string name="judge_title">Judge Mode</string>
+    <string name="judge_subtitle">Complete on-chain evidence ledger and contract verification</string>
+    <string name="judge_verify_title">Contract Verification Panel</string>
+    <string name="judge_safe_label">Safe Multi-Sig</string>
+    <string name="judge_module_label">Kavachi Module</string>
+    <string name="judge_vault_a_label">Vault A (Aave waUSDC)</string>
+    <string name="judge_vault_b_label">Vault B (Demo Vault)</string>
+    <string name="judge_asset_label">Asset (USDC)</string>
+    <string name="judge_sanctions_label">Sanctions List (TEST)</string>
+    <string name="judge_evidence_title">On-Chain Evidence Ledger (%1$s)</string>
+    <string name="judge_evidence_empty">No evidence logs found on chain.</string>
+    <string name="judge_evidence_id">Evidence #%1$s</string>
+    <string name="judge_proves">Proves: %1$s</string>
+    <string name="judge_block_info">Block #%1$s · Time %2$s</string>
+    <string name="judge_disclaimers_title">Honest Disclosures (§21.2 What We Don\'t Claim)</string>
+    <string name="judge_disclaimer_content">• Audited contracts: contracts are competition prototypes, not formally audited.\n• Real yield: Aave test waUSDC yield is testnet liquidity; demo vault yield is explicitly simulated.\n• Real sanctions screening: uses a mock test list, not real OFAC feeds.\n• Hardware-backed Ethereum keys: keys stored in software in this prototype.\n• OS-level app separation: single-process prototype at stage S.\n• Model choices: policy guarantees safety; optimality is not guaranteed.\n• Unattended 24/7 operation: human supervisor required.</string>
 </resources>
