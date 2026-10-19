@@ -33,6 +33,9 @@ import app.fusion.wallet.ui.i18n.AppLocale
 import app.fusion.wallet.ui.bills.BillsScreen
 import app.fusion.wallet.ui.judge.JudgeScreen
 import app.fusion.wallet.ui.safety.SafetyScreen
+import app.fusion.wallet.ui.onboarding.OnboardingFlow
+import app.fusion.wallet.onboarding.OnboardingPrefs
+import app.fusion.wallet.ui.settings.SettingsScreen
 import app.fusion.wallet.ui.shell.FusionTopBar
 import app.fusion.wallet.ui.splash.FusionSplashScreen
 import app.fusion.wallet.ui.theme.FusionWalletTheme
@@ -68,7 +71,10 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             val shell: ShellViewModel = viewModel()
             val routeName by shell.destination.collectAsStateWithLifecycle()
             val route = NavRoute.valueOf(routeName)
-
+            var profileOpen by rememberSaveable { mutableStateOf(false) }
+            var settingsOpen by rememberSaveable { mutableStateOf(false) }
+            // First run → onboarding; the persisted flag survives relaunch (OnboardingPrefs).
+            var onboardingDone by rememberSaveable { mutableStateOf(OnboardingPrefs.isCompleted(base)) }
 
             // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
             LaunchedEffect(user?.role) {
@@ -89,11 +95,22 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
 
             if (!authState.checking && user == null) {
                 LoginScreen(authState, lang, setLang, onSignIn = auth::signIn, onEdit = auth::clearError)
+            } else if (user != null && !onboardingDone) {
+                // The first-run stepper (UX plan §3). Finishing persists the flag and drops to Home.
+                OnboardingFlow(
+                    lang = lang,
+                    onLang = setLang,
+                    onFinish = { OnboardingPrefs.setCompleted(base); onboardingDone = true },
+                )
             } else if (user != null) {
-                BackHandler(enabled = route != NavRoute.Treasury) { shell.navigate(NavRoute.Treasury) }
+                BackHandler(enabled = settingsOpen || profileOpen || route != NavRoute.Treasury) {
+                    if (settingsOpen) settingsOpen = false
+                    else if (profileOpen) profileOpen = false
+                    else shell.navigate(NavRoute.Treasury)
+                }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { shell.navigate(NavRoute.Settings) }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
+                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
                     bottomBar = { FusionBottomBar(selected = route, onSelect = shell::navigate) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
@@ -101,7 +118,11 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                             when (target) {
                                 NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
                                 NavRoute.Activity -> ActivityScreen(vm = mainVm)
-                                NavRoute.Settings -> TreasuryScreen(vm = mainVm)
+                                NavRoute.Settings -> {
+                                    // Settings is an overlay, not a tab: a Settings route opens it over Home.
+                                    LaunchedEffect(Unit) { settingsOpen = true; shell.navigate(NavRoute.Treasury) }
+                                    TreasuryScreen(vm = mainVm)
+                                }
                                 NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
                                 NavRoute.Safety, NavRoute.Proof -> SafetyScreen(vm = mainVm)
@@ -110,13 +131,22 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                         }
                     }
                 }
-                if (route == NavRoute.Settings) {
+                if (profileOpen) {
                     ProfileSheet(
                         user = user, lang = lang, onLang = setLang,
                         onName = auth::setName, onAvatar = auth::setAvatar,
-                        onSignOut = { shell.navigate(NavRoute.Treasury); auth.signOut() },
-                        onDismiss = { shell.navigate(NavRoute.Treasury) },
-                        onOpenJudge = { shell.navigate(NavRoute.Judge) },
+                        onSignOut = { profileOpen = false; shell.navigate(NavRoute.Treasury); auth.signOut() },
+                        onDismiss = { profileOpen = false },
+                        onOpenJudge = { profileOpen = false; shell.navigate(NavRoute.Judge) },
+                    )
+                }
+                if (settingsOpen) {
+                    SettingsScreen(
+                        lang = lang,
+                        onLang = setLang,
+                        onClose = { settingsOpen = false },
+                        onOpenJudge = { settingsOpen = false; shell.navigate(NavRoute.Judge) },
+                        onRedoOnboarding = { OnboardingPrefs.reset(base); settingsOpen = false; onboardingDone = false },
                     )
                 }
             }

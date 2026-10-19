@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 步骤导航 -->
+    <string name="ob_step_n_of">第 %1$d 步 / 共 %2$d 步</string>
+    <string name="ob_back">返回</string>
+    <string name="ob_skip">跳过</string>
+    <string name="ob_next">下一步</string>
+    <string name="ob_finish">完成</string>
+
+    <!-- 第 1 步：欢迎与角色 -->
+    <string name="ob_welcome_title">欢迎使用 Fusion</string>
+    <string name="ob_welcome_subtitle">把金库交给智能体，同时把刹车接好。配置过程运行在真实的 Base Sepolia 测试环境，不涉及任何真实资金。</string>
+    <string name="ob_role_title">你的角色是？</string>
+    <string name="ob_role_owner">所有者</string>
+    <string name="ob_role_owner_desc">与另一位所有者共同批准资金操作（Safe 2/2 多签）。</string>
+    <string name="ob_role_approver">财务审批人</string>
+    <string name="ob_role_approver_desc">联署所有者操作，不能单独执行。</string>
+    <string name="ob_role_auditor">审计（仅查看）</string>
+    <string name="ob_role_auditor_desc">查看每一个决策与证据，不签署任何内容。为评委而设。</string>
+
+    <!-- 第 2 步：网络与币种 -->
+    <string name="ob_network_title">网络与币种</string>
+    <string name="ob_network_name">Base Sepolia</string>
+    <string name="ob_network_badge">测试网</string>
+    <string name="ob_network_desc">链 ID 84532，仅测试资金。</string>
+    <string name="ob_currency_label">金库币种</string>
+    <string name="ob_currency_locked">由部署设定</string>
+    <string name="ob_language_label">语言</string>
+
+    <!-- 第 3 步：连接金库 -->
+    <string name="ob_treasury_title">连接金库</string>
+    <string name="ob_treasury_desc">在同一区块上直接从链上读取部署并实时校验。</string>
+    <string name="ob_treasury_run">运行实时校验</string>
+    <string name="ob_treasury_rechecking">校验中…</string>
+    <string name="ob_treasury_recheck">重新校验</string>
+    <string name="ob_treasury_block">区块 #%1$s</string>
+    <string name="ob_treasury_allpass">全部校验通过</string>
+    <string name="ob_treasury_somefail">部分校验未通过</string>
+
+    <!-- 第 4 步：设备端 AI 模型 -->
+    <string name="ob_model_title">设备端 AI 模型</string>
+    <string name="ob_model_desc">LFM2.5-230M（MNN 4-bit，约 128 MB）。规划器完全在本机运行。</string>
+    <string name="ob_model_wifi">仅在 Wi-Fi 下下载</string>
+    <string name="ob_model_download">下载并校验</string>
+    <string name="ob_model_resume">继续下载</string>
+    <string name="ob_model_cancel">取消</string>
+    <string name="ob_model_verify">校验文件</string>
+    <string name="ob_model_ready">模型就绪 · 已校验 %1$d / %2$d 个文件</string>
+    <string name="ob_model_partial">已校验 %1$d / %2$d 个文件</string>
+    <string name="ob_model_none">尚未下载</string>
+    <string name="ob_model_downloading">%1$s · %2$d%%</string>
+    <string name="ob_model_resuming">继续 %1$s · %2$d%%</string>
+    <string name="ob_model_verifying">正在校验 %1$s…</string>
+    <string name="ob_model_selftest">运行预热自检</string>
+    <string name="ob_model_selftesting">加载权重并决策中…</string>
+    <string name="ob_model_selftest_ok">选择了 %1$s · %2$s</string>
+    <string name="ob_model_selftest_fail">自检失败：%1$s</string>
+    <string name="ob_model_skip">跳过 — 仅监控</string>
+
+    <!-- 第 5 步：密钥 -->
+    <string name="ob_keys_title">密钥</string>
+    <string name="ob_keys_desc">密钥存放在 Android Keystore 中，应用永远无法以明文看到它们。</string>
+    <string name="ob_keys_can_do">权限范围</string>
+    <string name="ob_keys_owner">所有者 / 审批人</string>
+    <string name="ob_keys_owner_cap">Safe 2/2 多签</string>
+    <string name="ob_keys_session">智能体会话密钥</string>
+    <string name="ob_keys_session_cap">仅限额度内的模块操作</string>
+    <string name="ob_keys_guardian">守护者</string>
+    <string name="ob_keys_guardian_cap">仅可停止</string>
+    <string name="ob_keys_import_guardian">导入守护者密钥</string>
+    <string name="ob_keys_import_session">导入会话密钥</string>
+    <string name="ob_keys_imported">已导入</string>
+    <string name="ob_keys_not_imported">未导入</string>
+    <string name="ob_keys_remove">移除</string>
+    <string name="ob_keys_view_only">以仅查看方式继续</string>
+    <string name="ob_keys_import_unavailable">导入界面仅在调试版本中可用。</string>
+
+    <!-- 第 6 步：策略回顾 -->
+    <string name="ob_policy_title">策略回顾</string>
+    <string name="ob_policy_desc">链上只读。任何修改都需要两位所有者（Safe 2/2）。</string>
+    <string name="ob_policy_tier">权限等级</string>
+    <string name="ob_policy_daily">每日额度</string>
+    <string name="ob_policy_daily_remaining">剩余</string>
+    <string name="ob_policy_session">会话额度</string>
+    <string name="ob_policy_reserve">储备缓冲</string>
+    <string name="ob_policy_vendors">已核验的收款方</string>
+    <string name="ob_policy_vendors_count">%1$d 个已核验</string>
+    <string name="ob_policy_loading">正在从链上读取策略…</string>
+    <string name="ob_policy_retry">重试</string>
+
+    <!-- 完成 -->
+    <string name="ob_finish_title">全部就绪</string>
+    <string name="ob_finish_desc">你的金库、模型与密钥已配置完成。之后可在“设置”中重做任意一步。</string>
+    <string name="ob_finish_cta">进入首页</string>
+
+    <!-- 设置（UX 方案 §4） -->
+    <string name="set_title">设置</string>
+    <string name="set_close">关闭</string>
+    <string name="set_network">网络与部署</string>
+    <string name="set_model">设备端模型</string>
+    <string name="set_keys">密钥</string>
+    <string name="set_language">语言</string>
+    <string name="set_judge">评委模式</string>
+    <string name="set_about">关于</string>
+    <string name="set_contract_safe">Safe</string>
+    <string name="set_contract_module">KavachiModule</string>
+    <string name="set_contract_asset">金库资产（USDC）</string>
+    <string name="set_contract_vaulta">Aave 金库（waUSDC）</string>
+    <string name="set_contract_vaultb">演示金库</string>
+    <string name="set_contract_sanctions">制裁名单</string>
+    <string name="set_basescan">BaseScan</string>
+    <string name="set_sourcify">源码</string>
+    <string name="set_copy">复制</string>
+    <string name="set_copied">已复制</string>
+    <string name="set_model_hash">llm.mnn SHA-256</string>
+    <string name="set_model_size">设备上大小</string>
+    <string name="set_model_latency">上次解码延迟</string>
+    <string name="set_model_latency_none">尚未测量</string>
+    <string name="set_redownload">重新下载</string>
+    <string name="set_verify">校验</string>
+    <string name="set_judge_desc">两条命令即可在无需任何密钥的情况下验证全部声明。请在仓库根目录运行。</string>
+    <string name="set_judge_verify_all">验证全部链上证据</string>
+    <string name="set_judge_live_demo">运行端到端实时演示</string>
+    <string name="set_judge_open">打开证据台账</string>
+    <string name="set_about_version">应用版本</string>
+    <string name="set_about_build">构建</string>
+    <string name="set_about_model_id">模型</string>
+    <string name="set_about_network">网络</string>
+    <string name="set_redo_onboarding">重新运行首次设置</string>
+</resources>

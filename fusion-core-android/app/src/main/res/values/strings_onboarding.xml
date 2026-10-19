@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stepper chrome -->
+    <string name="ob_step_n_of">Step %1$d of %2$d</string>
+    <string name="ob_back">Back</string>
+    <string name="ob_skip">Skip</string>
+    <string name="ob_next">Next</string>
+    <string name="ob_finish">Finish</string>
+
+    <!-- Step 1: Welcome &amp; role -->
+    <string name="ob_welcome_title">Welcome to Fusion</string>
+    <string name="ob_welcome_subtitle">A treasury you can hand to an agent — with the brakes wired in. Set up runs on real Base Sepolia test infrastructure; nothing moves real money.</string>
+    <string name="ob_role_title">Who are you here?</string>
+    <string name="ob_role_owner">Owner</string>
+    <string name="ob_role_owner_desc">Approve money moves with a second owner (Safe 2-of-2).</string>
+    <string name="ob_role_approver">Finance approver</string>
+    <string name="ob_role_approver_desc">Co-sign owner actions. Cannot act alone.</string>
+    <string name="ob_role_auditor">Auditor (view-only)</string>
+    <string name="ob_role_auditor_desc">See every decision and proof. Signs nothing. Built for judges.</string>
+
+    <!-- Step 2: Network &amp; currency -->
+    <string name="ob_network_title">Network &amp; currency</string>
+    <string name="ob_network_name">Base Sepolia</string>
+    <string name="ob_network_badge">TESTNET</string>
+    <string name="ob_network_desc">Chain 84532. Test money only.</string>
+    <string name="ob_currency_label">Treasury currency</string>
+    <string name="ob_currency_locked">Set by deployment</string>
+    <string name="ob_language_label">Language</string>
+
+    <!-- Step 3: Connect treasury -->
+    <string name="ob_treasury_title">Connect treasury</string>
+    <string name="ob_treasury_desc">Live checks against the deployment, read straight from chain at one block.</string>
+    <string name="ob_treasury_run">Run live checks</string>
+    <string name="ob_treasury_rechecking">Checking…</string>
+    <string name="ob_treasury_recheck">Re-run</string>
+    <string name="ob_treasury_block">block #%1$s</string>
+    <string name="ob_treasury_allpass">All checks passed</string>
+    <string name="ob_treasury_somefail">Some checks did not pass</string>
+
+    <!-- Step 4: On-device AI model -->
+    <string name="ob_model_title">On-device AI model</string>
+    <string name="ob_model_desc">LFM2.5-230M (MNN 4-bit, ~128 MB). The planner runs fully on this device.</string>
+    <string name="ob_model_wifi">Download on Wi-Fi only</string>
+    <string name="ob_model_download">Download &amp; verify</string>
+    <string name="ob_model_resume">Resume download</string>
+    <string name="ob_model_cancel">Cancel</string>
+    <string name="ob_model_verify">Verify files</string>
+    <string name="ob_model_ready">Model ready · %1$d / %2$d files verified</string>
+    <string name="ob_model_partial">%1$d / %2$d files verified</string>
+    <string name="ob_model_none">Not downloaded yet</string>
+    <string name="ob_model_downloading">%1$s · %2$d%%</string>
+    <string name="ob_model_resuming">Resuming %1$s · %2$d%%</string>
+    <string name="ob_model_verifying">Verifying %1$s…</string>
+    <string name="ob_model_selftest">Run warm-up self-test</string>
+    <string name="ob_model_selftesting">Loading weights and deciding…</string>
+    <string name="ob_model_selftest_ok">Chose %1$s · %2$s</string>
+    <string name="ob_model_selftest_fail">Self-test failed: %1$s</string>
+    <string name="ob_model_skip">Skip — monitor only</string>
+
+    <!-- Step 5: Keys -->
+    <string name="ob_keys_title">Keys</string>
+    <string name="ob_keys_desc">Keys live in the Android Keystore. The app never sees them in the clear.</string>
+    <string name="ob_keys_can_do">What it can do</string>
+    <string name="ob_keys_owner">Owner / Approver</string>
+    <string name="ob_keys_owner_cap">Safe 2-of-2</string>
+    <string name="ob_keys_session">Agent session key</string>
+    <string name="ob_keys_session_cap">Module only, within limits</string>
+    <string name="ob_keys_guardian">Guardian</string>
+    <string name="ob_keys_guardian_cap">Stop only</string>
+    <string name="ob_keys_import_guardian">Import guardian key</string>
+    <string name="ob_keys_import_session">Import session key</string>
+    <string name="ob_keys_imported">Imported</string>
+    <string name="ob_keys_not_imported">Not imported</string>
+    <string name="ob_keys_remove">Remove</string>
+    <string name="ob_keys_view_only">Continue view-only</string>
+    <string name="ob_keys_import_unavailable">Import screen is available in debug builds.</string>
+
+    <!-- Step 6: Policy review -->
+    <string name="ob_policy_title">Policy review</string>
+    <string name="ob_policy_desc">Read-only from chain. Changes need both owners (Safe 2-of-2).</string>
+    <string name="ob_policy_tier">Permission tier</string>
+    <string name="ob_policy_daily">Daily limit</string>
+    <string name="ob_policy_daily_remaining">remaining</string>
+    <string name="ob_policy_session">Session limit</string>
+    <string name="ob_policy_reserve">Reserve buffer</string>
+    <string name="ob_policy_vendors">Verified vendors</string>
+    <string name="ob_policy_vendors_count">%1$d verified</string>
+    <string name="ob_policy_loading">Reading policy from chain…</string>
+    <string name="ob_policy_retry">Retry</string>
+
+    <!-- Finish -->
+    <string name="ob_finish_title">You\'re set</string>
+    <string name="ob_finish_desc">Your treasury, model and keys are configured. You can redo any of these later in Settings.</string>
+    <string name="ob_finish_cta">Go to Home</string>
+
+    <!-- Settings (UX plan §4) -->
+    <string name="set_title">Settings</string>
+    <string name="set_close">Close</string>
+    <string name="set_network">Network &amp; deployment</string>
+    <string name="set_model">On-device model</string>
+    <string name="set_keys">Keys</string>
+    <string name="set_language">Language</string>
+    <string name="set_judge">Judge mode</string>
+    <string name="set_about">About</string>
+    <string name="set_contract_safe">Safe</string>
+    <string name="set_contract_module">KavachiModule</string>
+    <string name="set_contract_asset">Treasury asset (USDC)</string>
+    <string name="set_contract_vaulta">Aave vault (waUSDC)</string>
+    <string name="set_contract_vaultb">Demo vault</string>
+    <string name="set_contract_sanctions">Sanctions list</string>
+    <string name="set_basescan">BaseScan</string>
+    <string name="set_sourcify">Source</string>
+    <string name="set_copy">Copy</string>
+    <string name="set_copied">Copied</string>
+    <string name="set_model_hash">llm.mnn SHA-256</string>
+    <string name="set_model_size">Size on device</string>
+    <string name="set_model_latency">Last decode latency</string>
+    <string name="set_model_latency_none">Not measured yet</string>
+    <string name="set_redownload">Re-download</string>
+    <string name="set_verify">Verify</string>
+    <string name="set_judge_desc">Two commands verify every claim with no keys. Run them from the repo root.</string>
+    <string name="set_judge_verify_all">Verify all on-chain evidence</string>
+    <string name="set_judge_live_demo">Run the live end-to-end demo</string>
+    <string name="set_judge_open">Open evidence ledger</string>
+    <string name="set_about_version">App version</string>
+    <string name="set_about_build">Build</string>
+    <string name="set_about_model_id">Model</string>
+    <string name="set_about_network">Network</string>
+    <string name="set_redo_onboarding">Re-run first-run setup</string>
+</resources>
