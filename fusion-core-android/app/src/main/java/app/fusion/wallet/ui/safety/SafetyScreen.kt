@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(), evidenceVm: SafetyScreenModel = viewModel(), shell: ShellViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val evidence by evidenceVm.state.collectAsStateWithLifecycle()
+    var detailsOpen by remember { mutableStateOf(false) }
     val arena = evidence.arena
     val safeUrl = rememberSafeUrl(state.treasury?.safeAddress)
     val snackbar = remember { SnackbarHostState() }
@@ -61,8 +62,14 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     ExternalAction("Held-out evaluation", EVIDENCE_RAW + HELDOUT_PATH) { feedback(it, null) }
                 }
             }
-            item { Column { SafetyCharts(evidence) } }
-            item {
+            item { BentoTile(Modifier.fillMaxWidth()) {
+                Text("AI allowance", style = FusionType.HeadingSmall)
+                state.module?.let { m -> app.fusion.wallet.ui.common.allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) } }
+                    ?: Text("Policy unavailable")
+            } }
+            item { TextButton(onClick = { detailsOpen = !detailsOpen }) { Text(if (detailsOpen) "Hide evidence details" else "Safety layers and evidence details") } }
+            if (detailsOpen) item { Column { SafetyCharts(evidence) } }
+            if (detailsOpen) item {
                 BentoTile(Modifier.fillMaxWidth()) {
                     Text("Five safety layers", style = FusionType.HeadingMedium)
                     if (arena == null) Text("Layer counts unavailable until evidence loads", style = FusionType.BodyMedium)
@@ -93,6 +100,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     Button(onClick = { shell.navigate(NavRoute.Judge) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Open judge mode") }
                 }
             }
+            if (detailsOpen) {
             item { Text("Known limits", style = FusionType.HeadingMedium) }
             if (arena == null) item { BentoTile(Modifier.fillMaxWidth()) { Text("Known limits unavailable; evidence has not loaded", style = FusionType.BodyMedium) } }
             else if (arena.knownLimits.isEmpty()) item { BentoTile(Modifier.fillMaxWidth()) { Text("No escaped or unmeasured scenarios in this evidence set", style = FusionType.BodyMedium) } }
@@ -110,6 +118,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                 }
             }
             items(arena?.scenarios.orEmpty().filter { it.stopped == true }, key = { it.id }) { AttackCard(it, false, feedback) }
+            }
         }
     }
 }

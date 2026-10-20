@@ -10,7 +10,7 @@ data class DecisionCheck(val name: String, val status: String, val message: Stri
 data class DecisionDetails(
     val choice: String, val reason: String, val planner: String?, val loadMs: BigDecimal?,
     val decodeMs: BigDecimal?, val inferenceMs: BigDecimal?, val candidates: List<DecisionCandidate>, val checks: List<DecisionCheck>,
-    val hash: String, val txHash: String?, val dryRun: Boolean?, val block: Long?,
+    val hash: String, val txHash: String?, val dryRun: Boolean?, val block: Long?, val snapshotTime: Long? = null,
 ) {
     companion object {
         fun parse(reportJson: String, passportJson: String? = null): DecisionDetails {
@@ -22,7 +22,7 @@ data class DecisionDetails(
             val timings = model?.optJSONObject("timings")
             fun decimal(obj: JSONObject?, key: String) = obj?.optString(key)?.toBigDecimalOrNull()?.takeIf { it.signum() >= 0 }
             return DecisionDetails(
-                choice = passport.getString("choiceLabel"), reason = passport.optString("reasonCode"),
+                choice = passport.getString("choiceLabel"), reason = app.fusion.wallet.ui.common.decisionReason(report, passport.optString("reasonCode")),
                 planner = passport.optJSONObject("planner")?.optString("kind")?.takeIf { it.isNotBlank() },
                 loadMs = decimal(model?.optJSONObject("load"), "coldLoadMs"),
                 decodeMs = decimal(timings, "decodeMs"),
@@ -34,12 +34,13 @@ data class DecisionDetails(
                 },
                 checks = if (checks == null) emptyList() else (0 until checks.length()).map { index ->
                     val c = checks.getJSONObject(index)
-                    DecisionCheck(c.optString("name", c.optString("ruleId")), c.optString("status", "UNKNOWN"), readableCheckMessage(c.optString("message")))
+                    DecisionCheck(c.optString("name", c.optString("ruleId")), c.optString("status", "UNKNOWN"), c.optString("message"))
                 },
                 hash = report.getString("decisionHash"),
                 txHash = (report.optString("txHash").takeIf { it.isNotBlank() && it != "null" }
                     ?: report.optJSONObject("execution")?.optString("txHash"))?.takeIf { Regex("0x[0-9a-fA-F]{64}").matches(it) },
                 dryRun = if (report.has("dryRun")) report.getBoolean("dryRun") else null,
+                snapshotTime = report.optJSONObject("snapshot")?.optLong("blockTimestamp")?.takeIf { it > 0 },
                 block = passport.optJSONObject("snapshot")?.optLong("block")?.takeIf { it > 0 },
             )
         }

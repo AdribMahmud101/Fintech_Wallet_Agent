@@ -76,6 +76,19 @@ class QuantReader(private val reader: ChainReader, private val history: () -> Ch
 fun nextQuantSize(surplus: BigInteger, cap: BigInteger, exposure: BigInteger, limit: BigInteger): BigInteger =
     surplus.min(cap).min((limit-exposure).max(BigInteger.ZERO)).max(BigInteger.ZERO)
 
+/** Explain an excluded yield move; callers first establish that no eligible move remains. */
+fun economicHoldReason(report: JSONObject): String? {
+    val candidates = report.optJSONArray("candidates") ?: return null
+    val rejected = (0 until candidates.length()).map { candidates.getJSONObject(it) }
+        .firstOrNull { it.optString("status") == "UNPROFITABLE_AFTER_GAS" } ?: return null
+    val size = rejected.optString("sizeRaw").toBigDecimalOrNull()?.takeIf { it.signum() > 0 }
+        ?.movePointLeft(6)?.stripTrailingZeros()?.toPlainString() ?: return null
+    val days = rejected.optString("breakEvenDaysHundredths").toBigDecimalOrNull()
+        ?.movePointLeft(2)?.setScale(0, RoundingMode.CEILING)?.toPlainString()
+    return if (days != null) "$size USDC breaks even in $days days; outside the 14-day window"
+        else "$size USDC has no profitable break-even after gas"
+}
+
 /** Plain report text shared by Home, Preview and the persisted Autopilot checks. */
 fun quantSummary(report: JSONObject): String {
     fun value(key: String): String? = if (report.isNull(key)) null else report.optString(key).takeIf { it.isNotBlank() }
