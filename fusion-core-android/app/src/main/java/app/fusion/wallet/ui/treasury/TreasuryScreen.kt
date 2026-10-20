@@ -173,23 +173,12 @@ private fun BucketsTile(buckets: Buckets?) {
         val total = values.fold(BigInteger.ZERO, BigInteger::add)
         val summary = labels.zip(values).joinToString { (label, raw) -> "$label ${formatBigIntegerAmount(raw)} USDC" }
         Canvas(Modifier.padding(vertical = 16.dp).fillMaxWidth().height(20.dp).semantics { contentDescription = "100 percent of Safe cash. $summary" }) {
-            var x = 0f
-            if (total.signum() == 0) drawRect(FusionColors.Border)
-            values.forEachIndexed { i, raw ->
-                val width = size.width * chartFraction(raw, total)
-                if (width > 0) {
-                    drawRect(colors[i], Offset(x, 0f), Size(width, size.height))
-                    // Numbered patterns: none / diagonal ticks / vertical ticks; labels below follow this order.
-                    if (i > 0) {
-                        var tick = x + 3.dp.toPx()
-                        while (tick < x + width) {
-                            drawLine(FusionColors.Bg.copy(alpha = .6f), Offset(tick, 0f),
-                                Offset(if (i == 1) (tick + 5.dp.toPx()).coerceAtMost(x + width) else tick, size.height), 1.dp.toPx())
-                            tick += 8.dp.toPx()
-                        }
-                    }
-                    x += width
-                }
+            val segments = bucketSegments(values)
+            if (segments.isEmpty()) drawRect(FusionColors.Border)
+            segments.forEach { segment ->
+                val left = size.width * segment.start.toFloat()
+                val right = size.width * segment.end.toFloat()
+                drawRect(colors[segment.bucketIndex], Offset(left, 0f), Size(right - left, size.height))
             }
         }
         values.forEachIndexed { i, raw ->
