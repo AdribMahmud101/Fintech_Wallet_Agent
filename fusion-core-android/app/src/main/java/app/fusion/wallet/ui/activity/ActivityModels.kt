@@ -13,7 +13,7 @@ data class ActivityItem(
     val amountRaw: BigInteger? = null,
     val counterparty: String? = null,
     val timestampSeconds: Long? = null,
-    val provenance: Provenance,
+    val provenance: Provenance?,
     val txHash: String,
     val blockNumber: Long,
     val passportHash: String? = null,
@@ -21,13 +21,15 @@ data class ActivityItem(
     val isBlocked: Boolean = false,
     val details: String? = null,
     val explorerUrl: String? = null,
+    val planner: String? = null,
 )
 
-fun activityProvenance(source: String): Provenance = when (source.uppercase()) {
+fun activityProvenance(source: String?): Provenance? = when (source?.trim()?.uppercase()) {
     "AGENT" -> Provenance.Agent
     "OWNER" -> Provenance.Owner
     "APP" -> Provenance.App
-    else -> Provenance.Script
+    "SCRIPT" -> Provenance.Script
+    else -> null
 }
 
 fun activityTitle(kind: String): String = when (kind.uppercase()) {
@@ -35,6 +37,8 @@ fun activityTitle(kind: String): String = when (kind.uppercase()) {
     "WITHDRAW" -> "Withdraw from vault"
     "REBALANCE" -> "Rebalance vault position"
     "PAY_OBLIGATION", "OBLIGATIONPAID", "OBLIGATION_PAID" -> "Bill paid"
+    "PAY_INSTANT" -> "Instant bill payment"
+    "PAY_DELAYED" -> "Delayed bill payment"
     "ACTIONEXECUTED", "ACTION_EXECUTED" -> "Policy action executed"
     "ACTIONQUEUED", "ACTION_QUEUED" -> "Action queued"
     "PAUSED" -> "Guardian pause"
@@ -48,7 +52,7 @@ fun activityTitle(kind: String): String = when (kind.uppercase()) {
 }
 
 object ActivityTimelineBuilder {
-    fun build(state: WalletState, safety: SafetyData, frozen: List<ActivityItem> = emptyList()): List<ActivityItem> {
+    fun build(state: WalletState, safety: SafetyData, frozen: List<ActivityItem> = emptyList(), txIndex: TxIndex = TxIndex.Empty): List<ActivityItem> {
         // Keep each module log/evidence row; a transaction can contain several distinct actions.
         val frozenByTx = frozen.groupBy { it.txHash.lowercase() }
         val actionsByTx = state.recentActions.associateBy { it.txHash.lowercase() }
@@ -60,7 +64,9 @@ object ActivityTimelineBuilder {
                 amountRaw = action?.amount?.raw ?: evidence?.amountRaw,
                 counterparty = address?.let { a -> state.payees.find { it.address.equals(a, true) }?.label ?: a } ?: evidence?.counterparty,
                 timestampSeconds = ev.blockTime.takeIf { it > 0 },
-                provenance = evidence?.provenance ?: activityProvenance(action?.source ?: ev.source),
+                // Module event/action sources inherit the deployment's SCRIPT default.
+                // Only explicit evidence and the index can establish provenance.
+                provenance = evidence?.provenance,
                 txHash = ev.txHash, blockNumber = ev.blockNumber,
                 passportHash = validPassport(action?.decisionHash ?: ev.decisionHash) ?: evidence?.passportHash,
                 gasUsed = evidence?.gasUsed,
@@ -70,7 +76,7 @@ object ActivityTimelineBuilder {
         state.recentActions.filter { it.txHash.lowercase() !in liveTx }.forEach { action ->
             rows += ActivityItem("action:${action.id}", activityTitle(action.kind.name), action.amount.raw,
                 action.payee?.let { a -> state.payees.find { it.address.equals(a, true) }?.label ?: a },
-                action.blockTime.takeIf { it > 0 }, activityProvenance(action.source), action.txHash,
+                action.blockTime.takeIf { it > 0 }, null, action.txHash,
                 action.blockNumber, validPassport(action.decisionHash))
         }
         // A matching live transaction already exposes its logs. Retain evidence metadata there.
@@ -79,11 +85,19 @@ object ActivityTimelineBuilder {
         val allTx = rows.map { it.txHash.lowercase() }.toSet()
         safety.blockedOnChain.filter { it.txHash.lowercase() !in allTx }.forEach {
             rows += ActivityItem("blocked:${it.id}:${it.txHash}", "Blocked: ${it.scenario}",
-                provenance = Provenance.Script, txHash = it.txHash, blockNumber = it.blockNumber,
+                provenance = null, txHash = it.txHash, blockNumber = it.blockNumber,
                 passportHash = validPassport(it.decisionHash), isBlocked = true,
                 details = "Evidence records a reverted transaction. No success event was emitted.", explorerUrl = it.explorerUrl)
         }
-        return rows.distinctBy { it.id }.sortedWith(compareByDescending<ActivityItem> { it.blockNumber }.thenBy { it.id })
+        return rows.map { row ->
+            val indexed = txIndex.find(row.txHash) ?: return@map row
+            row.copy(provenance = activityProvenance(indexed.source),
+                amountRaw = indexed.amountRaw ?: row.amountRaw,
+                counterparty = indexed.payeeLabel ?: indexed.recipient?.let { address ->
+                    state.payees.find { it.address.equals(address, true) }?.label ?: address
+                } ?: row.counterparty,
+                planner = indexed.planner)
+        }.distinctBy { it.id }.sortedWith(compareByDescending<ActivityItem> { it.blockNumber }.thenBy { it.id })
     }
 
     fun parseFrozen(json: String): List<ActivityItem> {
@@ -113,5 +127,5 @@ object ActivityTimelineBuilder {
 fun ActivityItem.matches(filter: ActivityFilter): Boolean = when (filter) {
     ActivityFilter.All -> true
     ActivityFilter.Blocked -> isBlocked
-    else -> provenance.name == filter.name
+    else -> provenance?.name == filter.name
 }

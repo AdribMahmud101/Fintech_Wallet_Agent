@@ -1,0 +1,12 @@
+[
+  {
+    "txHash": "0x4d09be10bc6c75395cf5910844d9126715ebd15e8f20dbb4a6ab38f0d3be5c89",
+    "source": "APP",
+    "kind": "PAY_INSTANT",
+    "evidenceFile": "evidence/app/agent/golden_app.json",
+    "planner": "mnn+ahem-g@android",
+    "amountRaw": "8000000",
+    "recipient": "0x61dd06ce2f07d3e4f97d097741b0d7fd50f97f79",
+    "payeeLabel": "Acme Hosting"
+  }
+]

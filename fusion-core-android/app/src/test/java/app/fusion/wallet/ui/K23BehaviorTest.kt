@@ -37,7 +37,9 @@ class K23BehaviorTest {
         val events = listOf(
             EvidenceRow("log:1", "ActionExecuted", tx, 101, 1000, passport, explorerUrl = "https://example.test/$tx"),
             EvidenceRow("log:2", "Paused", tx, 101, 1000, null, explorerUrl = "https://example.test/$tx"))
-        val rows = ActivityTimelineBuilder.build(WalletState(recentActions = listOf(action), evidence = events), SafetyData())
+        // SCRIPT must be recorded explicitly: module rows inherit a deployment default.
+        val index = TxIndex.parse("""[{"txHash":"$tx","source":"SCRIPT","kind":"DEPOSIT","evidenceFile":"fixture.json"}]""")
+        val rows = ActivityTimelineBuilder.build(WalletState(recentActions = listOf(action), evidence = events), SafetyData(), txIndex = index)
         assertEquals(2, rows.size)
         assertTrue(rows.all { it.provenance == Provenance.Script })
         assertEquals(BigInteger("1000000"), rows.first { it.title == "Deposit to vault" }.amountRaw)

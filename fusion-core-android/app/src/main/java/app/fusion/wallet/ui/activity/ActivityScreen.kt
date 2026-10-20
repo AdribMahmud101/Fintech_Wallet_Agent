@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
-import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.data.Deployment
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.components.*
@@ -33,7 +32,7 @@ import java.util.*
 fun ActivityScreen(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val safety by vm.safety.collectAsStateWithLifecycle()
-    val agent by AgentRuntime.state.collectAsStateWithLifecycle()
+    val txIndex = rememberTxIndex()
     val context = LocalContext.current
     var frozen by remember { mutableStateOf(emptyList<ActivityItem>()) }
     var evidenceError by remember { mutableStateOf(false) }
@@ -47,10 +46,8 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
     var filterName by rememberSaveable { mutableStateOf(ActivityFilter.All.name) }
     val filter = ActivityFilter.valueOf(filterName)
     var selected by remember { mutableStateOf<ActivityItem?>(null) }
-    val rows = remember(state.evidence, state.recentActions, state.payees, safety, frozen, agent.result?.txHash) {
-        ActivityTimelineBuilder.build(state, safety, frozen).map { row ->
-            if (row.txHash.equals(agent.result?.txHash, true)) row.copy(provenance = Provenance.App) else row
-        }
+    val rows = remember(state.evidence, state.recentActions, state.payees, safety, frozen, txIndex) {
+        ActivityTimelineBuilder.build(state, safety, frozen, txIndex)
     }
     val visible = rows.filter { it.matches(filter) }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -93,9 +90,10 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
                 Text(row.counterparty ?: "Counterparty not recorded", style = FusionType.BodySmall)
                 Text(row.timestampSeconds?.let { app.fusion.wallet.ui.common.formatEpochSeconds(it) } ?: "Time unavailable · Block ${row.blockNumber}", style = FusionType.BodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProvenanceChip(row.provenance)
+                    RecordedProvenanceChip(row.provenance)
                     if (row.isBlocked) StatusChip("Blocked · reverted", FusionColors.Red)
                 }
+                row.planner?.let { StatusChip(it, FusionColors.Indigo) }
                 TxLink(row.txHash, explorerUrl = row.explorerUrl)
             }
         }
@@ -119,7 +117,8 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
         ModalBottomSheet(onDismissRequest = { selected = null }, containerColor = FusionColors.SurfaceRaised) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(row.title, style = FusionType.HeadingMedium)
-                ProvenanceChip(row.provenance)
+                RecordedProvenanceChip(row.provenance)
+                row.planner?.let { StatusChip(it, FusionColors.Indigo) }
                 row.amountRaw?.let { AmountText(it, exact = true, style = FusionType.NumberSmall) }
                 Text("Block ${row.blockNumber}", style = FusionType.NumberBody)
                 Text("Gas: ${receipt?.gasUsed?.let { "$it units" } ?: row.gasUsed ?: if (receiptLoading) "reading receipt…" else "receipt unavailable"}", style = FusionType.BodyMedium)

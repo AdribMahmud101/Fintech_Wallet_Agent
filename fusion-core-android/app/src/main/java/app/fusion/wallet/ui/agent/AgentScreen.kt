@@ -24,6 +24,9 @@ import app.fusion.wallet.R
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.data.*
 import app.fusion.wallet.ui.MainViewModel
+import app.fusion.wallet.ui.activity.activityProvenance
+import app.fusion.wallet.ui.activity.RecordedProvenanceChip
+import app.fusion.wallet.ui.activity.rememberTxIndex
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.vendorName
 import app.fusion.wallet.ui.components.*
@@ -38,6 +41,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
     val state by vm.state.collectAsStateWithLifecycle()
     val run by AgentRuntime.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val txIndex = rememberTxIndex()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val now = screenNow()
@@ -120,7 +124,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
             item {
                 val latest = decision
                 when {
-                    latest != null -> LatestDecision(latest, onCopy = {
+                    latest != null -> LatestDecision(latest, txIndex, onCopy = {
                         (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Passport hash", latest.hash))
                         feedback("Passport hash copied", null)
                     })
@@ -179,7 +183,8 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                     Text(decisionTitle(action.kind.name), style = FusionType.HeadingSmall)
                     action.payee?.let { address -> Text(vendorName(state.payees.firstOrNull { it.address.equals(address, true) }?.id, address), style = FusionType.BodySmall) }
                     AmountText(action.amount.raw)
-                    ProvenanceChip(if (action.txHash == decision?.txHash) "APP" else action.source)
+                    RecordedProvenanceChip(activityProvenance(txIndex.find(action.txHash)?.source))
+                    txIndex.find(action.txHash)?.planner?.let { StatusChip(it, FusionColors.Indigo) }
                     Text("Block ${action.blockNumber} · ${formatEpochSeconds(action.blockTime)}", style = FusionType.BodySmall)
                     TxLink(action.txHash)
                 }
@@ -193,12 +198,13 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
 }
 
 @Composable
-private fun LatestDecision(decision: DecisionDetails, onCopy: () -> Unit) {
+private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, onCopy: () -> Unit) {
     BentoTile(Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.k24_latest_decision), style = FusionType.HeadingMedium)
         StatusChip(when (decision.dryRun) { true -> "Dry run"; false -> "Live run"; null -> "Run mode unknown" }, FusionColors.Indigo)
         Text("${decision.choice} · ${readableCode(decision.reason)}", style = FusionType.HeadingSmall)
-        Text("Planner: ${readableCode(decision.planner)}", style = FusionType.NumberCaption)
+        decision.txHash?.let { RecordedProvenanceChip(activityProvenance(txIndex.find(it)?.source)) }
+        Text("Planner: ${readableCode(txIndex.find(decision.txHash)?.planner ?: decision.planner)}", style = FusionType.NumberCaption)
         Text("Load: ${decision.loadMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
         Text("Decode: ${decision.decodeMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
         Text("Inference total: ${decision.inferenceMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
