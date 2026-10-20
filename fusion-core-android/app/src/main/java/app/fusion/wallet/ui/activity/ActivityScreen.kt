@@ -85,9 +85,13 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
         items(visible, key = { it.id }) { row ->
             BentoTile(Modifier.fillMaxWidth(), onClick = { selected = row }) {
                 Text(row.title, style = FusionType.HeadingSmall)
+                // Admin actions (commit bills, resume, start session) move no money:
+                // only payment-like rows say so when an amount or recipient is missing.
+                val movesMoney = MONEY_TITLE.containsMatchIn(row.title)
                 row.amountRaw?.let { AmountText(it, style = FusionType.NumberSmall) }
-                    ?: Text("Amount not recorded", style = FusionType.BodySmall)
-                Text(row.counterparty ?: "Counterparty not recorded", style = FusionType.BodySmall)
+                    ?: if (movesMoney) Text("Amount not recorded", style = FusionType.BodySmall) else Unit
+                (row.counterparty ?: if (movesMoney) "Counterparty not recorded" else null)
+                    ?.let { Text(it, style = FusionType.BodySmall) }
                 Text(row.timestampSeconds?.let { app.fusion.wallet.ui.common.formatEpochSeconds(it) } ?: "Time unavailable · Block ${row.blockNumber}", style = FusionType.BodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RecordedProvenanceChip(row.provenance)
@@ -138,3 +142,5 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
         }
     }
 }
+
+private val MONEY_TITLE = Regex("paid|payment|deposit|withdraw|unwind", RegexOption.IGNORE_CASE)
