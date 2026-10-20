@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.onboarding.OnboardingPrefs
@@ -106,22 +107,9 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove,
                 onSend = { sendOpen = true }, onSwap = { swapOpen = true }, running = agent.running) }
-            item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { app.fusion.wallet.ui.scout.ScoutTile(state, onOpenScout) }
             item { ProofChip(txIndex, onOpenProof) }
-            item {
-                BentoTile(Modifier.fillMaxWidth(), onClick = onOpenProof, tint = FusionColors.Green, padding = 12.dp) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(painterResource(R.drawable.ic_nav_shield), contentDescription = null, tint = FusionColors.Green, modifier = Modifier.size(24.dp))
-                        val evidence = arena
-                        Text(evidence?.let { "${it.stopped}/${it.scenarios.size} attacks stopped" } ?: "Security evidence unavailable", style = FusionType.BodyMedium)
-                        evidence?.frozenAsr?.let { ratio ->
-                            Text("ASR ${if (ratio.numerator == 0) "0" else "${ratio.numerator}/${ratio.denominator}"}", style = FusionType.NumberCaption, color = FusionColors.Green)
-                        }
-                    }
-                }
-            }
             if (OnboardingPrefs.isWatchOnly(context)) item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
                     Text(stringResource(R.string.ob_watch_title), style = FusionType.HeadingSmall)
@@ -255,15 +243,18 @@ private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, o
         }
         Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
             style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
-        // Three equal, single-line actions: labels never wrap and no extra rows crowd the hero.
-        val tight = PaddingValues(horizontal = 6.dp)
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Four equal, single-line actions; compact labels so nothing wraps.
+        val tight = PaddingValues(horizontal = 2.dp)
+        val label = FusionType.BodyMedium.copy(fontSize = 13.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = onSend, enabled = state.treasury != null && state.source == DataSource.LIVE,
-                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Send", maxLines = 1, softWrap = false) }
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Send", style = label, maxLines = 1, softWrap = false) }
+            OutlinedButton(onClick = onSwap, enabled = state.treasury != null,
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Swap", style = label, maxLines = 1, softWrap = false) }
             OutlinedButton(onClick = onReceive, enabled = state.treasury != null,
-                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Receive", maxLines = 1, softWrap = false) }
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Receive", style = label, maxLines = 1, softWrap = false) }
             Button(onClick = onEarn, enabled = !running && state.treasury != null,
-                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Earn", maxLines = 1, softWrap = false) }
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Earn", style = label, maxLines = 1, softWrap = false) }
         }
     }
 }
