@@ -118,7 +118,7 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
             } finally { receiptLoading = false }
         }
         val clipboard = LocalClipboardManager.current
-        ModalBottomSheet(onDismissRequest = { selected = null }, containerColor = FusionColors.SurfaceRaised) {
+        ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { selected = null }, containerColor = FusionColors.SurfaceRaised) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(row.title, style = FusionType.HeadingMedium)
                 RecordedProvenanceChip(row.provenance)

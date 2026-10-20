@@ -31,7 +31,7 @@ fun ReceiveSheet(safeAddress: String, onDismiss: () -> Unit) {
     val payload = remember(safeAddress) { receivePayload(safeAddress) }
     val qr = remember(payload) { receiveQr(payload) }
     var feedback by remember { mutableStateOf<String?>(null) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Receive USDC", style = MaterialTheme.typography.headlineSmall)
             Text("Send USDC on Base Sepolia (test network) only")

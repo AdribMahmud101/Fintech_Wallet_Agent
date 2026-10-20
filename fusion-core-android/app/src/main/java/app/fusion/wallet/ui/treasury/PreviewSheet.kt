@@ -22,7 +22,7 @@ import app.fusion.wallet.ui.common.readableCode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EarnPreviewSheet(agent: AgentRunState, state: WalletState, txIndex: TxIndex, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Preview next move", style = MaterialTheme.typography.headlineSmall)
             Text("Dry run · no transaction is broadcast")

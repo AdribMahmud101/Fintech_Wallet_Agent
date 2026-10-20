@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -302,7 +303,7 @@ private fun ProofReceiptSheet(row: ActivityItem, onVerified: () -> Unit, onDismi
         } catch (_: Exception) { receipt = null
         } finally { loading = false }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = FusionColors.SurfaceRaised) {
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss, containerColor = FusionColors.SurfaceRaised) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),

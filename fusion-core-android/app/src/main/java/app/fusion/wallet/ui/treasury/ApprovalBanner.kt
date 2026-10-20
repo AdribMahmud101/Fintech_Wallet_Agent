@@ -62,7 +62,7 @@ fun ApprovalBanner(state: WalletState, now: Long, txIndex: TxIndex) {
         title = { Text("Import the guardian key") },
         text = { Text("Open Settings → Keys → Guardian → Import. The guardian key is stored in Android Keystore and can stop the agent. Queue cancellation also requires the signer cancellation API. Safe owner keys stay outside this app.") },
         confirmButton = { TextButton(onClick = { importSheet = false }) { Text("Got it") } })
-    if (safeSheet) ModalBottomSheet(onDismissRequest = { safeSheet = false }) {
+    if (safeSheet) ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = { safeSheet = false }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Approve in Safe (2 of 2)", style = FusionType.HeadingSmall)
             Text("Both Safe owners must review and co-sign the required module approval in the Safe. This app does not hold owner keys. Opening the Safe does not submit an approval; the queue timelock and policy checks still apply.")

@@ -55,8 +55,8 @@ fun OwnerSendSheet(state: WalletState, onSwap: () -> Unit = {}, onDismiss: () ->
     val canShow = tx != null && spare != null && (!overSpare || understand)
     val json = remember(tx) { tx?.json() }
     val qr = remember(json, canShow) { if (json != null && canShow) runCatching { QRCodeWriter().encode(json, BarcodeFormat.QR_CODE, 0, 0) }.getOrNull() else null }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().heightIn(min = 560.dp).verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Send USDC · owner path", style = MaterialTheme.typography.headlineSmall)
             Text("Owner-signed 2-of-2 · this app holds no owner keys · the AI cannot send")
             OutlinedTextField(recipient, { recipient = it; understand = false }, Modifier.fillMaxWidth(), label = { Text("Recipient address") }, singleLine = true)
@@ -113,7 +113,7 @@ fun OwnerSendSheet(state: WalletState, onSwap: () -> Unit = {}, onDismiss: () ->
 fun OwnerSwapSheet(safeAddress: String?, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var feedback by remember { mutableStateOf<String?>(null) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Swap · owner path", style = MaterialTheme.typography.headlineSmall)
             Text("Swaps are owner-signed in Safe{Wallet}. The AI never swaps.")

@@ -115,7 +115,8 @@ fun SettingsScreen(
             SectionHeader(stringResource(R.string.set_model))
             ModelSection(model, onRedownload = { vm.redownload() }, onCancel = { vm.cancelDownload() }, onVerify = { vm.refreshModel() })
 
-            // --- Keys ---
+            // --- Keys (owner setup only) ---
+            if (app.fusion.wallet.onboarding.OnboardingPrefs.getSelectedRole(context) == "OWNER") {
             SectionHeader(stringResource(R.string.set_keys))
             KeyRow(
                 title = stringResource(R.string.ob_keys_guardian),
@@ -133,6 +134,7 @@ fun SettingsScreen(
                 onImport = { launchKeyImport(context, SESSION_IMPORT_CLASS) },
                 onRemove = { vm.removeSession() },
             )
+            }
 
             // --- Cloud advisor (K40): optional, off by default, key stored Keystore-encrypted ---
             SectionHeader(stringResource(R.string.set_advisor))

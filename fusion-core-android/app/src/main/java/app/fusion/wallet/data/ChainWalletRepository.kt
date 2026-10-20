@@ -299,10 +299,13 @@ class ChainWalletRepository(
             fun assetOrNull(path: String) = try { asset(path) } catch (_: Exception) { null }
             // Bundle every known bill set (K2 primary + K9 agent demo + K19 live demo); the on-chain root moves when
             // the agent recommits, and GitHub may be slow or offline, so the match must work from disk.
+            // Every committed bill set is also bundled by root, so coverage never depends on GitHub being reachable.
+            val byRoot = (runCatching { context.assets.list("deployments/by-root") }.getOrNull() ?: emptyArray())
+                .filter { it.endsWith(".json") }.mapNotNull { assetOrNull("deployments/by-root/$it") }
             val extra = listOfNotNull(
                 assetOrNull("deployments/obligations-agent-84532.json"),
                 assetOrNull("deployments/obligations-demo-84532.json"),
-            )
+            ) + byRoot
             val cache = FileSnapshotCache.forContext(context)
             val indexCache = TxIndexCache(java.io.File(context.filesDir, "evidence/tx_index.json"))
             return ChainWalletRepository(asset("deployments/84532.json"), asset("deployments/obligations-84532.json"),

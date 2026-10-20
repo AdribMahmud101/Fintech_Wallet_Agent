@@ -1,0 +1,67 @@
+{
+  "bills": [
+    {
+      "assets": "8000000",
+      "dueAt": "1792576197",
+      "leaf": "0xe87b233465e8ee9ec6187297bae19b065da6b2020c8b57c1a09a15838f0e7457",
+      "obligationIdHash": "0xf15f1bc88b262ba90a9d5614e0cd8eab62f75a6c76750f43cb259d382cb4bdc0",
+      "payeeIdHash": "0xd54c2d42f79c30ee01aaf0f6e6572e858b25df57151e9a4cd5f22198a7de104f",
+      "proof": [
+        "0xbc5785af4e5db3dd9ef7d71c06f25f4487e8fb553328d2dcc54ecd8a1f244085",
+        "0x7410a6ab54178a944725a24c07b266ceff46de53a872215fa14664598fe33fc8"
+      ],
+      "recipient": "0x61dd06cE2f07d3E4F97d097741b0D7FD50F97F79"
+    },
+    {
+      "assets": "75000000",
+      "dueAt": "1792576197",
+      "leaf": "0xbbbea39df73aa22be35b2f26ba076364858d90f7801a1a64f80e67ab91d462cc",
+      "obligationIdHash": "0x449aad3b24d44f03794b68c1c068101a480dd95b52c7265cf13416d6d182d9d8",
+      "payeeIdHash": "0xd54c2d42f79c30ee01aaf0f6e6572e858b25df57151e9a4cd5f22198a7de104f",
+      "proof": [
+        "0xd994d9c2b4f3ce890f8735e574ba1b3ee8158c2f443a72e33a45d5ef1ebf1325",
+        "0xef64dfee4637aa372e70c6df976bc39b6ccba47f6adfcc60656bf6b1c941f310"
+      ],
+      "recipient": "0x61dd06cE2f07d3E4F97d097741b0D7FD50F97F79"
+    },
+    {
+      "assets": "150000000",
+      "dueAt": "1792576197",
+      "leaf": "0xd994d9c2b4f3ce890f8735e574ba1b3ee8158c2f443a72e33a45d5ef1ebf1325",
+      "obligationIdHash": "0x0c17b6c585e8f794427a980968bc43109bef13ee620f75488de99c10fe83f2af",
+      "payeeIdHash": "0x445f4aa63bf907f8279287c2aab21d4b407ed9a801083a80ccc636f055e9e9dc",
+      "proof": [
+        "0xbbbea39df73aa22be35b2f26ba076364858d90f7801a1a64f80e67ab91d462cc",
+        "0xef64dfee4637aa372e70c6df976bc39b6ccba47f6adfcc60656bf6b1c941f310"
+      ],
+      "recipient": "0x208Bfee9F222d611b4Db71d5ee53b3dAB1A2188A"
+    },
+    {
+      "assets": "300000000",
+      "dueAt": "1792576197",
+      "leaf": "0x5a160b2ec5855915d62a03b6b9fb148ed92e00c68f7dd341021459e5481bfec4",
+      "obligationIdHash": "0xbb91b6949a68b8698b74d573e1088e5d87718919c7de5c3bea070df794a54ff4",
+      "payeeIdHash": "0x445f4aa63bf907f8279287c2aab21d4b407ed9a801083a80ccc636f055e9e9dc",
+      "proof": [
+        "0x54455502d56ab218e1dad62e6fdf4a28c6f237216c7af4fb9545c917fd25d69e",
+        "0xe87b233465e8ee9ec6187297bae19b065da6b2020c8b57c1a09a15838f0e7457",
+        "0x7410a6ab54178a944725a24c07b266ceff46de53a872215fa14664598fe33fc8"
+      ],
+      "recipient": "0x208Bfee9F222d611b4Db71d5ee53b3dAB1A2188A"
+    },
+    {
+      "assets": "50000000",
+      "dueAt": "1792576197",
+      "leaf": "0x54455502d56ab218e1dad62e6fdf4a28c6f237216c7af4fb9545c917fd25d69e",
+      "obligationIdHash": "0x791a6a0a34e37a74126d307b2d73ce745be33c352166b805e2f749cf8da4095d",
+      "payeeIdHash": "0xb204a9d1b4378a80fd078f8e4ed3c6ec7950825b6e0d8a2cfee5c1809a509512",
+      "proof": [
+        "0x5a160b2ec5855915d62a03b6b9fb148ed92e00c68f7dd341021459e5481bfec4",
+        "0xe87b233465e8ee9ec6187297bae19b065da6b2020c8b57c1a09a15838f0e7457",
+        "0x7410a6ab54178a944725a24c07b266ceff46de53a872215fa14664598fe33fc8"
+      ],
+      "recipient": "0xC78Be9Da2204CC3020B055520102479FA3175066"
+    }
+  ],
+  "root": "0x5ac2ade4c31165e701e539bc91ee57950872bc16887ce0fa13df100135ec4cc0"
+}

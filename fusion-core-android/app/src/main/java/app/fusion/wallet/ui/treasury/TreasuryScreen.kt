@@ -237,13 +237,19 @@ private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, o
         else ChartAmount(formatBigIntegerAmount(app.fusion.wallet.ui.motion.refreshAmount(total)), state.treasury?.symbol ?: "USDC")
         state.buckets?.let { buckets ->
             val covered = buckets.shortfall.raw.signum() == 0
-            val ok = covered && state.accountingMatches == true
+            // A refresh first publishes a quick read with the bill check unset. The hero keeps the last verified
+            // result meanwhile (the repository never reuses it), so it does not flicker; "Checking" only when it never had one.
+            var lastVerified by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Boolean?>(null) }
+            state.accountingMatches?.let { lastVerified = it }
+            val shown = state.accountingMatches ?: lastVerified
+            val ok = covered && shown == true
+            val checking = shown == null
             val tone = if (ok) FusionChart.Cash else FusionChart.Reserved
             androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                 androidx.compose.material3.Icon(
                     if (ok) androidx.compose.material.icons.Icons.Filled.CheckCircle else androidx.compose.material.icons.Icons.Filled.Warning,
                     contentDescription = null, tint = tone, modifier = Modifier.padding(end = 8.dp).size(22.dp))
-                Text(if (state.accountingMatches != true) "Bill coverage unverified" else if (covered) "Your bills are covered" else "${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
+                Text(if (checking) "Checking bill coverage…" else if (shown != true) "Bill coverage unverified" else if (covered) "Your bills are covered" else "${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
                     style = FusionChart.Status, color = tone)
             }
         }

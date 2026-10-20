@@ -72,8 +72,10 @@ fun OnboardingFlow(
     var wifiOnly by rememberSaveable { mutableStateOf(OnboardingPrefs.isWifiOnly(context)) }
     val role = runCatching { OnboardingRole.valueOf(roleName) }.getOrDefault(OnboardingRole.AUDITOR)
 
-    fun goBack() { if (step > 0) step-- }
-    fun advance() { if (step < ONBOARDING_STEPS - 1) step++ else onFinish() }
+    // Only someone setting up as the owner sees the key import step; everyone else (judges, auditors) never does.
+    val needsKeys = role == OnboardingRole.OWNER
+    fun goBack() { if (step > 0) step -= if (step == 5 && !needsKeys) 2 else 1 }
+    fun advance() { if (step < ONBOARDING_STEPS - 1) step += if (step == 3 && !needsKeys) 2 else 1 else onFinish() }
 
     BackHandler(enabled = step > 0) { goBack() }
 
