@@ -32,7 +32,7 @@ fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMil
         Text(autopilotStatus(state, nowMillis), style = FusionType.BodyMedium)
         AutopilotCountdown(state.nextTickAtMillis, state.intervalMinutes, nowMillis, state.enabled && !state.running)
         DecisionPipelineStrip(pipeline)
-        Text(state.mode, style = FusionType.BodySmall, color = FusionColors.Amber, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(state.mode, style = FusionType.BodySmall, color = FusionColors.TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(1, 5, 15).forEach { minutes ->
@@ -40,15 +40,27 @@ fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMil
                     label = { Text("${minutes}m") }, enabled = state.storageError == null)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (state.previewOnly || !state.liveAvailable) "Dry run" else "Live", style = FusionType.BodySmall, modifier = Modifier.weight(1f))
-            Switch(checked = !state.previewOnly && state.liveAvailable, onCheckedChange = { controller.setPreviewOnly(!it) }, enabled = state.liveAvailable && !state.running && !runtimeBusy, modifier = Modifier.semantics { contentDescription = "Live execution mode" })
-            Text("Auto-protect", style = FusionType.BodySmall)
+        // One setting per row: label and explanation on the left, its switch on the right.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(if (state.previewOnly || !state.liveAvailable) "Dry run" else "Live", style = FusionType.BodyMedium)
+                Text(if (state.previewOnly || !state.liveAvailable) "Preview only, nothing is broadcast" else "The agent may execute within its limits",
+                    style = FusionType.BodySmall, color = FusionColors.TextMuted)
+            }
+            Switch(checked = !state.previewOnly && state.liveAvailable, onCheckedChange = { controller.setPreviewOnly(!it) }, enabled = state.liveAvailable && !state.running && !runtimeBusy, modifier = Modifier.semantics { contentDescription = "Live execution" })
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Auto-protect", style = FusionType.BodyMedium)
+                Text("Pause on a critical risk signal", style = FusionType.BodySmall, color = FusionColors.TextMuted)
+            }
             Switch(checked = state.autoProtect, onCheckedChange = controller::setAutoProtect, modifier = Modifier.semantics { contentDescription = "Auto-protect" })
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = controller::runNow, enabled = state.foreground && !state.running && !runtimeBusy && state.storageError == null) { Text("Run now") }
-            OutlinedButton(onClick = { controller.setEnabled(false) }, enabled = state.enabled || state.running) { Text("Stop", color = FusionColors.Red) }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = controller::runNow, enabled = state.foreground && !state.running && !runtimeBusy && state.storageError == null,
+                modifier = Modifier.weight(1f).height(44.dp)) { Text("Run now", maxLines = 1) }
+            OutlinedButton(onClick = { controller.setEnabled(false) }, enabled = state.enabled || state.running,
+                modifier = Modifier.weight(1f).height(44.dp)) { Text("Stop", color = FusionColors.Red, maxLines = 1) }
         }
         if (state.running) Text("Stop cancels this tick and turns Autopilot off. A submitted transaction may still confirm.", style = FusionType.BodySmall)
         state.storageError?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Red) }

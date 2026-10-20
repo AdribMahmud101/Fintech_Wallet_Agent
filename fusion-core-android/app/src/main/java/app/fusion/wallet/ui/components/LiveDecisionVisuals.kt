@@ -1,5 +1,7 @@
 package app.fusion.wallet.ui.components
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -36,7 +38,10 @@ fun DecisionPipelineStrip(pipeline: DecisionPipeline) {
                 val tone by animateColorAsState(targetTone, tween(if (motion) 180 else 0), label = "Reached pipeline stage")
                 Column(Modifier.weight(1f).background(FusionColors.SurfaceRaised, RoundedCornerShape(8.dp)).padding(horizontal = 2.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (active) "●" else if (step != null) "✓" else "${stage.ordinal + 1}", color = tone, fontSize = 12.sp)
-                    Text(stage.title, color = tone, fontSize = 10.sp, lineHeight = 12.sp, minLines = 2, maxLines = 2)
+                    // Short one-word labels so nothing breaks mid-word; the full name is the accessibility label.
+                    val short = when (stage) { DecisionStage.SNAPSHOT -> "Read"; DecisionStage.CANDIDATES -> "Options"; DecisionStage.AI -> "AI"
+                        DecisionStage.POLICY -> "Rules"; DecisionStage.SIGNER -> "Sign"; DecisionStage.CHAIN -> "Chain" }
+                    Text(short, color = tone, fontSize = 11.sp, maxLines = 1, softWrap = false, modifier = Modifier.semantics { contentDescription = stage.title })
                     Text(step?.durationMs?.let { "${it}ms" } ?: if (active) "Running" else "—", color = tone, fontSize = 9.sp, maxLines = 1)
                 }
             }
@@ -45,7 +50,7 @@ fun DecisionPipelineStrip(pipeline: DecisionPipeline) {
         if (timings.isNotEmpty()) Text(timings.joinToString(" · "), style = FusionType.NumberCaption)
         if (pipeline.dryRun == true && pipeline.active == null && pipeline.steps.any { it.stage == DecisionStage.POLICY })
             StatusChip("Preview · no broadcast", FusionColors.Indigo)
-        pipeline.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber, maxLines = 2) }
+        pipeline.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Red, maxLines = 2) }
         if (pipeline.steps.isEmpty()) Text("Run a tick to see its measured stages", style = FusionType.BodySmall)
     }
 }

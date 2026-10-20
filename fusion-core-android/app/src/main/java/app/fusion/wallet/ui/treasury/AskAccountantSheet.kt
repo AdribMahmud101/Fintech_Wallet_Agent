@@ -1,5 +1,7 @@
 package app.fusion.wallet.ui.treasury
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -76,12 +78,16 @@ fun AskAccountantSheet(vm: AccountantViewModel, wallet: WalletState, onDismiss: 
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.acc_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.acc_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f), maxLines = 1)
                 StatusPill(
                     label = stringResource(if (cloudOn) R.string.pill_cloud_on else R.string.pill_local_only),
                     tone = if (cloudOn) app.fusion.wallet.ui.common.Tone.Earning else app.fusion.wallet.ui.common.Tone.Good,
                 )
+                androidx.compose.material3.IconButton(onClick = onDismiss) {
+                    androidx.compose.material3.Icon(Icons.Filled.Close, contentDescription = "Close")
+                }
             }
             Text(stringResource(if (cloudOn) R.string.acc_mode_cloud else R.string.acc_mode_local), style = MaterialTheme.typography.bodySmall, color = Muted)
 

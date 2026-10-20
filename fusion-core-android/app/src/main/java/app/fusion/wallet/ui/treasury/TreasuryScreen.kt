@@ -92,6 +92,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         Text(stringResource(R.string.nav_home), style = FusionType.HeadingMedium, maxLines = 1)
                         Text(stringResource(R.string.tr_subtitle), style = FusionType.BodySmall)
                     }
+                    AskAccountantButton(onClick = { askOpen = true })
+                    Spacer(Modifier.width(4.dp))
                     IconButton(onClick = { vm.refresh(); historyVm.load(state, retry = true) }) {
                         Icon(painterResource(R.drawable.ic_nav_refresh), stringResource(R.string.refresh_button))
                     }
@@ -181,12 +183,6 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 }
             } else state.vaults.forEach { vault -> item(key = "vault:${vault.id}") { VaultTile(vault) } }
             item { NextBillTile(state, now / 1000) }
-            }
-            item {
-                BentoTile(Modifier.fillMaxWidth(), onClick = { askOpen = true }) {
-                    Text(stringResource(R.string.tr_ask_title), style = FusionType.HeadingSmall)
-                    Text(stringResource(R.string.tr_ask_hint), style = FusionType.BodySmall)
-                }
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
