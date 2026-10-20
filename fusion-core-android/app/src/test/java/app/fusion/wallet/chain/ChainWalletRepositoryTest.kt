@@ -117,6 +117,21 @@ class ChainWalletRepositoryTest {
         assertTrue(repository.state.value.vaults.isEmpty())
     }
 
+    @Test fun partialRefreshCannotReusePreviouslyVerifiedBillAccounting() = runBlocking {
+        val rpc = CapturedRpc()
+        val repository = repository(rpc)
+        repository.refresh()
+        assertEquals(true, repository.state.value.accountingMatches)
+        rpc.failSelector = Views.PAYEE // Phase two only: phase-one balances still load.
+        repository.refresh()
+        val partial = repository.state.value
+        assertNotNull(partial.buckets)
+        assertNotNull(partial.historyError)
+        assertNull(partial.accountingMatches)
+        assertTrue(app.fusion.wallet.agent.autopilot.AutopilotGuards.checks(partial, partial.capturedAtEpochMillis!!, true, true, false)
+            .any { it.name == "Bill accounting" && it.status == "FAIL" })
+    }
+
     @Test fun wrongChainAndReorganizedSnapshotAreRejected() = runBlocking {
         val wrongChain = repository(CapturedRpc().apply { wrongChain = true })
         wrongChain.refresh()

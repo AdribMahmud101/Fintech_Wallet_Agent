@@ -105,6 +105,22 @@ class SessionSignerEngineTest {
         val costly=Fixture(); costly.fee="0x2540be400"
         assertTrue(runCatching { costly.engine().execute(costly.report) }.isFailure); assertEquals(0,costly.signs); assertEquals(0,costly.sends)
     }
+    @Test fun gasSpikeDefersNonUrgentActionsBeforeLoadingKeyButDueNowBillsContinue() = runTest {
+        val nonUrgent = Fixture(); nonUrgent.fee = "0x3b9aca01"; nonUrgent.action.put("dueAt", 101)
+        val held = runCatching { nonUrgent.engine().execute(nonUrgent.report) }.exceptionOrNull()
+        assertEquals("Gas spike, deferred", held?.message)
+        assertEquals(0, nonUrgent.signs); assertEquals(0, nonUrgent.sends)
+        val due = Fixture(); due.fee = "0x3b9aca01"; due.action.put("dueAt", 100)
+        assertEquals(due.hash, due.engine().execute(due.report).getString("txHash"))
+        assertEquals(1, due.signs)
+    }
+
+    @Test fun onlyTypedGasRefusalsCanClaimADefinitiveHoldAcrossIpc() {
+        assertEquals("Gas spike, deferred", safeSessionError(GasHoldException("Gas spike, deferred")))
+        assertEquals("SESSION_SIGNER_FAILED", safeSessionError(IllegalStateException("Gas spike, deferred")))
+        assertEquals("Gas input unreadable; refresh required", safeSessionError(GasHoldException("Gas input unreadable; refresh required")))
+    }
+
     @Test fun failedFeeBatchCannotLoadKeyOrReserveNonce() = runTest {
         val f=Fixture(); f.failFeeBatch=true
         assertTrue(runCatching { f.engine().execute(f.report) }.isFailure)

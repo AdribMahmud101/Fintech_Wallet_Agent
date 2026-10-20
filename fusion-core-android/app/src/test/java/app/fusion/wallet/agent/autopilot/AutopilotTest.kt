@@ -270,6 +270,116 @@ class AutopilotTest {
         assertTrue(runCatching { FileAutopilotStore(file).load() }.isFailure)
     }
 
+    @Test fun knownPreSignerFailureIsHoldAndUncertainSignerFailureStaysUnconfirmed() = runTest {
+        val h = Harness(this)
+        h.mode = ExecutionMode(false, "Live")
+        h.action = { throw app.fusion.wallet.agent.AgentHeldException("Gas spike, deferred") }
+        h.controller.runNow(); runCurrent()
+        assertEquals("HOLD", h.state.timeline.first().outcome)
+        assertEquals("Gas spike, deferred", h.state.timeline.first().reason)
+        h.action = { throw IllegalStateException("transport failure after request") }
+        h.controller.runNow(); runCurrent()
+        assertEquals("UNCONFIRMED", h.state.timeline.first().outcome)
+        h.controller.close()
+    }
+
+    @Test fun executionModeCanBeChangedOnlyWhenLiveIsAvailableAndIdle() = runTest {
+        val h = Harness(this)
+        runCurrent()
+        h.controller.setPreviewOnly(true)
+        assertFalse(h.state.previewOnly)
+        h.mode = ExecutionMode(false, "Live")
+        h.controller.refreshExecutionMode(); runCurrent()
+        assertTrue(h.state.liveAvailable)
+        h.controller.setPreviewOnly(true)
+        h.controller.runNow(); runCurrent()
+        assertEquals(true, h.receivedDryRun)
+        h.controller.setPreviewOnly(false)
+        h.controller.runNow(); runCurrent()
+        assertEquals(false, h.receivedDryRun)
+        h.action = { delay(1000); result(it) }
+        h.controller.runNow(); runCurrent()
+        h.controller.setPreviewOnly(true)
+        assertFalse(h.state.previewOnly)
+        h.controller.close()
+    }
+
+    @Test fun homeRefreshWakesBetweenHeartbeatsAndDeduplicatesTheCondition() = runTest {
+        val h = Harness(this)
+        h.controller.setEnabled(true); runCurrent()
+        val zero = Money.ZERO
+        val buckets = Buckets(zero, zero, zero, zero, zero, zero, zero, zero, zero)
+        val bill = Obligation("bill", "payee", zero, h.now() / 1000, false)
+        val wallet = h.wallet.copy(buckets = buckets, obligations = listOf(bill), capturedAtEpochMillis = h.now())
+        h.controller.onHomeRefresh(wallet); runCurrent()
+        assertEquals(2, h.calls)
+        assertEquals("Trigger: New obligation due soon", h.state.timeline.first().wakePath)
+        h.controller.onHomeRefresh(wallet); runCurrent()
+        assertEquals(2, h.calls)
+        advanceTimeBy(300_000); runCurrent()
+        assertEquals(3, h.calls)
+        assertEquals("Heartbeat", h.state.timeline.first().wakePath)
+        h.controller.close()
+    }
+
+    @Test fun reflexOffDoesNothingAndOnInterruptsPlannerBeforeGuardianWithoutAnotherLlmCall() = runTest {
+        var plannerCalls = 0
+        var guardianCalls = 0
+        var cancelled = false
+        val clock = { 1_800_000_000_000L }
+        val c = AutopilotController(backgroundScope, MemoryStore(), clock, { true }, { healthy(clock()) },
+            { ExecutionMode(true, "Preview") }, {
+                plannerCalls++
+                try { awaitCancellation() } finally { cancelled = true }
+            }, guardianPause = {
+                assertTrue(cancelled)
+                guardianCalls++
+                Result.success("0x" + "a".repeat(64))
+            })
+        c.setAccess(true); c.setForeground(true)
+        c.onReflex(ReflexSignal.DEPEG); runCurrent()
+        assertEquals(0, guardianCalls)
+        c.setEnabled(true); runCurrent()
+        c.setAutoProtect(true)
+        c.onReflex(ReflexSignal.DEPEG); runCurrent()
+        assertEquals(1, plannerCalls)
+        assertEquals(1, guardianCalls)
+        assertFalse(c.state.value.enabled)
+        assertEquals("PROTECTED", c.state.value.timeline.first().outcome)
+        assertEquals("Reflex: depeg", c.state.value.timeline.first().wakePath)
+        c.close()
+    }
+
+    @Test fun reflexAtRestUsesOnlyGuardianAndFailedProtectionLeavesExecutionLatchedOff() = runTest {
+        var llm = 0
+        var guardian = 0
+        val c = AutopilotController(backgroundScope, MemoryStore(), { 1_800_000_000_000L }, { true }, { error("No snapshot needed") },
+            { ExecutionMode(true, "Preview") }, { llm++; error("No planner allowed") },
+            guardianPause = { guardian++; Result.failure(IllegalStateException("Unavailable")) })
+        c.setAccess(true); c.setForeground(true); c.setAutoProtect(true)
+        c.onReflex(ReflexSignal.VAULT_CODE_CHANGED); runCurrent()
+        assertEquals(0, llm); assertEquals(1, guardian)
+        assertFalse(c.state.value.enabled)
+        assertEquals("HOLD", c.state.value.timeline.first().outcome)
+        assertEquals("Reflex: vault code changed", c.state.value.timeline.first().wakePath)
+        c.runNow(); runCurrent()
+        assertEquals(0, llm)
+        c.close()
+    }
+
+    @Test fun holdReportExplanationSurvivesZeroAmountPolicyFailuresAndPersistsDetails() {
+        val r = result(true).copy(choiceLabel = "H", previewPassed = false,
+            reportJson = """{"routerReason":"Gas spike, deferred","preview":{"checks":[{"status":"FAIL","message":"assets=0, hard_max=2500000000"}]}}""")
+        val tick = tickResult(1, 1000, ExecutionMode(true, "Preview"), emptyList(), r).copy(wakePath = "Trigger: Test")
+        assertEquals("Gas spike, deferred", tick.reason)
+        val file = File(temp.root, "details.json")
+        FileAutopilotStore(file).save(AutopilotState(timeline = listOf(tick), autoProtect = true, previewOnly = true))
+        val loaded = FileAutopilotStore(file).load()
+        assertEquals(tick, loaded.timeline.single())
+        assertTrue(loaded.autoProtect)
+        assertTrue(loaded.previewOnly)
+    }
+
     companion object {
         private fun result(dryRun: Boolean) = AgentTickResult("A", "SURPLUS_AVAILABLE", "INSTANT", "hash", "{}", 123, true, 1.0, 0, dryRun,
             """{"chosenCandidate":{"kind":0},"preview":{"checks":[{"name":"Recorded check","status":"PASS","message":"Recorded success"}]}}""")

@@ -48,6 +48,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         else state.recentActions.maxByOrNull { it.blockNumber }?.txHash
     val lastDecisionEntry = txIndex.find(lastDecisionTx)
     val scope = rememberCoroutineScope()
+    var moreOpen by rememberSaveable { mutableStateOf(false) }
     var receiveOpen by rememberSaveable { mutableStateOf(false) }
     var previewOpen by rememberSaveable { mutableStateOf(false) }
     val previewMove: () -> Unit = {
@@ -87,10 +88,10 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { HomeAllocationAndRunway(state) }
-            item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
+            if (moreOpen) item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
-            item { HomeSpendingAndRates(state, txIndex) }
-            item { WorthKnowing(state) }
+            if (moreOpen) item { HomeSpendingAndRates(state, txIndex) }
+            if (moreOpen) item { WorthKnowing(state) }
             item {
                 ChartTile(Modifier.fillMaxWidth()) {
                     ChartTileHeader(stringResource(R.string.home_agent_title),
@@ -105,15 +106,18 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                     }
                     if (autopilot.enabled) Text(autopilotStatus(autopilot, now), style = FusionType.BodyMedium)
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
-                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${app.fusion.wallet.ui.common.readableCode(it.reason)}" }
+                    val runtimeReport = agent.result?.let { runCatching { org.json.JSONObject(it.reportJson) }.getOrNull() }
+                    val lastTick = autopilot.timeline.firstOrNull { it.outcome != "RUNNING" }
+                        ?.takeIf { it.timeMillis >= (runtimeReport?.optLong("completedAtMillis") ?: 0) || it.reportJson == agent.result?.reportJson }
+                    Text(lastTick?.let { "Last decision: ${it.reason}" }
+                        ?: agent.result?.let { "Last decision: ${app.fusion.wallet.ui.common.decisionReason(org.json.JSONObject(it.reportJson), it.reason)}" }
                         ?: lastDecisionEntry?.let { "Last decision: ${activityTitle(it.kind)}" }
-                        ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                        ?: "No in-app decision recorded", style = FusionType.BodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     lastDecisionTx?.let { RecordedProvenanceChip(activityProvenance(lastDecisionEntry?.source)) }
                     StatusChip("On-device AI · Private", FusionColors.Indigo)
                     module?.let { m ->
                         val allowance = aiAllowance(m.dailyUsed.raw, m.policy.dailyLimit.raw, m.policy.microMax.raw)
-                        Text("Today's AI allowance: ${formatBigIntegerAmount(allowance.remaining)} of ${formatBigIntegerAmount(allowance.limit)} USDC left · up to ${formatBigIntegerAmount(allowance.perMove)} per move", style = FusionType.BodySmall)
+                        app.fusion.wallet.ui.common.allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) }
                         LinearProgressIndicator(progress = { allowance.fraction }, modifier = Modifier.fillMaxWidth(), color = FusionColors.Green)
                     } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -129,6 +133,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                     stopHash?.let { TxLink(it) }
                 }
             }
+            item { TextButton(onClick = { moreOpen = !moreOpen }) { Text(if (moreOpen) "Hide treasury details" else "Charts, vaults and upcoming bills") } }
+            if (moreOpen) {
             if (state.vaults.isEmpty()) item {
                 ChartTile(Modifier.fillMaxWidth()) {
                     Text("Vault positions", style = FusionType.HeadingSmall)
@@ -136,6 +142,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 }
             } else state.vaults.forEach { vault -> item(key = "vault:${vault.id}") { VaultTile(vault) } }
             item { NextBillTile(state, now / 1000) }
+            }
             item {
                 BentoTile(Modifier.fillMaxWidth(), onClick = { askOpen = true }) {
                     Text(stringResource(R.string.tr_ask_title), style = FusionType.HeadingSmall)

@@ -17,6 +17,9 @@ data class AutopilotTick(
     val mode: String = "Guards only · no transaction requested",
     val checks: List<TickCheck> = emptyList(),
     val txHash: String? = null,
+    val wakePath: String = "Heartbeat",
+    val reportJson: String? = null,
+    val passportJson: String? = null,
 )
 
 data class AutopilotState(
@@ -28,6 +31,9 @@ data class AutopilotState(
     val mode: String = "Checking device execution mode at next tick",
     val timeline: List<AutopilotTick> = emptyList(),
     val storageError: String? = null,
+    val previewOnly: Boolean = false,
+    val liveAvailable: Boolean = false,
+    val autoProtect: Boolean = false,
 )
 
 data class ExecutionMode(val dryRun: Boolean, val description: String)
@@ -41,7 +47,7 @@ object AutopilotGuards {
             check("Network", online, if (online) "Network available" else "No network"),
             check("App access", canAct, if (canAct) "Signed in with agent controls" else "Read-only role, signed out, or setup incomplete"),
             check("Guardian stop", !guardianStopped, if (guardianStopped) "Guardian stop requested" else "No local guardian stop"),
-            check("Live snapshot", state.source == DataSource.LIVE && !state.isStale(nowMillis), "A fresh live snapshot is required", "Fresh live snapshot"),
+            check("Live snapshot", state.source == DataSource.LIVE && !state.refreshing && !state.isStale(nowMillis), "A fresh live snapshot is required", "Fresh live snapshot"),
             check("Module configured", module?.configured == true, "Module must be configured", "Module configured"),
             check("Module live", module != null && !module.paused, if (module?.paused == true) "Module paused by guardian or owners" else "Module must be unpaused"),
             check("Permission tier", module != null && module.policy.permissionTier != PermissionTier.READ_ONLY, "Read-only tier cannot act", "Permission tier allows agent requests"),
@@ -58,7 +64,7 @@ internal fun tickResult(id: Long, time: Long, mode: ExecutionMode, guards: List<
         val c = checks.getJSONObject(index)
         TickCheck(c.optString("name", c.optString("ruleId")), c.optString("status", "UNKNOWN"), c.optString("message"))
     }
-    val blocked = !result.previewPassed || policy.any { it.status == "FAIL" }
+    val blocked = result.choiceLabel != "H" && (!result.previewPassed || policy.any { it.status == "FAIL" })
     val held = result.choiceLabel == "H" || blocked
     val hash = result.txHash?.takeIf { !mode.dryRun && !result.dryRun && !held && Regex("0x[0-9a-fA-F]{64}").matches(it) }
     val kind = report.optJSONObject("chosenCandidate")?.optInt("kind", -1)
@@ -70,9 +76,10 @@ internal fun tickResult(id: Long, time: Long, mode: ExecutionMode, guards: List<
         else -> "Agent decision"
     }
     return AutopilotTick(id, time, if (held) "H" else result.choiceLabel, title,
-        if (blocked) "Policy preview blocked execution" else result.reason,
+        if (blocked) policy.filter { it.status == "FAIL" }.joinToString("; ") { app.fusion.wallet.ui.common.readableCheckMessage(it.message) }
+            .ifBlank { "Policy preview blocked execution" } else app.fusion.wallet.ui.common.decisionReason(report, result.reason),
         when { held -> "HOLD"; hash != null -> "EXECUTED"; mode.dryRun || result.dryRun -> "PREVIEW"; else -> "UNCONFIRMED" },
-        mode.description, guards + policy, hash)
+        mode.description, guards + policy, hash, reportJson = result.reportJson, passportJson = result.passportJson)
 }
 
 fun autopilotStatus(state: AutopilotState, nowMillis: Long): String = when {

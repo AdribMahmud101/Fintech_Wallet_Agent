@@ -43,6 +43,7 @@ class MainViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             while (isActive) {
                 repository.refresh()
+                autopilot.onHomeRefresh(state.value)
                 delay(15_000)
             }
         }
@@ -53,7 +54,7 @@ class MainViewModel @JvmOverloads constructor(
 
     override fun onCleared() { autopilot.close(); super.onCleared() }
 
-    fun refresh() { viewModelScope.launch { repository.refresh() } }
+    fun refresh() { viewModelScope.launch { repository.refresh(); autopilot.onHomeRefresh(state.value) } }
 
     /** Returns only after a successful Base Sepolia receipt and paused-state check. */
     suspend fun requestGuardianPause(): Result<String> {
