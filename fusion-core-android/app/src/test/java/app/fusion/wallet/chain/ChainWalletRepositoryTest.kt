@@ -184,7 +184,7 @@ internal class CapturedRpc : RpcTransport {
     private val allLogs = calls.filter { it.getString("method") == "eth_getLogs" }.flatMap {
         val page = it.getJSONArray("result"); List(page.length()) { index -> page.getJSONObject(index) }
     }
-    val requests = mutableListOf<Pair<String, JSONArray>>()
+    val requests = java.util.Collections.synchronizedList(mutableListOf<Pair<String, JSONArray>>())
     var failSelector: String? = null
     var wrongChain = false
     var reorganize = false
@@ -198,7 +198,13 @@ internal class CapturedRpc : RpcTransport {
             val filter = params.getJSONObject(0)
             val from = ChainReader.quantity(filter.getString("fromBlock"))
             val to = ChainReader.quantity(filter.getString("toBlock"))
-            return JSONArray(allLogs.filter { ChainReader.quantity(it.getString("blockNumber")) in from..to })
+            return JSONArray(allLogs.filter { log ->
+                ChainReader.quantity(log.getString("blockNumber")) in from..to &&
+                    log.getString("address").equals(filter.getString("address"), true) &&
+                    (filter.optJSONArray("topics")?.let { topics -> (0 until topics.length()).all { i ->
+                        topics.isNull(i) || topics.getString(i).equals(log.getJSONArray("topics").optString(i), true)
+                    } } ?: true)
+            })
         }
         val captured = calls.firstOrNull { it.getString("method") == method && it.getJSONArray("params").similar(params) }
             ?: error("Uncaptured RPC request $method $params")

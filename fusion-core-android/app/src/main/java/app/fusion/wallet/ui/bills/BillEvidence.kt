@@ -18,9 +18,6 @@ data class BillEvidence(
 
 internal class BillEvidenceReader {
     private val lock = Mutex()
-    private val cachedLogs = mutableMapOf<Pair<Long, Set<String>>, List<ChainLog>>()
-    private var lastHead: Long = -1
-    private var lastHash: String? = null
 
     suspend fun load(context: Context, state: WalletState): BillEvidence = lock.withLock {
         val block = requireNotNull(state.blockNumber)
@@ -28,18 +25,9 @@ internal class BillEvidenceReader {
         val reader = ChainReader(AgentNetwork.readOnly(context, deployment.rpcUrl))
         check(reader.chainId() == deployment.chainId) { "Unexpected evidence chain" }
         check(reader.block(ChainReader.tag(block)).hash.equals(state.blockHash, true)) { "Snapshot changed; refresh required" }
-        if (block < lastHead || (block == lastHead && state.blockHash != lastHash)) cachedLogs.clear()
-        lastHead = block
-        lastHash = state.blockHash
-        // The repository supplies observed event blocks; this adds their indexed identifiers only.
-        val blocks = state.evidence.filter { it.kind == "ObligationPaid" || it.kind == "PayeeAdded" }.map { it.blockNumber }.distinct()
-        cachedLogs.keys.removeAll { it.first !in blocks }
-        val logs = blocks.flatMap { eventBlock ->
-            val expected = state.evidence.filter { it.blockNumber == eventBlock }.map { it.id }.toSet()
-            cachedLogs.getOrPut(eventBlock to expected) {
-                reader.logs(deployment.module, eventBlock, eventBlock).filter { "${it.txHash}:${it.logIndex}" in expected }
-            }
-        }
+        val indexed = SharedEventIndexes.forContext(context, deployment).sync(reader,
+            BlockHeader(block, requireNotNull(state.blockHash), requireNotNull(state.blockTime)))
+        val logs = indexed.logs.filter { it.address.equals(deployment.module, true) }
         val queue = if (state.queue.isEmpty()) null else reader.call(deployment.module, Views.QUEUE, block).requireSize(19)
         check(reader.block(ChainReader.tag(block)).hash.equals(state.blockHash, true)) { "Evidence block reorganized; refresh required" }
         return fromLogs(state.blockHash, logs, queue)

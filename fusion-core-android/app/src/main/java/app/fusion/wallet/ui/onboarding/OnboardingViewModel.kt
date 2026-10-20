@@ -3,6 +3,8 @@ package app.fusion.wallet.ui.onboarding
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.fusion.wallet.data.ChainWalletRepository
+import app.fusion.wallet.data.Deployment
 import app.fusion.wallet.onboarding.CheckItem
 import app.fusion.wallet.onboarding.KeyInventory
 import app.fusion.wallet.onboarding.ModelDownloader
@@ -136,9 +138,16 @@ class OnboardingViewModel(app: Application) : AndroidViewModel(app) {
                 // Phase 1: policy, limits and reserve in one batched read (fast).
                 val quick = PolicyReader().read(manifestJson, includeVendors = false)
                 _policy.value = PolicyState(loading = false, summary = quick)
-                // Phase 2: the vendor list needs a history scan; fill it in when it lands.
-                val full = runCatching { PolicyReader().read(manifestJson, includeVendors = true) }.getOrNull()
-                if (full != null) _policy.value = PolicyState(loading = false, summary = full)
+                // Consume the wallet's shared persisted event index; never launch a second deployment scan.
+                val repository = ChainWalletRepository.fromAssets(getApplication())
+                repository.refresh()
+                val wallet = repository.state.value
+                if (wallet.historyError != null || wallet.error != null) {
+                    _policy.value = PolicyState(summary = quick, error = wallet.historyError ?: wallet.error)
+                } else {
+                    val full = PolicyReader.fromWalletState(wallet, Deployment.parse(manifestJson))
+                    if (full != null) _policy.value = PolicyState(summary = full)
+                }
             } catch (e: Exception) {
                 _policy.value = PolicyState(loading = false, error = e.message?.take(200) ?: "Could not read policy")
             }
