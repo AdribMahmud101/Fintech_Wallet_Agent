@@ -63,4 +63,6 @@ object Views {
     const val PAYEE = "0x00ca2f75"
     const val SANCTIONED = "0xdf592f7d"
     const val PAID = "0xfeef6640"
+    const val SAFE_THRESHOLD = "0xe75235b8"
+    const val SAFE_OWNERS = "0xa0e67e2b"
 }

@@ -51,6 +51,11 @@ data class WalletState(
     val historyError: String? = null,
     val chartEvidence: ChartEvidence? = null,
     val agentGas: AgentGas? = null,
+    /** True when [agentGas] was restored from the persisted snapshot or a live gas read failed. */
+    val agentGasCached: Boolean = false,
+    /** Safe threshold and owner count read from the Safe at the snapshot block. */
+    val safeThreshold: Int? = null,
+    val safeOwnerCount: Int? = null,
 ) {
     val dataLabel: String get() = if (source == DataSource.DEMO) "DEMO" else "Base Sepolia · LIVE"
 

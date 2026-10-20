@@ -201,6 +201,18 @@ class WalletStateStoreTest {
     }
 
     @Test
+    fun restoredGasIsMarkedCachedAndCustodyMetadataRoundTrips() {
+        val gas = AgentGas(BigInteger("17641102153994847"), null, null)
+        val restored = WalletStateStore.decode(WalletStateStore.encode(
+            sampleState().copy(agentGas = gas, safeThreshold = 2, safeOwnerCount = 2)))
+        assertNotNull(restored)
+        assertEquals(gas, restored!!.agentGas)
+        assertTrue(restored.agentGasCached)
+        assertEquals(2, restored.safeThreshold)
+        assertEquals(2, restored.safeOwnerCount)
+    }
+
+    @Test
     fun nonReadyStateReturnsNull() {
         val loading = sampleState().copy(status = LoadStatus.LOADING)
         assertNull(WalletStateStore.encode(loading))

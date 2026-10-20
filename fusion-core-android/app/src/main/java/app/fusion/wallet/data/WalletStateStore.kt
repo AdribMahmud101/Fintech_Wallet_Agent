@@ -25,6 +25,8 @@ object WalletStateStore {
         state.blockTime?.let { root.put("blockTime", it) }
         state.capturedAtEpochMillis?.let { root.put("capturedAt", it) }
         state.observedHeadBlock?.let { root.put("observedHeadBlock", it) }
+        state.safeThreshold?.let { root.put("safeThreshold", it) }
+        state.safeOwnerCount?.let { root.put("safeOwnerCount", it) }
         state.agentGas?.let { gas ->
             root.put("agentGas", JSONObject().put("balanceWei", gas.balanceWei.toString()).apply {
                 gas.medianCostWei?.let { put("medianCostWei", it.toPlainString()) }
@@ -75,6 +77,10 @@ object WalletStateStore {
                         gas.optStringOrNull("medianCostWei")?.toBigDecimal(),
                         gas.optStringOrNull("estimatedMoves")?.toBigInteger())
                 },
+                // Every gas value restored from the snapshot is by definition cached.
+                agentGasCached = root.optJSONObject("agentGas") != null,
+                safeThreshold = root.optIntOrNull("safeThreshold"),
+                safeOwnerCount = root.optIntOrNull("safeOwnerCount"),
                 balanceHistory = root.optJSONArray("balanceHistory").mapObjects {
                     BalanceSample(it.getLong("time"), BigInteger(it.getString("raw")))
                 },
@@ -203,6 +209,7 @@ object WalletStateStore {
 }
 
 private fun JSONObject.optLongOrNull(key: String): Long? = if (has(key) && !isNull(key)) getLong(key) else null
+private fun JSONObject.optIntOrNull(key: String): Int? = if (has(key) && !isNull(key)) getInt(key) else null
 private fun JSONObject.optStringOrNull(key: String): String? =
     if (has(key) && !isNull(key)) optString(key).takeIf { it.isNotEmpty() } else null
 private fun <T> JSONArray?.mapObjects(f: (JSONObject) -> T): List<T> =

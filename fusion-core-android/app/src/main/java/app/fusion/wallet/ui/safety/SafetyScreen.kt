@@ -16,12 +16,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.agent.*
+import app.fusion.wallet.ui.common.CustodySplitCard
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.formatTimestamp
 import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.shell.ShellViewModel
 import app.fusion.wallet.ui.theme.*
+import app.fusion.wallet.ui.treasury.AllowanceLabels
 import kotlinx.coroutines.launch
 
 @Composable
@@ -59,6 +61,15 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     }
                     ExternalAction("Arena evidence", EVIDENCE_RAW + ARENA_PATH) { feedback(it, null) }
                     ExternalAction("Held-out evaluation", EVIDENCE_RAW + HELDOUT_PATH) { feedback(it, null) }
+                }
+            }
+            item { CustodySplitCard(state) }
+            item {
+                BentoTile(Modifier.fillMaxWidth()) {
+                    Text("AI allowance", style = FusionType.HeadingMedium)
+                    val module = state.module
+                    if (module == null) Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
+                    else AllowanceLabels(module)
                 }
             }
             item { Column { SafetyCharts(evidence) } }

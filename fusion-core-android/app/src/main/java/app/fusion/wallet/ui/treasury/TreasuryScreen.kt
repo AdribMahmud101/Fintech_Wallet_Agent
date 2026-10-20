@@ -24,6 +24,7 @@ import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.ui.activity.activityProvenance
 import app.fusion.wallet.ui.activity.activityTitle
 import app.fusion.wallet.ui.activity.RecordedProvenanceChip
+import app.fusion.wallet.ui.common.CustodySplitPill
 import app.fusion.wallet.ui.activity.rememberTxIndex
 import app.fusion.wallet.data.*
 import app.fusion.wallet.signer.GuardianStopDialog
@@ -83,6 +84,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
+            item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { HomeAllocationAndRunway(state) }
             item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
@@ -108,11 +110,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     lastDecisionTx?.let { RecordedProvenanceChip(activityProvenance(lastDecisionEntry?.source)) }
                     StatusChip("On-device AI · Private", FusionColors.Indigo)
-                    module?.let { m ->
-                        val allowance = aiAllowance(m.dailyUsed.raw, m.policy.dailyLimit.raw, m.policy.microMax.raw)
-                        Text("Today's AI allowance: ${formatBigIntegerAmount(allowance.remaining)} of ${formatBigIntegerAmount(allowance.limit)} USDC left · up to ${formatBigIntegerAmount(allowance.perMove)} per move", style = FusionType.BodySmall)
-                        LinearProgressIndicator(progress = { allowance.fraction }, modifier = Modifier.fillMaxWidth(), color = FusionColors.Green)
-                    } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
+                    module?.let { m -> AllowanceLabels(m) }
+                        ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = previewMove, enabled = !agent.running && state.treasury != null) {
                             Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
