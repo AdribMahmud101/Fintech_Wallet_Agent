@@ -719,7 +719,7 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_preview(`candidateJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`decisionHash`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
-    external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_validate_output(`raw`: RustBuffer.ByValue,`set`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -862,7 +862,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_fusion_android_core_checksum_func_preview() and 0xFFFF) != 60782) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if ((lib.uniffi_fusion_android_core_checksum_func_sign_prepared() and 0xFFFF) != 39936) {
+    if ((lib.uniffi_fusion_android_core_checksum_func_sign_prepared() and 0xFFFF) != 34106) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_validate_output() and 0xFFFF) != 41416) {
@@ -1129,14 +1129,15 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
     )
     }
 
- fun `signPrepared`(`tx`: kotlin.String, `key`: kotlin.String): kotlin.String {
+ fun `signPrepared`(`tx`: kotlin.String, `key`: kotlin.String, `policy`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_sign_prepared(
 
 
         FfiConverterString.lower(`tx`),
-        FfiConverterString.lower(`key`),_status)
+        FfiConverterString.lower(`key`),
+        FfiConverterString.lower(`policy`),_status)
 }
     )
     }

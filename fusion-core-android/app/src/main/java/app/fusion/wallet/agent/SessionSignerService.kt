@@ -35,9 +35,11 @@ class SessionSignerService : Service() {
         super.onCreate()
         val manifest = JSONObject(assets.open("deployments/84532.json").bufferedReader().use { it.readText() })
         val d = Deployment.parse(manifest.toString()); val keys = SessionKeys(this)
+        val signingPolicy = SessionSigningPolicy(d.module, d.chainId)
         var traceStart = 0L
         var traceStages = JSONArray()
         engine = SessionSignerEngine(d.module, manifest.getJSONObject("roles").getString("session"),
+            chainId = d.chainId,
             rpc = { method, params -> AgentNetwork.relay(this, method, params) },
             readBatch = { calls -> AgentNetwork.batch(this, calls) },
             trace = { stage ->
@@ -58,9 +60,12 @@ class SessionSignerService : Service() {
                 val fresh = SignerSnapshot.read(this, manifest, report.getJSONObject("snapshot"))
                 AgentRuntime.checked(verifyForSigning(report.toString(), fresh.toString(), d.safe, d.module))
             },
-            sign = { tx, activeAddress -> keys.withKey(activeAddress) { key ->
-                AgentRuntime.checked(signPrepared(tx.toString(), AgentCrypto.hex(key)))
-            } }, journal = FileSessionJournal(File(noBackupFilesDir, "agent")))
+            sign = { tx, activeAddress ->
+                signingPolicy.validate(tx)
+                keys.withKey(activeAddress) { key ->
+                    AgentRuntime.checked(signPrepared(tx.toString(), AgentCrypto.hex(key), signingPolicy.json().toString()))
+                }
+            }, journal = FileSessionJournal(File(noBackupFilesDir, "agent")))
     }
     override fun onBind(intent: Intent?): IBinder = messenger.binder
     override fun onDestroy() { scope.cancel(); super.onDestroy() }
@@ -86,5 +91,7 @@ internal fun safeSessionError(error: Exception): String {
     var code = error.message.orEmpty()
     if (code.startsWith("{")) code = runCatching { JSONObject(code).optString("message") }.getOrDefault("")
     val allowed = setOf("DRY_RUN_CANNOT_BROADCAST", "SESSION_LOCK_REQUIRED", "WRONG_CHAIN", "MODULE_MISMATCH", "PASSPORT_HASH_MISMATCH", "SIMULATION_DIGEST_MISMATCH", "FEE_LIMIT", "GAS_LIMIT", "SESSION_NEEDS_GAS", "SIGNED_HASH_MISMATCH", "STALE_STATE_OR_UNSUPPORTED_ROUTE", "SESSION_INACTIVE", "RECEIPT_MISMATCH", "EVENT_MISMATCH", "REORG", "CODE_PIN_MISMATCH", "IMPLEMENTATION_PIN_MISMATCH", "PLANNER_PIN_MISMATCH", "HOLDINGS_CHANGED", "INVALID_REPORT", "INVALID_PASSPORT", "INVALID_CONTEXT_OR_HOLD", "INVALID_SNAPSHOT", "INVALID_SET", "INVALID_CANDIDATE", "CANDIDATE_BINDING_MISMATCH", "INVALID_MODEL_OUTPUT", "FRESH_POLICY_PREVIEW_FAILED", "SESSION_KEY_NOT_IMPORTED", "SESSION_KEY_MISMATCH", "SESSION_WRAPPING_KEY_UNAVAILABLE", "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN", "JOURNAL_HASH_MISMATCH", "SIGNING_FAILED")
+    if (error is SignerRefused) return error.message!!
+    if (SignerRefusal.entries.any { code == "SignerRefused::${it.name}" }) return code
     return if (code in allowed || Regex("(?:PENDING_SESSION_ATTEMPT|SESSION_TX_REVERTED): 0x[0-9a-f]{64}").matches(code)) code else "SESSION_SIGNER_FAILED"
 }
