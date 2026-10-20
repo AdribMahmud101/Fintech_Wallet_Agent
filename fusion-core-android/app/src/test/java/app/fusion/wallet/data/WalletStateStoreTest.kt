@@ -1,6 +1,7 @@
 package app.fusion.wallet.data
 
 import java.math.BigInteger
+import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -169,6 +170,34 @@ class WalletStateStoreTest {
         assertEquals(original.recentActions.size, decoded.recentActions.size)
         assertEquals(original.obligations.size, decoded.obligations.size)
         assertEquals(original.accountingMatches, decoded.accountingMatches)
+    }
+
+    @Test
+    fun agentGasRoundTripPreservesExactWeiAndFractionalMedian() {
+        val gas = AgentGas(BigInteger("123456789012345678901234567890"), "2.5".toBigDecimal(),
+            BigInteger("49382715604938271560493827156"))
+        val restored = WalletStateStore.decode(WalletStateStore.encode(sampleState().copy(agentGas = gas)))
+        assertEquals(gas, restored?.agentGas)
+    }
+
+    @Test
+    fun balanceOnlyGasRoundTripKeepsEstimatesUnknown() {
+        listOf(BigInteger.ZERO, BigInteger("17641102153994847")).forEach { balance ->
+            val gas = AgentGas(balance, null, null)
+            val restored = WalletStateStore.decode(WalletStateStore.encode(sampleState().copy(agentGas = gas)))
+            assertEquals(gas, restored?.agentGas)
+        }
+    }
+
+    @Test
+    fun oldCachesWithoutAgentGasStillRestore() {
+        val original = sampleState()
+        val legacy = JSONObject(WalletStateStore.encode(original)).apply { remove("agentGas") }
+        val restored = WalletStateStore.decode(legacy.toString())
+        assertNotNull(restored)
+        assertNull(restored!!.agentGas)
+        assertEquals(original.treasury, restored.treasury)
+        assertEquals(original.module, restored.module)
     }
 
     @Test

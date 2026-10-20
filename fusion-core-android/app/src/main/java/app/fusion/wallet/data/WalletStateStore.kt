@@ -25,6 +25,12 @@ object WalletStateStore {
         state.blockTime?.let { root.put("blockTime", it) }
         state.capturedAtEpochMillis?.let { root.put("capturedAt", it) }
         state.observedHeadBlock?.let { root.put("observedHeadBlock", it) }
+        state.agentGas?.let { gas ->
+            root.put("agentGas", JSONObject().put("balanceWei", gas.balanceWei.toString()).apply {
+                gas.medianCostWei?.let { put("medianCostWei", it.toPlainString()) }
+                gas.estimatedMoves?.let { put("estimatedMoves", it.toString()) }
+            })
+        }
         root.put("balanceHistory", JSONArray().apply { state.balanceHistory.forEach {
             put(JSONObject().put("time", it.timestampSeconds).put("raw", it.balanceRaw.toString()))
         } })
@@ -63,6 +69,12 @@ object WalletStateStore {
                 blockTime = root.optLongOrNull("blockTime"),
                 capturedAtEpochMillis = root.optLongOrNull("capturedAt"),
                 observedHeadBlock = root.optLongOrNull("observedHeadBlock"),
+                // Optional in v1 so snapshots written before agent gas was persisted still load.
+                agentGas = root.optJSONObject("agentGas")?.let { gas ->
+                    AgentGas(BigInteger(gas.getString("balanceWei")),
+                        gas.optStringOrNull("medianCostWei")?.toBigDecimal(),
+                        gas.optStringOrNull("estimatedMoves")?.toBigInteger())
+                },
                 balanceHistory = root.optJSONArray("balanceHistory").mapObjects {
                     BalanceSample(it.getLong("time"), BigInteger(it.getString("raw")))
                 },

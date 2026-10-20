@@ -17,7 +17,10 @@ fun interface RpcTransport {
 
 class RpcException(message: String, val httpStatus: Int? = null, val rpcCode: Int? = null) : IOException(message)
 
-class JsonRpcClient(val rpcUrl: String = "https://sepolia.base.org") : RpcTransport {
+class JsonRpcClient(
+    val rpcUrl: String = "https://sepolia.base.org",
+    private val openConnection: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+) : RpcTransport {
     private val nextId = AtomicLong()
     init { require(URL(rpcUrl).protocol == "https") { "RPC requires HTTPS" } }
 
@@ -28,13 +31,14 @@ class JsonRpcClient(val rpcUrl: String = "https://sepolia.base.org") : RpcTransp
         val id = nextId.incrementAndGet()
         val payload = JSONObject().put("jsonrpc", "2.0").put("id", id).put("method", method).put("params", params)
         RpcReadBudget.acquire(rpcUrl, 1)
-        val connection = URL(rpcUrl).openConnection() as HttpURLConnection
+        val connection = openConnection(URL(rpcUrl))
         try {
             connection.requestMethod = "POST"
             connection.connectTimeout = 4_000
             connection.readTimeout = 6_000
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("User-Agent", "FusionWallet-Android")
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
             if (connection.responseCode !in 200..299) {
                 val detail = connection.errorStream?.bufferedReader()?.use { it.readText().take(512) }.orEmpty()
@@ -66,13 +70,14 @@ class JsonRpcClient(val rpcUrl: String = "https://sepolia.base.org") : RpcTransp
             payload.put(JSONObject().put("jsonrpc", "2.0").put("id", id).put("method", method).put("params", params))
         }
         RpcReadBudget.acquire(rpcUrl, calls.size)
-        val connection = URL(rpcUrl).openConnection() as HttpURLConnection
+        val connection = openConnection(URL(rpcUrl))
         try {
             connection.requestMethod = "POST"
             connection.connectTimeout = 4_000
             connection.readTimeout = 6_000
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("User-Agent", "FusionWallet-Android")
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
             if (connection.responseCode !in 200..299) {
                 val detail = connection.errorStream?.bufferedReader()?.use { it.readText().take(512) }.orEmpty()
@@ -113,7 +118,10 @@ class JsonRpcClient(val rpcUrl: String = "https://sepolia.base.org") : RpcTransp
     }
 
     companion object {
-        private val READ_METHODS = setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber")
+        private val READ_METHODS = setOf(
+            "eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber",
+            "eth_getBalance", "eth_getTransactionReceipt",
+        )
     }
 }
 
