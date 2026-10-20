@@ -145,10 +145,6 @@ private fun TreasuryHero(state: WalletState, now: Long) {
             AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
             Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(R.drawable.ic_network_base), null, tint = Color.Unspecified, modifier = Modifier.size(20.dp))
-            StatusChip("Base Sepolia · TEST", FusionColors.Indigo)
-        }
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
             state.source == DataSource.DEMO -> "Demo data"
