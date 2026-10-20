@@ -65,6 +65,11 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Configure before any repository test initializes the UniFFI singleton.
+        unitTests.all { test ->
+            test.systemProperty("jna.library.path", providers.environmentVariable("FUSION_HOST_CORE_LIB")
+                .getOrElse(rootProject.file("../../fusion-core/target/debug").canonicalPath))
+        }
     }
 
     packaging {
@@ -101,6 +106,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // Host JNA natives for unit tests that exercise the real Rust quant formulas.
+    testRuntimeOnly(libs.jna) { artifact { type = "jar" } }
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
     testImplementation(libs.kotlinx.coroutines.test)

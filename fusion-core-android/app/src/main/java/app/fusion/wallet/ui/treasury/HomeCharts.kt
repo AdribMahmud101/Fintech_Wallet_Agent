@@ -91,12 +91,14 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
                     listOf(Segment("Other", week.totals.filterKeys { it !in top }.values.fold(BigInteger.ZERO, BigInteger::add), FusionChart.Reserved))) })
         }
     } },second={ modifier -> ChartTile(modifier) {
-        val apy = state.chartEvidence?.aaveApyPercent
+        val quant = state.quantReport?.let { org.json.JSONObject(it) }
+        val apy = quant?.takeUnless { it.isNull("conservativeApyPpb") }?.getLong("conservativeApyPpb")?.toBigDecimal()?.movePointLeft(7)
         ChartTileHeader("Interest per year", buildString {
-            append("Aave lending: live waUSDC supply APY from Aave V3 Pool getReserveData(USDC).currentLiquidityRate (ray APR converted to compounded annual supply APY). Pool 0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27; USDC 0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f. Bars scale to the largest available rate shown, rather than 100%.")
+            append("Aave lending: conservative waUSDC supply APY: the lower of the live compounded supply rate and realized liquidityIndex growth over approximately 24 hours. If a historical call is unavailable, the report says spot only. Utilization is total debt / (available underlying + total debt); new deposits stop above 85%. Withdrawable now is available USDC at the aToken, shared by all suppliers. Break-even uses the K33 median actual fee, fresh Chainlink ETH/USD and the deposit quote round-trip loss. Unknown measurements block yield moves. Pool 0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27; USDC 0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f. Bars scale to the largest available rate shown, rather than 100%.")
             state.chartEvidence?.blockNumber?.let { append("\n\nPool supply rate · block $it") }
             append("\n\nDemo vault: simulated — no live rate. Simulated yield is funded by sponsor donations; no configured annual rate getter. Empty track means no live rate, not zero yield.")
         })
+        Text(quant?.let(::quantSummary) ?: "Utilization not measured · withdrawable now not measured\nBreak-even not measured", style = FusionType.BodySmall)
         ProgressBars(listOf(
             ProgressRow("Aave", apy?.let { "${it.setScale(2, java.math.RoundingMode.HALF_UP)}%" } ?: "unavailable",
                 apy?.let { gaugeFraction(it, it) }, FusionChart.Sky),

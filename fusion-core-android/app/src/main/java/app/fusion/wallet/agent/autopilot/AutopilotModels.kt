@@ -72,7 +72,7 @@ internal fun tickResult(id: Long, time: Long, mode: ExecutionMode, guards: List<
     return AutopilotTick(id, time, if (held) "H" else result.choiceLabel, title,
         if (blocked) "Policy preview blocked execution" else result.reason,
         when { held -> "HOLD"; hash != null -> "EXECUTED"; mode.dryRun || result.dryRun -> "PREVIEW"; else -> "UNCONFIRMED" },
-        mode.description, guards + policy, hash)
+        mode.description, guards + policy + listOfNotNull(report.optJSONObject("quant")?.let { TickCheck("Measured economics", "INFO", quantSummary(it)) }), hash)
 }
 
 fun autopilotStatus(state: AutopilotState, nowMillis: Long): String = when {

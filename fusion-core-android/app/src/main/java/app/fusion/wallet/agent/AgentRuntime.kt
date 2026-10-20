@@ -58,7 +58,8 @@ object AgentRuntime {
         val billsFile = File(context.filesDir, "agent/obligations.json")
         val decisionRepository = if (billsFile.isFile) {
             check(billsFile.length() <= 65_536) { "Bill metadata exceeds limit" }
-            ChainWalletRepository(manifest, billsFile.readText(), AgentNetwork.readOnly(context, deployment.rpcUrl))
+            ChainWalletRepository(manifest, billsFile.readText(), AgentNetwork.readOnly(context, deployment.rpcUrl),
+                txIndex = { TxIndexCache(File(context.filesDir, "evidence/tx_index.json")).refresh() })
         } else repository
         decisionRepository.refresh()
         var state = decisionRepository.state.value
@@ -80,9 +81,23 @@ object AgentRuntime {
         val allBills = SnapshotAdapter.obligations(state)
         val commitment = checked(buildCommitment(allBills.toString()))
         check(commitment.getString("root").equals(module.obligationsRoot, true)) { "Commitment proof root mismatch" }
-        // Optional, explicitly provisioned rate scenarios. Missing rates cannot invent yield.
-        val rateFile = File(context.filesDir, "agent/rates.json")
-        val rates = if (rateFile.isFile) JSONArray(rateFile.readText()) else JSONArray()
+        // No file-supplied yield scenarios in the live execution path.
+        val policy = snapshot.getJSONObject("policy")
+        val cash = snapshot.getString("safeCash").toBigInteger()
+        val spare = (cash - snapshot.getJSONObject("moduleState").getString("reservedRaw").toBigInteger() - policy.getString("operatingBufferRaw").toBigInteger()).max(java.math.BigInteger.ZERO)
+        val limit = (0 until policy.getJSONArray("vaults").length()).map { policy.getJSONArray("vaults").getJSONObject(it) }
+            .single { it.getString("vault").equals(deployment.vaultA, true) }.getString("maxExposureRaw").toBigInteger()
+        val cap = policy.getString(if (policy.getInt("permissionTier") == 2) "microMaxRaw" else "hardMaxRaw").toBigInteger().min(policy.getString("hardMaxRaw").toBigInteger())
+        val size = nextQuantSize(spare, cap, snapshot.getString("vaultAAssets").toBigInteger(), limit)
+        val header = BlockHeader(snapshot.getLong("blockNumber"), snapshot.getString("blockHash"), snapshot.getLong("blockTimestamp"))
+        val inputs = QuantReader(reader).read(deployment.vaultA, header, state.agentGas, size)
+        snapshot.put("quant", inputs)
+        // Measured spot APR only orders safety withdrawals; quant owns deposit APY.
+        val rates = JSONArray()
+        inputs.optJSONObject("reserve")?.let { reserve ->
+            val bps = reserve.getString("liquidityRateRay").toBigInteger().divide(java.math.BigInteger.TEN.pow(23)).longValueExact()
+            rates.put(JSONObject().put("vault", deployment.vaultA).put("rateBps", bps).put("isSimulated", false))
+        }
         val set = checked(candidates(snapshot.toString(), SnapshotAdapter.obligations(state, true).toString(),
             SnapshotAdapter.payees(state).toString(), commitment.getJSONObject("proofs").toString(), rates.toString(),
             deployment.safe, deployment.module)).getJSONObject("set")
@@ -122,7 +137,7 @@ object AgentRuntime {
         val report = JSONObject().put("source", "APP").put("requestId", requestId ?: JSONObject.NULL).put("dryRun", dryRun).put("planner", passport.getJSONObject("planner"))
             .put("snapshot", snapshot).put("candidateSet", set).put("chosenCandidate", candidate)
             .put("decisionHash", hash).put("passportJson", canonical).put("preview", preview).put("model", model)
-            .put("rates", rates).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
+            .put("quant", set.getJSONObject("quant")).put("rates", rates).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
         val dir = File(context.filesDir, "agent").apply { mkdirs() }
         File(dir, if (dryRun) "m2_passport.json" else "last_passport.json").writeText(canonical)
         File(dir, "last_tick.json").writeText(report.toString())
@@ -134,7 +149,8 @@ object AgentRuntime {
             File(dir, "last_tick.json").writeText(report.toString())
             signed
         } else null
-        return AgentTickResult(choice, validated.getString("reasonCode"), passport.getString("route"), hash, canonical,
+        val decisionReason = if (choice == "H") set.getJSONObject("quant").optJSONArray("candidates")?.optJSONObject(0)?.optString("status") ?: validated.getString("reasonCode") else validated.getString("reasonCode")
+        return AgentTickResult(choice, decisionReason, passport.getString("route"), hash, canonical,
             snapshot.getLong("blockNumber"), preview.getBoolean("passed"), model.getJSONObject("timings").getDouble("totalMs"), stats.getLong("vetoes"), dryRun, report.toString(), execution?.getString("txHash"))
     }
 

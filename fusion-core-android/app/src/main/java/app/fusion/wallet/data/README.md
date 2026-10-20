@@ -188,3 +188,26 @@ FUSION_CAPTURE_DIR=/tmp/fusion-live ./gradlew testDebugUnitTest \
 
 A new capture is a separate artifact; do not overwrite the pinned offline fixture
 without reviewing the assertions tied to block 48320776.
+
+### K44 measured yield pre-processor
+
+`QuantReader` reads Base Sepolia Aave USDC available underlying and stable + variable
+supply debt at the decision block, the normalized liquidity index now and about
+24h earlier (primary RPC, then publicnode), and the pinned Chainlink ETH/USD round.
+`fusion-core::quant` owns all integer utilization, APY and break-even formulas.
+K33's actual receipt median supplies the gas amount; absent measurements stay
+UNMEASURED. The deposit quote supplies the round-trip asset loss, rather than
+charging the slippage tolerance as an invented fee. Safety withdrawals use
+available underlying; deposits require <=85% utilization and <=14-day break-even.
+
+Home uses the same native report as candidate generation. `AgentRuntime` publishes
+`quant` in `last_tick.json`; Preview and Autopilot display it, and advisor consumers
+can use that structured field without trusting prose. Only admitted action labels
+reach the planner. The signer independently refreshes the pool, index, oracle and
+quote, and re-runs the quant preview before signing.
+
+Run `scripts/android_planner/build_core.sh` before Android JVM tests. It builds
+both Android and host core libraries; `QuantNativeTest` exercises the production
+Rust formulas through generated Kotlin bindings and host JNA. `FUSION_HOST_CORE_LIB`
+can override the host-library directory; by default it uses this workspace's
+`src/fusion-core/target/debug`. Host libraries are never packaged in the APK.

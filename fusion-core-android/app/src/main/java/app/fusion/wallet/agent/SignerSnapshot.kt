@@ -46,7 +46,7 @@ internal object SignerSnapshot {
         val a = abi("sharesA").uint(0); val b = abi("sharesB").uint(0)
         // A change of holdings requires a new decision, rather than editing its action.
         check(a.toString() == original.getString("vaultAShares") && b.toString() == original.getString("vaultBShares")) { "HOLDINGS_CHANGED" }
-        return JSONObject(original.toString()).put("blockNumber", ChainReader.quantity(tag)).put("blockHash", head.getString("hash"))
+        return JSONObject(original.toString()).apply { remove("quant") }.put("blockNumber", ChainReader.quantity(tag)).put("blockHash", head.getString("hash"))
             .put("blockTimestamp", ChainReader.quantity(head.getString("timestamp")))
             .put("safeCash", abi("cash").uint(0).toString()).put("vaultAAssets", abi("assetsA").uint(0).toString()).put("vaultBAssets", abi("assetsB").uint(0).toString())
             .put("moduleState", SnapshotAdapter.moduleJson(abi("state").requireSize(17)))

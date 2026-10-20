@@ -220,6 +220,16 @@ class ChainWalletRepository(
         val (obligations, accountingError) = readObligations(p1.module) { data -> call(deployment.module, data) }
         val charts = runCatching { ChartEvidenceReader.read(indexed, deployment, block, reader, p1.cash) }.getOrNull()
         val gas = runCatching { gasReader.read(p1.module.sessionKey, block, txIndex()) }.getOrNull()
+        val quant = runCatching {
+            val vault = p1.vaults.single { it.address.equals(deployment.vaultA, true) }
+            val policy = p1.module.policy
+            val cap = if (policy.permissionTier == PermissionTier.AUTONOMOUS) policy.microMax.raw else policy.hardMax.raw
+            val size = nextQuantSize(p1.buckets.surplus.raw, cap.min(policy.hardMax.raw), vault.assets.raw, vault.exposureLimit.raw)
+            val inputs = QuantReader(reader).read(deployment.vaultA, block, gas, size)
+            val result = JSONObject(app.fusion.wallet.inference.core.quantReport(inputs.toString(), block.timestamp.toULong(), size.toString()))
+            check(result.getBoolean("ok"))
+            result.getJSONObject("quant").toString()
+        }.getOrNull()
         val end = reader.block(ChainReader.tag(block.number))
         require(end.hash.equals(block.hash, true)) { "Snapshot block was reorganized; refresh again" }
         val head = reader.block("latest")
@@ -230,7 +240,7 @@ class ChainWalletRepository(
             treasury = Treasury(deployment.safe, deployment.asset, Money(p1.cash)),
             buckets = p1.buckets,
             vaults = p1.vaults, module = p1.module, queue = p1.queue, payees = payees, recentActions = actions,
-            evidence = evidence, obligations = obligations, chartEvidence = charts, agentGas = gas, accountingMatches = accountingError == null,
+            evidence = evidence, obligations = obligations, chartEvidence = charts, agentGas = gas, quantReport = quant, accountingMatches = accountingError == null,
             accountingError = accountingError, capturedAtEpochMillis = p1.capturedAt, observedHeadBlock = head.number,
             balanceHistory = BalanceReconstruction.reconstruct(p1.cash, block, indexed.logs, indexed.headers,
                 deployment.asset, deployment.safe),

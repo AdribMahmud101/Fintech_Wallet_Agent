@@ -9,10 +9,11 @@ import org.json.JSONObject
 /** Describe the actual selected action and its snapshot; never manufacture a deposit or rate. */
 fun earnPreviewSummary(result: AgentTickResult, state: WalletState, txIndex: TxIndex = TxIndex.Empty): String {
     val report = JSONObject(result.reportJson)
+    val quant = report.optJSONObject("quant")?.let { "\n" + quantSummary(it) }.orEmpty()
     val candidate = report.getJSONObject("chosenCandidate")
     val reason = if (result.reason.equals("hold", true)) "nothing is worth moving right now" else readableCode(result.reason)
     if (result.choiceLabel == "H" || !result.previewPassed) return "The AI would hold: $reason" +
-        if (!result.previewPassed) " · policy checks did not pass" else ""
+        (if (!result.previewPassed) " · policy checks did not pass" else "") + quant
     val action = candidate.getJSONObject("action")
     val amount = formatBigIntegerAmount(action.getString("assets").toBigInteger())
     fun vault(key: String): String = state.vaults.find { it.address.equals(action.optString(key), true) }?.name ?: "the verified vault"
@@ -41,7 +42,7 @@ fun earnPreviewSummary(result: AgentTickResult, state: WalletState, txIndex: TxI
         "APPROVE_AND_QUEUE" -> " · requires both Safe owners and the queue timelock"
         else -> ""
     }
-    return description + (if (covered) " · bills stay covered" else "") + route
+    return description + (if (covered) " · bills stay covered" else "") + route + quant
 }
 
 

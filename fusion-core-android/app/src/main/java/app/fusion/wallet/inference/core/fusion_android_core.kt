@@ -682,9 +682,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_encode_call(
     ): Int
+    external fun uniffi_fusion_android_core_checksum_func_evaluate_economics(
+    ): Int
     external fun uniffi_fusion_android_core_checksum_func_planner_prompt(
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_preview(
+    ): Int
+    external fun uniffi_fusion_android_core_checksum_func_quant_report(
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_sign_prepared(
     ): Int
@@ -715,9 +719,13 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_encode_call(`kind`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
+    external fun uniffi_fusion_android_core_fn_func_evaluate_economics(`sizeRaw`: RustBuffer.ByValue,`newApyPpb`: Long,`currentApyPpb`: Long,`gasUsdRaw`: RustBuffer.ByValue,`slippageUsdRaw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_planner_prompt(`set`: RustBuffer.ByValue,`goal`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_preview(`candidateJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`decisionHash`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_fusion_android_core_fn_func_quant_report(`inputsJson`: RustBuffer.ByValue,`timestamp`: Long,`sizeRaw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -856,10 +864,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_fusion_android_core_checksum_func_encode_call() and 0xFFFF) != 9689) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if ((lib.uniffi_fusion_android_core_checksum_func_evaluate_economics() and 0xFFFF) != 36798) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_fusion_android_core_checksum_func_planner_prompt() and 0xFFFF) != 22358) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_preview() and 0xFFFF) != 60782) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_fusion_android_core_checksum_func_quant_report() and 0xFFFF) != 37557) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_sign_prepared() and 0xFFFF) != 34106) {
@@ -963,6 +977,29 @@ object UniffiWithHandle
  * @suppress
  * */
 object NoHandle
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
+    }
+}
 
 /**
  * @suppress
@@ -1102,6 +1139,24 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
     )
     }
 
+
+        /**
+         * Shared deposit/rebalance economics; APY values are fractions in parts per billion.
+         */ fun `evaluateEconomics`(`sizeRaw`: kotlin.String, `newApyPpb`: kotlin.ULong, `currentApyPpb`: kotlin.ULong, `gasUsdRaw`: kotlin.String?, `slippageUsdRaw`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_fusion_android_core_fn_func_evaluate_economics(
+
+
+        FfiConverterString.lower(`sizeRaw`),
+        FfiConverterULong.lower(`newApyPpb`),
+        FfiConverterULong.lower(`currentApyPpb`),
+        FfiConverterOptionalString.lower(`gasUsdRaw`),
+        FfiConverterString.lower(`slippageUsdRaw`),_status)
+}
+    )
+    }
+
  fun `plannerPrompt`(`set`: kotlin.String, `goal`: kotlin.String?): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
@@ -1125,6 +1180,22 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         FfiConverterString.lower(`decisionHash`),
         FfiConverterString.lower(`safe`),
         FfiConverterString.lower(`module`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Same integer quant report used by enumeration, exposed for Home before a model tick.
+         */ fun `quantReport`(`inputsJson`: kotlin.String, `timestamp`: kotlin.ULong, `sizeRaw`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_fusion_android_core_fn_func_quant_report(
+
+
+        FfiConverterString.lower(`inputsJson`),
+        FfiConverterULong.lower(`timestamp`),
+        FfiConverterString.lower(`sizeRaw`),_status)
 }
     )
     }

@@ -16,7 +16,7 @@ internal object AgentNetwork {
         val config = File(context.filesDir, "agent/edge_rpc.json")
         if (!config.isFile) return JsonRpcClient(rpcUrl)
         return RpcTransport { method, params ->
-            require(method in setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber"))
+            require(method in setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber", "eth_getBalance", "eth_getTransactionReceipt"))
             relay(context, method, params)
         }
     }

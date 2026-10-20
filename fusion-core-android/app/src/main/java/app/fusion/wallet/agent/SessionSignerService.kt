@@ -58,6 +58,14 @@ class SessionSignerService : Service() {
                 val planner = JSONObject(report.getString("passportJson")).getJSONObject("planner")
                 check(planner.getString("libMnnSha256") == hashes.getString("libMNN.so") && planner.getString("libllmSha256") == hashes.getString("libllm.so") && planner.getString("modelSha256") == hashes.getString("llm.mnn")) { "PLANNER_PIN_MISMATCH" }
                 val fresh = SignerSnapshot.read(this, manifest, report.getJSONObject("snapshot"))
+                val action = report.getJSONObject("chosenCandidate").getJSONObject("action")
+                if (action.getInt("kind") in listOf(0, 1, 2)) {
+                    val rpc = app.fusion.wallet.chain.ChainReader(AgentNetwork.readOnly(this, d.rpcUrl))
+                    val block = app.fusion.wallet.chain.BlockHeader(fresh.getLong("blockNumber"), fresh.getString("blockHash"), fresh.getLong("blockTimestamp"))
+                    val fees = report.getJSONObject("snapshot").optJSONObject("quant")?.optString("medianGasWei")?.toBigDecimalOrNull()
+                    val gas = fees?.let { app.fusion.wallet.data.AgentGas(java.math.BigInteger.ZERO, it, null) }
+                    fresh.put("quant", app.fusion.wallet.data.QuantReader(rpc).read(d.vaultA, block, gas, action.getString("assets").toBigInteger()))
+                }
                 AgentRuntime.checked(verifyForSigning(report.toString(), fresh.toString(), d.safe, d.module))
             },
             sign = { tx, activeAddress ->
