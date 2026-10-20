@@ -160,7 +160,7 @@ private object RpcReadBudget {
     fun acquire(url: String, calls: Int) = budget.acquire(url, calls)
 }
 
-data class BlockHeader(val number: Long, val hash: String, val timestamp: Long)
+data class BlockHeader(val number: Long, val hash: String, val timestamp: Long, val baseFeePerGas: java.math.BigInteger? = null)
 
 class ChainReader(private val rpc: RpcTransport) {
     @Volatile private var logPageSize = 200L
@@ -171,7 +171,8 @@ class ChainReader(private val rpc: RpcTransport) {
         if (tag != "latest") require(number == quantity(tag)) { "Wrong block header returned" }
         val hash = value.getString("hash")
         Abi.hashWord(hash)
-        return BlockHeader(number, hash, quantity(value.getString("timestamp")))
+        return BlockHeader(number, hash, quantity(value.getString("timestamp")),
+            value.optString("baseFeePerGas").takeIf { Regex("0x[0-9a-fA-F]+").matches(it) }?.removePrefix("0x")?.toBigInteger(16))
     }
     fun call(to: String, data: String, block: Long): Abi = Abi(
         rpc.request("eth_call", JSONArray().put(JSONObject().put("to", to).put("data", data)).put(tag(block))).toString(),

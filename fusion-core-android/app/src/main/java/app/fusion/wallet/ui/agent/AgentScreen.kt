@@ -3,9 +3,14 @@ package app.fusion.wallet.ui.agent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
+import app.fusion.wallet.agent.autopilot.AutopilotTick
+import app.fusion.wallet.ui.common.usdc
+import app.fusion.wallet.ui.common.allowanceLabels
+import app.fusion.wallet.ui.common.historicalCheckMessage
+import app.fusion.wallet.ui.common.decisionTimings
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,7 +23,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.fusion.wallet.ui.common.formatEpochSeconds
 import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.autopilot.AutopilotCard
@@ -31,15 +35,10 @@ import app.fusion.wallet.ui.activity.RecordedProvenanceChip
 import app.fusion.wallet.ui.activity.rememberTxIndex
 import app.fusion.wallet.ui.advisor.WhyButton
 import app.fusion.wallet.ui.advisor.toFacts
-import app.fusion.wallet.ui.common.startActivitySafe
-import app.fusion.wallet.ui.common.vendorName
 import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.theme.*
-import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -47,178 +46,129 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
     val autopilot by vm.autopilot.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val txIndex = rememberTxIndex()
-    val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
     val now = screenNow()
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var dryRun by rememberSaveable { mutableStateOf(true) }
-    var confirmLive by remember { mutableStateOf(false) }
-    var decisionError by remember { mutableStateOf<String?>(null) }
-    val decision by produceState<DecisionDetails?>(null, run.result) {
-        value = withContext(Dispatchers.IO) {
-            runCatching {
-                run.result?.let { DecisionDetails.parse(it.reportJson, it.passportJson) } ?: run {
-                    val file = File(context.filesDir, "agent/last_tick.json")
-                    if (file.isFile) DecisionDetails.parse(file.readText()) else null
-                }
-            }.onFailure { decisionError = "Decision report unavailable: ${it.message}" }.getOrNull()
-        }
-    }
-    val viewTx = stringResource(R.string.k24_view_tx)
-    val linkError = stringResource(R.string.k24_link_unavailable)
-    val feedback: (String, String?) -> Unit = { message, hash ->
-        scope.launch {
-            val result = snackbar.showSnackbar(message, actionLabel = hash?.let { viewTx }, withDismissAction = true)
-            if (result == SnackbarResult.ActionPerformed && hash != null) {
-                if (!context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse("https://sepolia.basescan.org/tx/$hash")))) {
-                    snackbar.showSnackbar(linkError)
-                }
-            }
-        }
-    }
-    val runAgent: (Boolean) -> Unit = { previewOnly ->
-        scope.launch {
-            vm.runAgentTick(previewOnly).fold(onSuccess = { result ->
-                val message = when {
-                    result.choiceLabel == "H" -> "Agent chose Hold · no transaction"
-                    !result.previewPassed -> "Policy preview blocked execution"
-                    result.dryRun -> "Dry run complete · no transaction sent"
-                    else -> "Agent action confirmed"
-                }
-                feedback(message, result.txHash)
-            }, onFailure = { feedback(readableAgentError(it.message), null) })
-        }
-    }
-
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = FusionColors.Bg) { padding ->
-        LazyColumn(modifier.fillMaxSize().padding(padding).background(FusionColors.Bg),
-            contentPadding = PaddingValues(FusionSpacing.gutter), verticalArrangement = Arrangement.spacedBy(FusionSpacing.gutter)) {
-            item { Text(stringResource(R.string.ag_title), style = FusionType.HeadingLarge) }
-            item { AutopilotCard(autopilot, vm.autopilot, now * 1000, run.running) }
-            item { Text("Autopilot timeline · last 50 ticks", style = FusionType.HeadingSmall) }
-            if (autopilot.timeline.isEmpty()) item { Text("Turn on Autopilot or tap Run now to record a tick.", style = FusionType.BodySmall) }
-            items(autopilot.timeline, key = { "autopilot:${it.id}" }) { tick -> AutopilotTimelineTick(tick) }
-            item { BentoTile(Modifier.fillMaxWidth()) { SnapshotStatus(state, vm::refresh) } }
-            item {
-                BentoTile(Modifier.fillMaxWidth()) {
-                    TextButton(onClick = { expanded = !expanded }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(stringResource(if (expanded) R.string.k24_hide_flow else R.string.k24_show_flow))
-                    }
-                    if (expanded) ConnectedSteps(listOf(
-                        "Facts" to "Fresh chain snapshot, bills, payees and available rates",
-                        "Candidates A–G + H (Hold)" to "Only eligible candidates are generated; unavailable letters are omitted",
-                        "On-device model · AHEM-G" to "Picks a letter from that candidate set",
-                        "Policy preview" to "Checks lifecycle, queue, metadata, limits and action rules",
-                        "Signer" to "Session authority and locked execution",
-                        "Contract" to "Enforces treasury policy on-chain",
-                    ))
-                }
-            }
-            item {
-                BentoTile(Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.k24_agent_controls), style = FusionType.HeadingSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Checkbox(checked = dryRun, onCheckedChange = { dryRun = it }, enabled = !run.running && !autopilot.running, modifier = Modifier.size(48.dp))
-                        Text(stringResource(R.string.k24_dry_run), modifier = Modifier.padding(top = 12.dp), style = FusionType.BodyMedium)
-                    }
-                    Button(onClick = { if (dryRun) runAgent(true) else confirmLive = true }, enabled = !run.running && !autopilot.running,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text(stringResource(if (run.running) R.string.k24_deciding else R.string.k24_run_agent))
-                    }
-                    GuardianStopControl(state.module?.paused, vm::requestGuardianPause, feedback, onStop = { vm.autopilot.setEnabled(false) })
-                    Text(stringResource(R.string.k24_dry_explanation), style = FusionType.BodySmall)
-                    run.error?.let { Text(readableAgentError(it), style = FusionType.BodyMedium, color = FusionColors.Red) }
-                }
-            }
-            item {
-                val latest = decision
-                when {
-                    latest != null -> LatestDecision(latest, txIndex, onCopy = {
-                        (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Passport hash", latest.hash))
-                        feedback("Passport hash copied", null)
-                    })
-                    run.running -> SkeletonTile(height = 240.dp)
-                    else -> BentoTile(Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.k24_latest_decision), style = FusionType.HeadingSmall)
-                        Text(decisionError ?: stringResource(R.string.k24_no_decision), style = FusionType.BodyMedium)
-                    }
-                }
-            }
-            item {
-                val module = state.module
-                if (module == null && state.status == LoadStatus.LOADING) SkeletonTile(height = 180.dp)
-                else BentoTile(Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.k24_daily_limit), style = FusionType.HeadingSmall)
-                    if (module == null) Text(stringResource(R.string.k24_policy_unavailable), style = FusionType.BodyMedium)
-                    else {
+    LaunchedEffect(Unit) { vm.autopilot.refreshExecutionMode() }
+    var selected by remember { mutableStateOf<AutopilotTick?>(null) }
+    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    LazyColumn(modifier.fillMaxSize().background(FusionColors.Bg), contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text(stringResource(R.string.ag_title), style = FusionType.HeadingMedium) }
+        item { AutopilotCard(autopilot, vm.autopilot, now * 1000, run.running) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                BentoTile(Modifier.weight(1f).height(148.dp), onClick = { sheet = "limits" }, padding = 12.dp) {
+                    Text("Daily limit", style = FusionType.HeadingSmall)
+                    state.module?.let { module ->
                         val bps = gaugeBasisPoints(module.dailyUsed.raw, module.policy.dailyLimit.raw)
-                        DailyLimitRing(module)
-                        AmountText(module.dailyUsed.raw)
-                        Text("of daily limit", style = FusionType.BodySmall)
-                        AmountText(module.policy.dailyLimit.raw, style = FusionType.NumberSmall)
-                        Text(stringResource(R.string.k24_remaining), style = FusionType.BodySmall)
-                        AmountText(module.dailyRemaining.raw, style = FusionType.NumberSmall)
-                        if (bps == null) Text("Daily limit is zero; gauge unavailable", style = FusionType.BodySmall)
-                    }
+                        val fraction = (bps ?: 0) / 10000f
+                        if (bps != null)
+                        app.fusion.wallet.ui.charts.RingGauge(fraction, FusionColors.Indigo, 64.dp, 6.dp, "Daily limit used") {
+                            Text("${(fraction * 100).toInt()}%", style = FusionType.BodyMedium)
+                        } else Text("No daily allowance", style = FusionType.BodySmall)
+                        Text("${usdc(module.dailyRemaining.rawUnits)} USDC left", style = FusionType.BodySmall)
+                    } ?: Text("Unavailable", style = FusionType.BodySmall)
+                }
+                BentoTile(Modifier.weight(1f).height(148.dp), padding = 12.dp) {
+                    Text("Decision mix", style = FusionType.HeadingSmall)
+                    val completed = autopilot.timeline.filter { it.outcome != "RUNNING" }
+                    val holds = completed.count { it.outcome == "HOLD" }
+                    Text("${completed.size} ticks", style = FusionType.HeadingMedium)
+                    LinearProgressIndicator(progress = { if (completed.isEmpty()) 0f else holds.toFloat() / completed.size }, modifier = Modifier.fillMaxWidth())
+                    Text("$holds held · ${completed.count { it.outcome == "EXECUTED" }} executed", style = FusionType.BodySmall)
+                    Text("Recorded timeline", style = FusionType.BodySmall)
                 }
             }
-            item { DecisionMixTile(state, txIndex, run.result?.reportJson) }
-            item { Text(stringResource(R.string.ag_queue_title), style = FusionType.HeadingMedium) }
-            if (state.queue.isEmpty()) item {
-                if (state.status == LoadStatus.LOADING) SkeletonTile() else BentoTile(Modifier.fillMaxWidth()) {
-                    Text(if (state.module == null) "Queue unavailable until a chain snapshot loads" else stringResource(R.string.ag_queue_empty), style = FusionType.BodyMedium)
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                BentoTile(Modifier.weight(1f).height(94.dp), onClick = { sheet = "queue" }, padding = 12.dp) {
+                    Text("Queued actions", style = FusionType.HeadingSmall)
+                    Text(if (state.module == null) "Unavailable" else "${state.queue.size} waiting", style = FusionType.BodyMedium)
+                }
+                BentoTile(Modifier.weight(1f).height(94.dp), onClick = { sheet = "how" }, padding = 12.dp) {
+                    Text("How it decides", style = FusionType.HeadingSmall)
+                    Text("Facts → AI → rules → signer", style = FusionType.BodySmall)
                 }
             }
-            items(state.queue, key = { it.id }) { queued ->
-                BentoTile(Modifier.fillMaxWidth()) {
-                    Text(decisionTitle(queued.kind.name), style = FusionType.HeadingSmall)
-                    if (queued.kind == ActionKind.PAY_OBLIGATION) {
-                        val payee = state.payees.firstOrNull { it.address.equals(queued.payee, true) || it.id == queued.payee }
-                        Text(vendorName(payee?.id, payee?.address ?: queued.payee), style = FusionType.BodyMedium)
-                    }
-                    AmountText(queued.amount.raw)
-                    StatusChip(queueStatusText(queued, now), if (queued.status == QueueStatus.EXPIRED || queued.expiresAt in 1..now) FusionColors.Red else FusionColors.Amber)
-                    Text("Expiry: ${if (queued.expiresAt > 0) countdownText(queued.expiresAt, now) else "not supplied"}", style = FusionType.BodySmall)
-                    Text("Passport ${queued.decisionHash}", style = FusionType.NumberCaption)
-                }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Timeline", style = FusionType.HeadingSmall)
+                TextButton(onClick = { sheet = "ticks" }) { Text("See all ticks") }
             }
-            item { Text(stringResource(R.string.k24_decision_history), style = FusionType.HeadingMedium) }
-            if (state.recentActions.isEmpty()) item {
-                if (state.status == LoadStatus.LOADING) SkeletonTile() else BentoTile(Modifier.fillMaxWidth()) {
-                    Text(if (state.status == LoadStatus.ERROR) "History unavailable: refresh the chain snapshot" else stringResource(R.string.ag_recent_empty), style = FusionType.BodyMedium)
+        }
+        if (autopilot.timeline.isEmpty()) item { Text("Turn on Autopilot or tap Run now to record a tick.", style = FusionType.BodySmall) }
+        items(autopilot.timeline.take(5), key = { it.id }) { tick -> AutopilotTimelineTick(tick, onClick = { selected = tick }) }
+    }
+    if (sheet != null) ModalBottomSheet(onDismissRequest = { sheet = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (sheet) {
+                "ticks" -> {
+                    item { Text("All recorded ticks · latest 50", style = FusionType.HeadingMedium) }
+                    items(autopilot.timeline, key = { it.id }) { tick -> AutopilotTimelineTick(tick, onClick = { sheet = null; selected = tick }) }
                 }
-            }
-            items(state.recentActions, key = { it.id }) { action ->
-                BentoTile(Modifier.fillMaxWidth()) {
-                    Text(decisionTitle(action.kind.name), style = FusionType.HeadingSmall)
-                    action.payee?.let { address -> Text(vendorName(state.payees.firstOrNull { it.address.equals(address, true) }?.id, address), style = FusionType.BodySmall) }
-                    AmountText(action.amount.raw)
-                    RecordedProvenanceChip(activityProvenance(txIndex.find(action.txHash)?.source))
-                    txIndex.find(action.txHash)?.planner?.let { StatusChip(it, FusionColors.Indigo) }
-                    Text("Block ${action.blockNumber} · ${formatEpochSeconds(action.blockTime)}", style = FusionType.BodySmall)
-                    TxLink(action.txHash)
+                "how" -> item {
+                    ConnectedSteps(listOf(
+                        "Heartbeat" to "Every 1, 5 or 15 minutes in the foreground",
+                        "Trigger" to "Home refresh: new bill due soon, bucket drift > 5%, or spare cash > 100 USDC with an actionable break-even",
+                        "Reflex" to "Validated risk signals interrupt planning and request guardian pause when Auto-protect is on. No LLM.",
+                        "Facts and candidates" to "Fresh complete snapshot → eligible candidates A–G + H (Hold)",
+                        "On-device model" to "AHEM-G restricts the choice to one legal letter",
+                        "Policy and gas" to "Independent checks. Base fee above 1 gwei defers non-urgent moves; bills due now continue.",
+                        "Signer and contract" to "Scoped session authority and on-chain policy enforce every execution",
+                    ))
+                    Text("Automatic risk detection and gas-adjusted break-even data are unavailable in this build. Due-bill and bucket-drift triggers remain active; Auto-protect needs a validated risk signal.", style = FusionType.BodySmall)
+                }
+                "limits" -> item { BentoTile {
+                    Text("AI allowance", style = FusionType.HeadingMedium)
+                    SnapshotStatus(state, vm::refresh)
+                    state.module?.let { module -> allowanceLabels(module, state.blockTime).forEach { Text(it, style = FusionType.BodyMedium) } }
+                        ?: Text("Policy unavailable")
+                } }
+                "queue" -> {
+                    item { Text("Queued actions", style = FusionType.HeadingMedium) }
+                    if (state.queue.isEmpty()) item { Text(if (state.module == null) "Queue unavailable" else "No queued actions") }
+                    items(state.queue, key = { it.id }) { queued -> BentoTile {
+                        Text(decisionTitle(queued.kind.name), style = FusionType.HeadingSmall)
+                        AmountText(queued.amount.raw)
+                        Text(queueStatusText(queued, now))
+                        Text("Passport ${queued.decisionHash}", style = FusionType.NumberCaption)
+                    } }
                 }
             }
         }
     }
-    if (confirmLive) AlertDialog(onDismissRequest = { confirmLive = false },
-        title = { Text(stringResource(R.string.k24_live_title)) }, text = { Text(stringResource(R.string.k24_live_explanation)) },
-        confirmButton = { TextButton(onClick = { confirmLive = false; runAgent(false) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.k24_live_confirm)) } },
-        dismissButton = { TextButton(onClick = { confirmLive = false }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.k24_cancel)) } })
+    selected?.let { tick ->
+        ModalBottomSheet(onDismissRequest = { selected = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(0.9f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+                Text(tick.wakePath, style = FusionType.HeadingMedium)
+                Text(tick.reason, style = FusionType.BodyMedium)
+                val details = remember(tick.id) { runCatching { tick.reportJson?.let { DecisionDetails.parse(it, tick.passportJson) } }.getOrNull() }
+                if (details != null) LatestDecision(details, txIndex, state.blockTime, tick.timeMillis / 1000, tick.checks.map { DecisionCheck(it.name, it.status, it.message) }, onCopy = {
+                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Passport hash", details.hash))
+                }) else {
+                    WhyButton("tick:${tick.id}", facts = { tick.toFacts() })
+                    var checksOpen by remember { mutableStateOf(false) }
+                    TextButton(onClick = { checksOpen = !checksOpen }) { Text("${tick.checks.count { it.status == "PASS" }} passed · ${tick.checks.count { it.status == "FAIL" }} failed") }
+                    if (checksOpen) tick.checks.forEach { Text("${readableCode(it.name)} · ${historicalCheckMessage(it.message, tick.timeMillis / 1000, state.blockTime)}") }
+                    Text("Planner details were not recorded for this tick.", style = FusionType.BodySmall)
+                    tick.txHash?.let { TxLink(it) }
+                }
+            }
+        }
+    }
 }
 
 @Composable
-private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, onCopy: () -> Unit) {
+private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, currentBlockTime: Long?, recordedTime: Long?, checks: List<DecisionCheck>, onCopy: () -> Unit) {
     BentoTile(Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.k24_latest_decision), style = FusionType.HeadingMedium)
+        Text("Decision detail", style = FusionType.HeadingMedium)
         StatusChip(when (decision.dryRun) { true -> "Dry run"; false -> "Live run"; null -> "Run mode unknown" }, FusionColors.Indigo)
         Text("${decision.choice} · ${readableCode(decision.reason)}", style = FusionType.HeadingSmall)
         WhyButton("decision:${decision.hash}", facts = { decision.toFacts() })
         decision.txHash?.let { RecordedProvenanceChip(activityProvenance(txIndex.find(it)?.source)) }
         Text("Planner: ${readableCode(txIndex.find(decision.txHash)?.planner ?: decision.planner)}", style = FusionType.NumberCaption)
-        Text("Load: ${decision.loadMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
-        Text("Decode: ${decision.decodeMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
-        Text("Inference total: ${decision.inferenceMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
+        decisionTimings(decision.loadMs, decision.inferenceMs, decision.decodeMs).takeIf { it.isNotBlank() }?.let { Text(it, style = FusionType.BodySmall) }
         decision.block?.let { Text("Snapshot block $it", style = FusionType.BodySmall) }
         Spacer(Modifier.height(12.dp))
         Text(stringResource(R.string.k24_candidates), style = FusionType.HeadingSmall)
@@ -232,14 +182,16 @@ private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, onCopy: 
         }
         if (decision.candidates.isEmpty()) Text("Candidate list not recorded", style = FusionType.BodySmall)
         Text(stringResource(R.string.k24_policy_checks), style = FusionType.HeadingSmall)
-        decision.checks.forEach { check ->
+        var checksOpen by remember { mutableStateOf(false) }
+        TextButton(onClick = { checksOpen = !checksOpen }) { Text("${checks.count { it.status == "PASS" }} passed · ${checks.count { it.status == "FAIL" }} failed") }
+        if (checksOpen) checks.forEach { check ->
             Column(Modifier.padding(vertical = 6.dp)) {
                 StatusChip(readableCode(check.status), when (check.status) { "PASS" -> FusionColors.Green; "FAIL" -> FusionColors.Red; else -> FusionColors.Amber })
                 Text(readableCode(check.name), style = FusionType.BodyMedium)
-                Text(check.message, style = FusionType.BodySmall)
+                Text(historicalCheckMessage(check.message, decision.snapshotTime ?: recordedTime, currentBlockTime), style = FusionType.BodySmall)
             }
         }
-        if (decision.checks.isEmpty()) Text("Policy checks not recorded", style = FusionType.BodySmall)
+        if (checks.isEmpty()) Text("Policy checks not recorded", style = FusionType.BodySmall)
         Text("Passport ${decision.hash}", style = FusionType.NumberCaption)
         TextButton(onClick = onCopy, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.k24_copy_hash)) }
         decision.txHash?.let { TxLink(it) } ?: Text(stringResource(R.string.k24_no_transaction), style = FusionType.BodySmall)

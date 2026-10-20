@@ -3,6 +3,7 @@ package app.fusion.wallet.agent.autopilot
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import app.fusion.wallet.signer.GuardianSignerClient
 import app.fusion.wallet.agent.AgentNetwork
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.agent.SessionKeys
@@ -35,6 +36,7 @@ fun createAutopilot(context: Context, repository: WalletRepository, scope: Corou
             }
         },
         run = { dryRun -> AgentRuntime.run(app, repository, dryRun) },
+        guardianPause = { GuardianSignerClient.requestPause(app) },
         initialMode = if (runCatching { hasKey() }.getOrDefault(false)) "Checking broadcast lease at next tick" else "Preview only on this device: no session key",
     )
 }

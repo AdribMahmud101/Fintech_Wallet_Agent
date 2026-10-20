@@ -17,6 +17,11 @@ internal interface SessionJournal {
     fun recordConfirmed(result: JSONObject) {}
 }
 
+/** A typed refusal that can only occur before signing, safe to report as HOLD over IPC. */
+internal class GasHoldException(val publicReason: String) : IllegalStateException(publicReason) {
+    init { require(publicReason in setOf("Gas spike, deferred", "Gas input unreadable; refresh required")) }
+}
+
 /** No caller-supplied tx. Verify -> simulate -> bounded fees -> sign -> journal -> send -> receipt. */
 internal class SessionSignerEngine(
     private val module: String,
@@ -70,6 +75,10 @@ internal class SessionSignerEngine(
         val nonce = q(feeInputs[0].toString()).longValueExact()
         val block = feeInputs[1] as JSONObject
         val tip = q(feeInputs[2].toString()).max(BigInteger.valueOf(1_000_000))
+        val selected = checked.getJSONObject("action")
+        val gasHold = app.fusion.wallet.agent.autopilot.GasSpikePolicy.holdReason(runCatching { q(block.getString("baseFeePerGas")) }.getOrNull(),
+            selected.getInt("kind"), selected.optLong("dueAt"), q(block.getString("timestamp")).longValueExact())
+        if (gasHold != null) throw GasHoldException(gasHold)
         val fee = q(block.getString("baseFeePerGas")) * BigInteger.valueOf(2) + tip
         check(fee <= BigInteger.valueOf(10_000_000_000)) { "FEE_LIMIT" }
         val estimate = q(feeInputs[5].toString())

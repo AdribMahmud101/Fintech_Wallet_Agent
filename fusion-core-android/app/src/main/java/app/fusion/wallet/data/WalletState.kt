@@ -52,6 +52,7 @@ data class WalletState(
     val chartEvidence: ChartEvidence? = null,
     val agentGas: AgentGas? = null,
     val quantReport: String? = null,
+    val baseFeePerGas: BigInteger? = null,
 ) {
     val dataLabel: String get() = if (source == DataSource.DEMO) "DEMO" else "Base Sepolia · LIVE"
 
