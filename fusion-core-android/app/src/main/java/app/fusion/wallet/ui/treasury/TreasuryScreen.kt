@@ -9,15 +9,20 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.fusion.wallet.onboarding.OnboardingPrefs
 import app.fusion.wallet.ui.receive.ReceiveSheet
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.autopilot.autopilotStatus
@@ -37,7 +42,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
+fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(), onOpenProof: () -> Unit = {}) {
+    val context = LocalContext.current
     val state by vm.state.collectAsStateWithLifecycle()
     val historyVm: BalanceHistoryViewModel = viewModel()
     val history by historyVm.state.collectAsStateWithLifecycle()
@@ -86,6 +92,13 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
+            item { ProofChip(txIndex, onOpenProof) }
+            if (OnboardingPrefs.isWatchOnly(context)) item {
+                BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
+                    Text(stringResource(R.string.ob_watch_title), style = FusionType.HeadingSmall)
+                    Text(stringResource(R.string.ob_watch_desc), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                }
+            }
             item { HomeAllocationAndRunway(state) }
             item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
@@ -249,5 +262,23 @@ private fun NextBillTile(state: WalletState, now: Long) {
             }
             StatusChip(tier, FusionColors.Amber)
         }
+    }
+}
+
+/** Home chip into the proof screen: the count is the recorded tx index, not a live guess. */
+@Composable
+private fun ProofChip(txIndex: TxIndex, onOpenProof: () -> Unit) {
+    BentoTile(Modifier.fillMaxWidth(), onClick = onOpenProof, tint = FusionColors.Green) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Verified, contentDescription = null, tint = FusionColors.Green, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.prf_chip), style = FusionType.BodyMedium, fontWeight = FontWeight.Medium)
+        }
+        val indexed = txIndex.all().size
+        Text(
+            text = if (indexed > 0) stringResource(R.string.prf_chip_count, indexed.toString())
+            else stringResource(R.string.prf_chip_hint),
+            style = FusionType.BodySmall, color = FusionColors.TextMuted,
+        )
     }
 }

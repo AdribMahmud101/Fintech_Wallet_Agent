@@ -146,7 +146,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                     Box(Modifier.fillMaxSize().padding(padding)) {
                         Crossfade(targetState = route, animationSpec = tween(CROSSFADE_MS), label = "destination") { target ->
                             when (target) {
-                                NavRoute.Treasury -> TreasuryScreen(vm = mainVm)
+                                NavRoute.Treasury -> TreasuryScreen(vm = mainVm, onOpenProof = { shell.navigate(NavRoute.Proof) })
                                 NavRoute.Activity -> ActivityScreen(vm = mainVm)
                                 NavRoute.Settings -> {
                                     // Settings is an overlay, not a tab: a Settings route opens it over Home.
@@ -155,7 +155,8 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                                 }
                                 NavRoute.Bills -> BillsScreen(vm = mainVm)
                                 NavRoute.Agent -> AgentScreen(vm = mainVm)
-                                NavRoute.Safety, NavRoute.Proof -> SafetyScreen(vm = mainVm)
+                                NavRoute.Safety -> SafetyScreen(vm = mainVm)
+                                NavRoute.Proof -> app.fusion.wallet.ui.proof.ProofScreen(vm = mainVm)
                                 NavRoute.Judge -> JudgeScreen(vm = mainVm, onBack = { shell.navigate(NavRoute.Treasury) })
                             }
                         }
@@ -176,6 +177,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                         onLang = setLang,
                         onClose = { settingsOpen = false },
                         onOpenJudge = { settingsOpen = false; shell.navigate(NavRoute.Judge) },
+                        onOpenProof = { settingsOpen = false; shell.navigate(NavRoute.Proof) },
                         onRedoOnboarding = { OnboardingPrefs.reset(base); settingsOpen = false; onboardingDone = false },
                     )
                 }

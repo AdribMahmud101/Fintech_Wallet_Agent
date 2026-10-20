@@ -75,6 +75,7 @@ fun SettingsScreen(
     onLang: (String) -> Unit,
     onClose: () -> Unit,
     onOpenJudge: () -> Unit,
+    onOpenProof: () -> Unit = {},
     onRedoOnboarding: () -> Unit,
     modifier: Modifier = Modifier,
     vm: SettingsViewModel = viewModel(),
@@ -138,6 +139,16 @@ fun SettingsScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     LangChip("en", "English", lang == "en", onLang)
                     LangChip("zh", "中文", lang == "zh", onLang)
+                }
+            }
+
+            // --- Proof (K43): grouped txs by AI operation, receipts, contracts ---
+            SectionHeader(stringResource(R.string.set_proof))
+            BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green, onClick = onOpenProof) {
+                Column {
+                    Text(stringResource(R.string.set_proof), style = FusionType.BodyMedium.copy(fontWeight = FontWeight.Medium))
+                    Spacer(Modifier.height(2.dp))
+                    Text(stringResource(R.string.set_proof_desc), style = FusionType.BodySmall, color = FusionColors.TextMuted)
                 }
             }
 

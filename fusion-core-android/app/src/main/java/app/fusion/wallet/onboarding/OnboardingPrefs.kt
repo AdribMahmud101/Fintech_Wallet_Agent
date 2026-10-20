@@ -9,6 +9,7 @@ object OnboardingPrefs {
     private const val KEY_SELECTED_ROLE = "selected_role"
     private const val KEY_LAST_MODEL_LATENCY = "last_model_latency_ms"
     private const val KEY_WIFI_ONLY = "model_wifi_only"
+    private const val KEY_WATCH_ONLY = "watch_only"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -21,7 +22,18 @@ object OnboardingPrefs {
     }
 
     fun reset(context: Context) {
-        prefs(context).edit().remove(KEY_COMPLETED).apply()
+        prefs(context).edit()
+            .remove(KEY_COMPLETED)
+            .putBoolean(KEY_WATCH_ONLY, false)
+            .apply()
+    }
+
+    /** Judges' path (win plan K43): watch the live deployed Safe read-only — this install holds no keys. */
+    fun isWatchOnly(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_WATCH_ONLY, false)
+
+    fun setWatchOnly(context: Context, watchOnly: Boolean = true) {
+        prefs(context).edit().putBoolean(KEY_WATCH_ONLY, watchOnly).apply()
     }
 
     fun getSelectedRole(context: Context): String =

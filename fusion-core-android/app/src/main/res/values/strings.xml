@@ -33,4 +33,43 @@
     <string name="tokens_empty">No balance path wired up yet.</string>
     <string name="empty_chat_title">No transactions yet</string>
     <string name="empty_chat_body">Ask the agent to transfer, or tap a suggestion below.</string>
+
+    <!-- K43: proof screen -->
+    <string name="prf_title">Verified on-chain</string>
+    <string name="prf_subtitle">Every recorded transaction since the Safe was deployed, grouped by the AI operation it performed.</string>
+    <string name="prf_ai_count">%1$s AI-executed txs</string>
+    <string name="prf_index_count">%1$s transactions in the recorded index</string>
+    <string name="prf_attacks_stopped">%1$s / %2$s attacks stopped</string>
+    <string name="prf_arena_link">Open the attack arena report</string>
+    <string name="prf_attacks_unavailable">Attack arena evidence unavailable right now.</string>
+    <string name="prf_arena_refreshing">Refreshing arena evidence…</string>
+    <string name="prf_index_unavailable">No transaction index yet.</string>
+    <string name="prf_index_hint">The index streams from evidence/tx_index.json once the chain snapshot loads. Check your connection and refresh.</string>
+    <string name="prf_op_asset">Asset management</string>
+    <string name="prf_op_transactions">Transactions</string>
+    <string name="prf_op_risk">Risk control</string>
+    <string name="prf_op_owner">Owner / setup</string>
+    <string name="prf_time_unavailable">Time not recorded</string>
+    <string name="prf_contracts">Deployed contracts</string>
+    <string name="prf_contracts_hint">The addresses this wallet actually runs on, straight from the deployment manifest.</string>
+    <string name="prf_receipt_note">Tap any transaction to re-check its live receipt on the pinned Base Sepolia RPC — status and block, read-only, nothing signed.</string>
+    <string name="prf_receipt_confirmed">Confirmed</string>
+    <string name="prf_receipt_reverted">Reverted</string>
+    <string name="prf_receipt_block">Gas used: %1$s</string>
+    <string name="prf_receipt_loading">Checking live receipt…</string>
+    <string name="prf_receipt_unavailable">Live receipt unavailable: it could not be verified against the recorded block.</string>
+    <string name="prf_receipt_retry">Retry</string>
+    <string name="prf_sheet_close">Close</string>
+    <string name="prf_chip">Verified on-chain</string>
+    <string name="prf_chip_count">%1$s recorded transactions · tap for the full proof</string>
+    <string name="prf_chip_hint">Open the proof screen</string>
+
+    <!-- K43: onboarding watch-only path -->
+    <string name="ob_watch_action">Watch the live demo wallet</string>
+    <string name="ob_watch_title">Watch the live demo wallet</string>
+    <string name="ob_watch_desc">This phone has no keys. You are watching the real wallet the AI runs.</string>
+
+    <!-- K43: settings entry for the proof screen -->
+    <string name="set_proof">Verified on-chain proof</string>
+    <string name="set_proof_desc">Every recorded transaction grouped by AI operation, with live receipt checks and BaseScan links.</string>
 </resources>

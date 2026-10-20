@@ -93,10 +93,19 @@ fun OnboardingFlow(
                 .padding(horizontal = 16.dp),
         ) {
             when (step) {
-                0 -> WelcomeRoleStep(role = role, onRole = {
-                    roleName = it.name
-                    OnboardingPrefs.setSelectedRole(context, it.name)
-                })
+                0 -> WelcomeRoleStep(
+                    role = role,
+                    onRole = {
+                        roleName = it.name
+                        OnboardingPrefs.setSelectedRole(context, it.name)
+                    },
+                    onWatchOnly = {
+                        // Judges install a keyless APK: land them in the live wallet read-only instead
+                        // of the six-step owner setup.
+                        OnboardingPrefs.setWatchOnly(context)
+                        onFinish()
+                    },
+                )
                 1 -> NetworkCurrencyStep(vm = vm, lang = lang, onLang = onLang)
                 2 -> ConnectTreasuryStep(vm = vm)
                 3 -> ModelStep(vm = vm, wifiOnly = wifiOnly, onWifiOnly = { wifiOnly = it })
