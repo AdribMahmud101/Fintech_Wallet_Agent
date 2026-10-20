@@ -88,6 +88,8 @@ class ChainWalletRepository(
         val deploymentChainId: Long,
         val safeAddress: String,
         val assetAddress: String,
+        val safeThreshold: Int?,
+        val safeOwnerCount: Int?,
     ) {
         fun toWalletState(previous: WalletState): WalletState = WalletState(
             status = LoadStatus.READY,
@@ -111,6 +113,12 @@ class ChainWalletRepository(
             capturedAtEpochMillis = capturedAt,
             balanceHistory = previous.balanceHistory,
             chartEvidence = previous.chartEvidence,
+            // Gas is read in phase 2. Carry the previous value and mark it cached until the
+            // live read lands, so the chip never disappears or claims freshness prematurely.
+            agentGas = previous.agentGas,
+            agentGasCached = previous.agentGas != null,
+            safeThreshold = safeThreshold ?: previous.safeThreshold,
+            safeOwnerCount = safeOwnerCount ?: previous.safeOwnerCount,
             refreshing = true,
         )
     }
@@ -183,11 +191,23 @@ class ChainWalletRepository(
             cash, module.reserved.raw, policy.operatingBuffer.raw,
             vaults.fold(BigInteger.ZERO) { sum, position -> sum + position.assets.raw }
         )
+        // Optional custody metadata: a failed Safe read must not hide the financial snapshot.
+        val safeThreshold = runCatching {
+            reader.call(deployment.safe, Views.SAFE_THRESHOLD, block.number).requireSize(1).int(0)
+        }.getOrNull()
+        val safeOwnerCount = runCatching {
+            val owners = reader.call(deployment.safe, Views.SAFE_OWNERS, block.number)
+            val countIndex = owners.offset(0)
+            val count = owners.int(countIndex)
+            require(count <= owners.size - countIndex - 1) { "Truncated Safe owner list" }
+            count
+        }.getOrNull()
         val end = reader.block(ChainReader.tag(block.number))
         require(end.hash.equals(block.hash, true)) { "Snapshot block was reorganized; refresh again" }
         val head = reader.block("latest")
         require(head.number >= block.number && head.timestamp >= block.timestamp) { "Chain time or height rolled back" }
-        return Phase1Result(block, cash, policy, module, queue, vaults, buckets, capturedAt, deployment.chainId, deployment.safe, deployment.asset)
+        return Phase1Result(block, cash, policy, module, queue, vaults, buckets, capturedAt, deployment.chainId,
+            deployment.safe, deployment.asset, safeThreshold, safeOwnerCount)
     }
 
     private suspend fun readPhase2(p1: Phase1Result, previous: WalletState): WalletState {
@@ -220,7 +240,11 @@ class ChainWalletRepository(
         val evidence = logs.map { ModuleEvents.evidence(it, header(it).timestamp, deployment.explorerBaseUrl) }.reversed()
         val (obligations, accountingError) = readObligations(p1.module) { data -> call(deployment.module, data) }
         val charts = runCatching { ChartEvidenceReader.read(indexed, deployment, block, reader, p1.cash) }.getOrNull()
-        val gas = runCatching { gasReader.read(p1.module.sessionKey, block, txIndex()) }.getOrNull()
+        // Preserve the last known gas estimate if the live receipt scan is unavailable.
+        // The caller labels it cached so it cannot be mistaken for a fresh measurement.
+        val liveGas = runCatching { gasReader.read(p1.module.sessionKey, block, txIndex()) }.getOrNull()
+        val gas = liveGas ?: previous.agentGas
+        val gasCached = liveGas == null && gas != null
         val quant = runCatching {
             val vault = p1.vaults.single { it.address.equals(deployment.vaultA, true) }
             val policy = p1.module.policy
@@ -242,7 +266,10 @@ class ChainWalletRepository(
             treasury = Treasury(deployment.safe, deployment.asset, Money(p1.cash)),
             buckets = p1.buckets,
             vaults = p1.vaults, module = p1.module, queue = p1.queue, payees = payees, recentActions = actions,
-            evidence = evidence, obligations = obligations, chartEvidence = charts, agentGas = gas, quantReport = quant, accountingMatches = accountingError == null,
+            evidence = evidence, obligations = obligations, chartEvidence = charts, agentGas = gas,
+            quantReport = quant, agentGasCached = gasCached,
+            safeThreshold = p1.safeThreshold, safeOwnerCount = p1.safeOwnerCount,
+            accountingMatches = accountingError == null,
             accountingError = accountingError, capturedAtEpochMillis = p1.capturedAt, observedHeadBlock = head.number,
             balanceHistory = BalanceReconstruction.reconstruct(p1.cash, block, indexed.logs, indexed.headers,
                 deployment.asset, deployment.safe),

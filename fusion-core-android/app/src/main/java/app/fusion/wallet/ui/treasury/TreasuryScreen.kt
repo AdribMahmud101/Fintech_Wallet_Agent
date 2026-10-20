@@ -30,6 +30,7 @@ import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.ui.activity.activityProvenance
 import app.fusion.wallet.ui.activity.activityTitle
 import app.fusion.wallet.ui.activity.RecordedProvenanceChip
+import app.fusion.wallet.ui.common.CustodySplitPill
 import app.fusion.wallet.ui.activity.rememberTxIndex
 import app.fusion.wallet.data.*
 import app.fusion.wallet.signer.GuardianStopDialog
@@ -92,6 +93,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
+            item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { ProofChip(txIndex, onOpenProof) }
             if (OnboardingPrefs.isWatchOnly(context)) item {

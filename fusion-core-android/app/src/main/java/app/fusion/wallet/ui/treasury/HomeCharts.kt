@@ -61,7 +61,8 @@ fun HomeAllocationAndRunway(state: WalletState) {
         } })
         state.agentGas?.let { gas ->
             val eth = gas.balanceWei.toBigDecimal().movePointLeft(18).round(java.math.MathContext(6)).stripTrailingZeros().toPlainString()
-            StatusChip("Agent gas: $eth ETH" + (gas.estimatedMoves?.let { " (~$it moves)" } ?: ""), FusionChart.Muted)
+            val cached = if (state.agentGasCached) " (cached)" else ""
+            StatusChip("Agent gas: $eth ETH" + (gas.estimatedMoves?.let { " (~$it moves)" } ?: "") + cached, FusionChart.Muted)
         }
     }
 }

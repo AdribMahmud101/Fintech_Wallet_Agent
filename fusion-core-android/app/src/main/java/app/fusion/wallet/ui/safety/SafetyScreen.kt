@@ -16,6 +16,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.agent.*
+import app.fusion.wallet.ui.common.CustodySplitCard
+import app.fusion.wallet.ui.common.allowanceLabels
 import app.fusion.wallet.ui.advisor.CheckExternalTextCard
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.formatTimestamp
@@ -63,9 +65,10 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     ExternalAction("Held-out evaluation", EVIDENCE_RAW + HELDOUT_PATH) { feedback(it, null) }
                 }
             }
+            item { CustodySplitCard(state) }
             item { BentoTile(Modifier.fillMaxWidth()) {
                 Text("AI allowance", style = FusionType.HeadingSmall)
-                state.module?.let { m -> app.fusion.wallet.ui.common.allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) } }
+                state.module?.let { m -> allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) } }
                     ?: Text("Policy unavailable")
             } }
             item { TextButton(onClick = { detailsOpen = !detailsOpen }) { Text(if (detailsOpen) "Hide evidence details" else "Safety layers and evidence details") } }
