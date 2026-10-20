@@ -43,7 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(), onOpenProof: () -> Unit = {}) {
+fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(), onOpenProof: () -> Unit = {}, onOpenScout: () -> Unit = {}) {
     val context = LocalContext.current
     val state by vm.state.collectAsStateWithLifecycle()
     val historyVm: BalanceHistoryViewModel = viewModel()
@@ -95,6 +95,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
             item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
+            item { app.fusion.wallet.ui.scout.ScoutTile(state, onOpenScout) }
             item { ProofChip(txIndex, onOpenProof) }
             if (OnboardingPrefs.isWatchOnly(context)) item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {

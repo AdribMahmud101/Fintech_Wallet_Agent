@@ -68,12 +68,14 @@ class DeepInfraClient(
     private val timeoutMs: Int = DeepInfraConfig.TIMEOUT_MS,
     private val maxRetries: Int = DeepInfraConfig.MAX_RETRIES,
     private val backoffMs: (attempt: Int) -> Long = { 1_000L shl it },
+    /** The DeepInfra host by default; the built-in proxy route passes its own pinned host. */
+    private val allowedHost: String = DeepInfraConfig.HOST,
 ) : CloudClient {
     override val provider: String get() = DeepInfraConfig.PROVIDER
 
     init {
         val u = URI(baseUrl)
-        require(u.scheme == "https" && u.host == DeepInfraConfig.HOST) { "base URL must be https://${DeepInfraConfig.HOST}" }
+        require(u.scheme == "https" && u.host == allowedHost) { "base URL must be https://$allowedHost" }
     }
 
     override suspend fun complete(model: String, system: String, userJson: String): CloudResult {

@@ -58,6 +58,7 @@ enum class NavRoute {
     Safety,
     Judge,
     Proof,
+    Scout,
 }
 
 /**

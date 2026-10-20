@@ -49,6 +49,12 @@ class CloudAdvisor(
         return call(AdvisorPrompts.ACCOUNTANT, payload.toString(), freeText = q) { AnswerValidator.validate(it, sent) }
     }
 
+    /** Plain-English reason for the scout's top pick. Cites only facts that were sent; the ranking itself is fixed code. */
+    suspend fun explainPick(facts: org.json.JSONObject): AdvisorResult<AccountantAnswer> {
+        val sent = WalletFacts.flatten(facts).filterKeys { it != "schema" }
+        return call(AdvisorPrompts.SCOUT, facts.toString(), freeText = "") { AnswerValidator.validate(it, sent) }
+    }
+
     suspend fun propose(goal: String, current: CurrentPolicy?): AdvisorResult<PolicyProposal> {
         val g = goal.trim()
         if (g.isEmpty()) return AdvisorResult.Blocked("type a goal first")

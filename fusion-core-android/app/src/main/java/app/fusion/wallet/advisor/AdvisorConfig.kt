@@ -11,6 +11,16 @@ import app.fusion.wallet.accountant.cloud.EgressGuard
 object AdvisorConfig {
     /** DeepInfra OpenAI-compatible endpoint; the client pins the host. */
     const val BASE_URL = DeepInfraConfig.BASE_URL
+    /**
+     * Built-in route: a small proxy Worker holds the DeepInfra key, so the app ships no secret and judges need
+     * no setup. It allows two models, caps output and rate limits; a user's own key still goes straight to DeepInfra.
+     */
+    const val PROXY_HOST = "fusion-proxy.adribmahmud.workers.dev"
+    const val PROXY_BASE_URL = "https://$PROXY_HOST/v1/openai"
+    const val PROXY_FEED_URL = "https://$PROXY_HOST/yields/base-usdc"
+    /** Not a secret: the proxy ignores it. It only lets the shared client code run without a stored key. */
+    const val BUILTIN_TOKEN = "builtin-proxy"
+
     const val DEFAULT_MODEL = "deepseek-ai/DeepSeek-V3.2"
     const val FALLBACK_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
     val MODELS = listOf(DEFAULT_MODEL, FALLBACK_MODEL)

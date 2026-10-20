@@ -21,6 +21,13 @@ markdown. Reply with ONE JSON object and nothing else."""
         Output exactly: {"answer": string (<=900 chars), "citations": [{"fact": string, "value": string}] (<=8)}
     """.trimIndent()
 
+    val SCOUT = ROLE + "\n" + """
+        Task: explain in plain words why "pick" is the best yield option among "others" for this owner. Use ONLY the data given.
+        Quote values exactly as given and cite every figure by its key path, for example "pick.conservativeApyPct".
+        Mention what is still not measured. Never promise returns; this is screening, not investment advice.
+        Output exactly: {"answer": string (<=700 chars), "citations": [{"fact": string, "value": string}] (<=8)}
+    """.trimIndent()
+
     val POLICY = ROLE + "\n" + """
         Task: turn the owner's "goal" into a PROPOSED change to the on-chain treasury policy. The owners review it and
         must sign it with the Safe 2-of-2; you cannot apply it. Change only what the goal needs. Respect every rule in
