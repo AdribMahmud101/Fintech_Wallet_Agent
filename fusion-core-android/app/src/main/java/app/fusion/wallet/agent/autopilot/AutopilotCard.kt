@@ -51,7 +51,6 @@ fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMil
 
 @Composable
 fun AutopilotTimelineTick(tick: AutopilotTick, onClick: () -> Unit = {}) {
-    BentoTile(Modifier.fillMaxWidth()) {
     BentoTile(Modifier.fillMaxWidth(), onClick = onClick, padding = 12.dp) {
         Text("${formatEpochSeconds(tick.timeMillis / 1000)} · ${tick.wakePath}", style = FusionType.BodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("${tick.letter} · ${tick.title} · ${when (tick.outcome) {

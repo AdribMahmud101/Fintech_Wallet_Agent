@@ -53,3 +53,54 @@ It holds the shared flock while preparing/simulating a fresh owner commitment,
 executing the 2-of-2 Safe setup, provisioning public bills, triggering the app,
 and recording the verified APP receipt. Owner setup and APP agent transactions
 are recorded separately in `evidence/app/agent/`.
+
+K38: the live runtime now reads Aave's current liquidity APR at the decision
+snapshot block using the same Pool/USDC addresses as Home. It floors ray APR to
+basis points for core integer economics and records the raw ray value, block hash
+and source in `rateEvidence`. An unavailable rate supplies no yield-deposit rate;
+`files/agent/rates.json` no longer overrides live decisions. The full-profile
+1 USDC minimum 30-day net benefit and 0.05 USDC fee assumption remain unchanged.
+Thus a <=10 USDC allocation at approximately 0.21% APR correctly remains HOLD
+under this yield strategy; it must not be advertised as a profitable deposit.
+
+Before inference, the runtime also reads `convertToShares` and the matching
+`previewDeposit`/`previewWithdraw` for each exact candidate amount at the snapshot
+block. Native core binds the policy's floor/ceiling to those share units and
+recomputes candidate IDs and the set digest. Quotes and their block hash are
+recorded in the report. The chosen action is never rewritten after inference;
+the independent signer simulation and on-chain share checks still apply.
+
+
+For the explicit K38 round-trip request, use the separate owner strategy runbook:
+`scripts/android_planner/execute_owner_allocation.py --broadcast --run-app --local-host`.
+Without `--broadcast`, it only prepares and simulates a reviewable proposal. Both
+Safe owners sign an inert zero-value EOA calldata commitment authorizing exactly
+one <=10 USDC deposit and one later withdrawal. This is a gas-paying operational
+rehearsal, explicitly separate from profitable-yield decisions. No contract
+policy limit, session allowance, expiry, or economics constant is increased.
+The mandate binds Base Sepolia, Safe, module, waUSDC, current policy hash and
+session ID, consecutive module nonces and an expiry prepared one hour ahead, within the active session. Runtime
+and independent signer both verify its canonical live receipt, Safe success,
+2-of-2 ownership and exact calldata. The owner tx hash is bound into candidate
+reason, candidate-set digest and canonical passport. The Android model chooses
+A/H afresh for each phase; the host supplies no choice override. The mandate
+file is removed only after both confirmed APP receipts, or ceases authorizing
+once consumed/expired. Owner authorization is indexed as OWNER; session-key
+asset-management receipts are separately APP with the Android planner ID.
+
+`--resume --run-app --local-host` reuses the verified existing owner mandate
+without reading owner keys or sending another OWNER tx. A model HOLD remains a
+recorded HOLD; no candidate override or deterministic fallback is used. Verified
+authorization is described in core candidate facts; the separate untrusted-note
+review still runs and cannot authorize policy changes. The live loopback
+transport preserves read batches, a shared per-item read budget and top-level
+range errors, and the agent repository reuses the verified durable event index.
+The original 30-second/five-block freshness and accounting checks are unchanged.
+
+Receipt completion is independent of transaction execution. Transient receipt
+read failures retry without resending. If a durable attempt remains, automatic
+recovery and debug `reconcile` mode use the original report/passport under a new
+edge lease, and require `reconcileOnly=true`. Without a journal this mode refuses
+before new action verification or key access. It preserves the original MNN
+choice and verifies the canonical receipt/event; it never invokes a new choice,
+signature or broadcast. The task's two original sends were recovered this way.
