@@ -57,7 +57,12 @@ class JsonRpcClient(
         }
     }
 
-    override fun batch(calls: List<Pair<String, JSONArray>>): List<Any> = retryRateLimited { batchOnce(calls) }
+    // The provider counts each item towards its 25/s limit. Waiting after an
+    // oversized batch cannot undo that burst; bound every HTTP payload first.
+    override fun batch(calls: List<Pair<String, JSONArray>>): List<Any> {
+        require(calls.all { it.first in READ_METHODS }) { "Unsupported read-only RPC method" }
+        return calls.chunked(RpcReadBudget.MAX_CALLS).flatMap { chunk -> retryRateLimited { batchOnce(chunk) } }
+    }
 
     private fun batchOnce(calls: List<Pair<String, JSONArray>>): List<Any> {
         if (calls.isEmpty()) return emptyList()
@@ -125,18 +130,34 @@ class JsonRpcClient(
     }
 }
 
-/** Public Base RPC is capped at 25 calls/s, including calls within batches. Share a 20/s budget. */
-private object RpcReadBudget {
-    private val next = mutableMapOf<String, Long>()
+/** Reserve whole bursts in a rolling second, shared by every client using the same endpoint. */
+internal class ReadBudget(
+    private val nanoTime: () -> Long = System::nanoTime,
+    private val sleep: (Long) -> Unit = { Thread.sleep(it / 1_000_000, (it % 1_000_000).toInt()) },
+) {
+    private val reservations = mutableMapOf<String, ArrayDeque<Pair<Long, Int>>>()
     fun acquire(url: String, calls: Int) {
-        val delay = synchronized(next) {
-            val now = System.nanoTime()
-            val start = maxOf(now, next[url] ?: now)
-            next[url] = start + calls * 50_000_000L
+        require(calls in 1..RpcReadBudget.MAX_CALLS)
+        val delay = synchronized(reservations) {
+            val now = nanoTime()
+            val queue = reservations.getOrPut(url) { ArrayDeque() }
+            var start = maxOf(now, queue.lastOrNull()?.first ?: now)
+            while (true) {
+                while (queue.isNotEmpty() && queue.first().first <= start - 1_000_000_000L) queue.removeFirst()
+                if (queue.sumOf { it.second } + calls <= RpcReadBudget.MAX_CALLS) break
+                start = queue.first().first + 1_000_000_000L
+            }
+            queue.addLast(start to calls)
             start - now
         }
-        if (delay > 0) Thread.sleep(delay / 1_000_000, (delay % 1_000_000).toInt())
+        if (delay > 0) sleep(delay)
     }
+}
+
+private object RpcReadBudget {
+    const val MAX_CALLS = 20
+    private val budget = ReadBudget()
+    fun acquire(url: String, calls: Int) = budget.acquire(url, calls)
 }
 
 data class BlockHeader(val number: Long, val hash: String, val timestamp: Long)

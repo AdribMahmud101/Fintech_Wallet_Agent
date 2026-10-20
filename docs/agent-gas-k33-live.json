@@ -1,0 +1,149 @@
+[
+  {
+    "mode": "k32",
+    "indexOrigin": "https://raw.githubusercontent.com/AdribMahmud101/fusion_wallet/main/evidence/tx_index.json",
+    "cachedEntries": 0,
+    "indexEntries": 37,
+    "indexSha256": "936b60ea8ed20f65fbef7418d04ab6e32cf4c731d68a8927b988249d878e8ec4",
+    "indexSources": {
+      "SCRIPT": 26,
+      "OWNER": 5,
+      "APP": 2,
+      "AGENT": 4
+    },
+    "block": "0x2e1ded0",
+    "blockHash": "0x013db9e368ef0a84179a4737ef3652542a6f32e08faba37ca9461fbd7e70dfcb",
+    "blockTimestamp": 1792482432,
+    "session": "0xb52cb48ec1cc5ad1171c83f162228e31752f87fa",
+    "balanceWei": "17641102153994847",
+    "cachedReceipts": 0,
+    "sessionCandidates": 0,
+    "headers": 0,
+    "batches": [
+      {
+        "method": "eth_getTransactionReceipt",
+        "size": 37,
+        "errors": [
+          {
+            "code": -32007,
+            "message": "25/second request limit reached",
+            "count": 12
+          }
+        ]
+      },
+      {
+        "method": "eth_getTransactionReceipt",
+        "size": 37,
+        "errors": [
+          {
+            "code": -32007,
+            "message": "25/second request limit reached",
+            "count": 12
+          }
+        ]
+      },
+      {
+        "method": "eth_getTransactionReceipt",
+        "size": 37,
+        "errors": [
+          {
+            "code": -32007,
+            "message": "25/second request limit reached",
+            "count": 12
+          }
+        ]
+      }
+    ],
+    "dropped": {
+      "receiptBatchFailure": 37,
+      "receiptBatchError: {'code': -32007, 'message': '25/second request limit reached'}": 1
+    },
+    "sampleTimestamps": [],
+    "actualFeeSamplesWei": [],
+    "sampleCount": 0,
+    "medianCostWei": null,
+    "estimatedMoves": null
+  },
+  {
+    "mode": "fixed",
+    "indexOrigin": "https://raw.githubusercontent.com/AdribMahmud101/fusion_wallet/main/evidence/tx_index.json",
+    "cachedEntries": 0,
+    "indexEntries": 37,
+    "indexSha256": "936b60ea8ed20f65fbef7418d04ab6e32cf4c731d68a8927b988249d878e8ec4",
+    "indexSources": {
+      "SCRIPT": 26,
+      "OWNER": 5,
+      "APP": 2,
+      "AGENT": 4
+    },
+    "block": "0x2e1dee9",
+    "blockHash": "0x514fb058e8b07f76e3d34c36404749609363763687adfffed60b99f147a8a0e2",
+    "blockTimestamp": 1792482482,
+    "session": "0xb52cb48ec1cc5ad1171c83f162228e31752f87fa",
+    "balanceWei": "17641102153994847",
+    "cachedReceipts": 37,
+    "sessionCandidates": 17,
+    "headers": 17,
+    "batches": [
+      {
+        "method": "eth_getTransactionReceipt",
+        "size": 20,
+        "errors": []
+      },
+      {
+        "method": "eth_getTransactionReceipt",
+        "size": 17,
+        "errors": []
+      },
+      {
+        "method": "eth_getBlockByNumber",
+        "size": 17,
+        "errors": []
+      }
+    ],
+    "dropped": {
+      "fromSession": 20
+    },
+    "sampleTimestamps": [
+      1792432640,
+      1792426412,
+      1792417856,
+      1792417654,
+      1792413784,
+      1792408000,
+      1792407958,
+      1792407902,
+      1792407846,
+      1792407816,
+      1792407778,
+      1792407562,
+      1792407530,
+      1792404310,
+      1792404062,
+      1792404052,
+      1792404040
+    ],
+    "actualFeeSamplesWei": [
+      "1203948000387",
+      "201673350000211",
+      "224173290000235",
+      "417155400000235",
+      "207419940000246",
+      "2014476000148",
+      "780030000257",
+      "1234044000259",
+      "685332000281",
+      "2394954000135",
+      "1342800000259",
+      "2496042000259",
+      "1249458000282",
+      "688092000133",
+      "596796000136",
+      "757668000281",
+      "2755980000135"
+    ],
+    "sampleCount": 17,
+    "medianCostWei": "1342800000259",
+    "estimatedMoves": "13137"
+  }
+]

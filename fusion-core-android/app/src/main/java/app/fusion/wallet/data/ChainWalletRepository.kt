@@ -267,7 +267,8 @@ class ChainWalletRepository(
             val cache = FileSnapshotCache.forContext(context)
             val indexCache = TxIndexCache(java.io.File(context.filesDir, "evidence/tx_index.json"))
             return ChainWalletRepository(asset("deployments/84532.json"), asset("deployments/obligations-84532.json"),
-                rpcUrl?.let(::JsonRpcClient), txIndex = { indexCache.cached() }, extraObligationsJson = extra, snapshotCache = cache,
+                // Phase 2 owns its index refresh; Home's asynchronous UI cache load may not have run yet.
+                rpcUrl?.let(::JsonRpcClient), txIndex = { indexCache.refresh() }, extraObligationsJson = extra, snapshotCache = cache,
                 eventIndex = SharedEventIndexes.forContext(context, Deployment.parse(asset("deployments/84532.json"))))
         }
     }

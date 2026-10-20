@@ -6,11 +6,51 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class ChainWalletRepositoryTest {
+    @get:Rule val temp = TemporaryFolder()
     private fun repository(rpc: RpcTransport, obligations: String = resource("obligations.json")) =
         ChainWalletRepository(resource("deployment.json"), obligations, rpc)
+
+    @Test fun gasSamplingRefreshesMissingIndexWithoutUiAndUsesCacheWhenOffline() = runBlocking {
+        val replay = CapturedRpc()
+        val snapshot = JSONObject(resource("live-snapshot.json")).getJSONObject("summary")
+        val session = "0xb52cb48ec1cc5ad1171c83f162228e31752f87fa"
+        val tx = "0x" + "a".repeat(64)
+        val file = temp.root.resolve("evidence/tx_index.json")
+        var offline = false
+        val index = TxIndexCache(file) {
+            if (offline) throw IOException("offline")
+            """[{"txHash":"$tx","source":"SCRIPT","kind":"DEPOSIT","evidenceFile":"record.json"}]"""
+        }
+        val rpc = RpcTransport { method, params ->
+            when (method) {
+                "eth_getBalance" -> { assertTrue(params.getString(0).equals(session, true)); "0x64" }
+                "eth_getTransactionReceipt" -> JSONObject().put("transactionHash", tx).put("from", session)
+                    .put("blockNumber", ChainReader.tag(snapshot.getLong("block"))).put("blockHash", snapshot.getString("blockHash"))
+                    .put("gasUsed", "0xa").put("effectiveGasPrice", "0x2").put("l1Fee", "0x5")
+                "eth_call" -> {
+                    val value = replay.request(method, params)
+                    // The older replay predates the live session; supply it in the module ABI too.
+                    if (params.getJSONObject(0).getString("data") == Views.STATE)
+                        value.toString().replaceRange(2 + 13 * 64, 2 + 14 * 64, Abi.addressWord(session)) else value
+                }
+                else -> replay.request(method, params)
+            }
+        }
+        val repository = ChainWalletRepository(resource("deployment.json"), resource("obligations.json"), rpc,
+            txIndex = index::refresh) // Same provider as fromAssets; no Compose/UI refresh participates.
+        assertFalse(file.exists())
+        repository.refresh()
+        assertEquals(repository.state.value.historyError, 4.toBigInteger(), repository.state.value.agentGas?.estimatedMoves)
+        assertTrue(file.exists())
+        offline = true
+        repository.refresh()
+        assertEquals(4.toBigInteger(), repository.state.value.agentGas?.estimatedMoves)
+    }
 
     @Test fun oneBlockLiveReplayMatchesManifestAndPaymentEvidence() = runBlocking {
         val replay = CapturedRpc()

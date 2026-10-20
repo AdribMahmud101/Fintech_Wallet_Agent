@@ -42,4 +42,27 @@ class AgentGasReaderTest {
     @Test fun unknownReceiptHistoryKeepsBalanceWithoutEstimate() {
         assertNull(AgentGasReader(rpc(receipt())).read(session, head, TxIndex.Empty).estimatedMoves)
     }
+    @Test fun thirtyDayWindowUsesPinnedBlockTimeAndKeepsOldHistoryBalanceOnly() {
+        val recentHead = head.copy(timestamp = 31 * 86400L)
+        val oldHeaderRpc = rpc(receipt()) // timestamp=1000, older than the pinned 30-day window
+        assertEquals(AgentGas(BigInteger.valueOf(100), null, null),
+            AgentGasReader(oldHeaderRpc).read(session, recentHead, index()))
+        assertNotNull(AgentGasReader(oldHeaderRpc).read(session,
+            head.copy(timestamp = 30 * 86400L + 1000), index()).estimatedMoves)
+    }
+
+    @Test fun mixedCaseReceiptHashIsEvictedAfterReorgAndFetchedAgain() {
+        var reads = 0
+        val normal = rpc(receipt())
+        val reader = AgentGasReader(RpcTransport { method, params ->
+            if (method == "eth_getTransactionReceipt") {
+                reads++
+                receipt().put("transactionHash", "0x" + "A".repeat(64))
+                    .put("blockHash", if (reads == 1) "0x" + "c".repeat(64) else blockHash)
+            } else normal.request(method, params)
+        })
+        assertNull(reader.read(session, head, index()).estimatedMoves)
+        assertNotNull(reader.read(session, head, index()).estimatedMoves)
+        assertEquals(2, reads)
+    }
 }
