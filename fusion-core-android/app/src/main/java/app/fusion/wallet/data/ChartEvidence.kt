@@ -27,8 +27,8 @@ fun cashRunway(cash: BigInteger, outflow: BigInteger, historyStart: Long, now: L
         .divide(outflow.toBigDecimal().multiply(86400.toBigDecimal()), 8, RoundingMode.DOWN)
     // Under a week of data the number is real but young: say so instead of hiding it.
     if (seconds < 7*86400) {
-        val n = observed.setScale(0, RoundingMode.UP).toInt().coerceAtLeast(1)
-        return Runway(days, "Early estimate · $n day${if (n == 1) "" else "s"} of data", observed)
+        // Short enough for a half-width tile; observedDays carries the data span for the info sheet.
+        return Runway(days, "Early estimate", observed)
     }
     return Runway(days, when { days >= 60.toBigDecimal() -> "Healthy"; days >= 21.toBigDecimal() -> "Keep an eye on it"; else -> "Low" },observed)
 }

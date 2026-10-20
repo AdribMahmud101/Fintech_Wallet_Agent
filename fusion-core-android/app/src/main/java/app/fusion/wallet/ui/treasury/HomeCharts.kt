@@ -58,7 +58,7 @@ fun HomeAllocationAndRunway(state: WalletState) {
         } else {
             val days = runway.days
             RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
-                when { days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
+                when { runway.status.startsWith("Early") -> FusionChart.Reserved; days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
                 arcColor = FusionChart.Reserved)
         }
     } })
@@ -69,7 +69,7 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
     ChartPair(first={ modifier -> ChartTile(modifier) {
         val evidence = state.chartEvidence
         val date = SimpleDateFormat("MMM d", Locale.getDefault())
-        ChartTileHeader("Spending by week", buildString {
+        ChartTileHeader("Weekly spend", buildString {
             append("USDC bill payments from the shared event index. Local Monday weeks: 3w, 2w, 1w, Now. The current week is partial. Values in the legend sum the last four weeks. Up to three named vendors plus Other; vendor labels come from the transaction index, then registered payees, then an abbreviated address. Empty weeks are flat stubs.")
             evidence?.let { append("\n\nHistory begins ${date.format(Date(it.historyStart * 1000))}; earlier dates are unobserved.") }
         })
@@ -96,9 +96,9 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
             append("\n\nDemo vault: simulated — no live rate. Simulated yield is funded by sponsor donations; no configured annual rate getter. Empty track means no live rate, not zero yield.")
         })
         ProgressBars(listOf(
-            ProgressRow("Aave lending", apy?.let { "${it.setScale(2, java.math.RoundingMode.HALF_UP)}%" } ?: "unavailable",
+            ProgressRow("Aave", apy?.let { "${it.setScale(2, java.math.RoundingMode.HALF_UP)}%" } ?: "unavailable",
                 apy?.let { gaugeFraction(it, it) }, FusionChart.Sky),
-            ProgressRow("Demo vault", "simulated", null, FusionChart.Sky)
+            ProgressRow("Demo", "simulated", null, FusionChart.Sky)
         ), Modifier.padding(top = 8.dp))
     } })
 }
