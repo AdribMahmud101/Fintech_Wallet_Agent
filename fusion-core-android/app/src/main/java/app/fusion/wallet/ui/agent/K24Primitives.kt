@@ -93,13 +93,13 @@ internal fun ExternalAction(label: String, url: String, onError: (String) -> Uni
 }
 
 @Composable
-internal fun GuardianStopControl(paused: Boolean?, requestPause: suspend () -> Result<String>, onResult: (String, String?) -> Unit) {
+internal fun GuardianStopControl(paused: Boolean?, requestPause: suspend () -> Result<String>, onResult: (String, String?) -> Unit, onStop: () -> Unit = {}) {
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val success = stringResource(R.string.k24_pause_success)
     val failure = stringResource(R.string.k24_pause_error)
-    Button(onClick = { confirm = true }, enabled = !busy && paused != true,
+    Button(onClick = { onStop(); confirm = true }, enabled = !busy && paused != true,
         colors = ButtonDefaults.buttonColors(containerColor = FusionColors.Red), modifier = Modifier.heightIn(min = 48.dp)) {
         Text(stringResource(when { busy -> R.string.k24_stopping; paused == true -> R.string.k24_paused; else -> R.string.ag_stop_button }))
     }

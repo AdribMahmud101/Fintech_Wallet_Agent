@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.ui.receive.ReceiveSheet
 import app.fusion.wallet.R
+import app.fusion.wallet.agent.autopilot.autopilotStatus
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.ui.activity.activityProvenance
 import app.fusion.wallet.ui.activity.activityTitle
@@ -41,6 +42,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     val historyVm: BalanceHistoryViewModel = viewModel()
     val history by historyVm.state.collectAsStateWithLifecycle()
     val agent by AgentRuntime.state.collectAsStateWithLifecycle()
+    val autopilot by vm.autopilot.state.collectAsStateWithLifecycle()
     val txIndex = rememberTxIndex()
     val lastDecisionTx = if (agent.result != null) agent.result?.txHash
         else state.recentActions.maxByOrNull { it.blockNumber }?.txHash
@@ -101,6 +103,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         !module.sessionActive -> "Monitor only · no active session"
                         else -> "Active"
                     }
+                    if (autopilot.enabled) Text(autopilotStatus(autopilot, now), style = FusionType.BodyMedium)
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
                     Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${app.fusion.wallet.ui.common.readableCode(it.reason)}" }
                         ?: lastDecisionEntry?.let { "Last decision: ${activityTitle(it.kind)}" }
@@ -114,10 +117,10 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         LinearProgressIndicator(progress = { allowance.fraction }, modifier = Modifier.fillMaxWidth(), color = FusionColors.Green)
                     } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = previewMove, enabled = !agent.running && state.treasury != null) {
+                        Button(onClick = previewMove, enabled = !agent.running && !autopilot.running && state.treasury != null) {
                             Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
                         }
-                        OutlinedButton(onClick = { stopOpen = true }, enabled = module != null && !module.paused) {
+                        OutlinedButton(onClick = { vm.autopilot.setEnabled(false); stopOpen = true }, enabled = autopilot.enabled || (module != null && !module.paused)) {
                             Text(stringResource(R.string.home_agent_stop), color = FusionColors.Red)
                         }
                     }

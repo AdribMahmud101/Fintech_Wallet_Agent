@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +71,15 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             val state by vm.state.collectAsStateWithLifecycle()
             val walletState by mainVm.state.collectAsStateWithLifecycle()
             val user = authState.user
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner, mainVm) {
+                val observer = LifecycleEventObserver { _, _ ->
+                    mainVm.autopilot.setForeground(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                mainVm.autopilot.setForeground(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer); mainVm.autopilot.setForeground(false) }
+            }
 
             val shell: ShellViewModel = viewModel()
             val routeName by shell.destination.collectAsStateWithLifecycle()
@@ -75,6 +88,11 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
             var settingsOpen by rememberSaveable { mutableStateOf(false) }
             // First run → onboarding; the persisted flag survives relaunch (OnboardingPrefs).
             var onboardingDone by rememberSaveable { mutableStateOf(OnboardingPrefs.isCompleted(base)) }
+
+            LaunchedEffect(user?.role, onboardingDone, authState.checking) {
+                mainVm.autopilot.setAccess(user != null && onboardingDone && user.role != app.fusion.wallet.accountant.data.UserRole.AUDITOR)
+                if (!authState.checking && user == null) mainVm.autopilot.setEnabled(false)
+            }
 
             // The signed-in role decides which controls are enabled (the contract still enforces the money rules).
             LaunchedEffect(user?.role) {

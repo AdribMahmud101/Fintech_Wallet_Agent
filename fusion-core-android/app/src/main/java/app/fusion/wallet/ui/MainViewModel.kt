@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.fusion.wallet.BuildConfig
+import app.fusion.wallet.agent.autopilot.createAutopilot
 import app.fusion.wallet.data.ChainWalletRepository
 import app.fusion.wallet.data.SafetyData
 import app.fusion.wallet.data.SafetyEvidence
@@ -26,6 +27,7 @@ class MainViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(app) {
     val state: StateFlow<WalletState> = repository.state
     val walletState: StateFlow<WalletState> = state
+    val autopilot = createAutopilot(app, repository, viewModelScope)
 
     private val mutableSafety = MutableStateFlow(SafetyData())
     /** Safety-tab evidence, parsed once from bundled files; counts are never from live logs. */
@@ -49,10 +51,13 @@ class MainViewModel @JvmOverloads constructor(
     suspend fun runAgentTick(dryRun: Boolean): Result<app.fusion.wallet.agent.AgentTickResult> =
         app.fusion.wallet.agent.AgentRuntime.run(getApplication(), repository, dryRun)
 
+    override fun onCleared() { autopilot.close(); super.onCleared() }
+
     fun refresh() { viewModelScope.launch { repository.refresh() } }
 
     /** Returns only after a successful Base Sepolia receipt and paused-state check. */
     suspend fun requestGuardianPause(): Result<String> {
+        autopilot.stopForGuardian()
         val result = app.fusion.wallet.signer.GuardianSignerClient.requestPause(getApplication())
         if (result.isSuccess) refresh()
         return result

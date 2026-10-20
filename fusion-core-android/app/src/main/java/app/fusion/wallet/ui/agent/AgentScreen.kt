@@ -21,6 +21,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.ui.common.formatEpochSeconds
 import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.R
+import app.fusion.wallet.agent.autopilot.AutopilotCard
+import app.fusion.wallet.agent.autopilot.AutopilotTimelineTick
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.data.*
 import app.fusion.wallet.ui.MainViewModel
@@ -40,6 +42,7 @@ import kotlinx.coroutines.withContext
 fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val run by AgentRuntime.state.collectAsStateWithLifecycle()
+    val autopilot by vm.autopilot.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val txIndex = rememberTxIndex()
     val scope = rememberCoroutineScope()
@@ -89,6 +92,10 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
         LazyColumn(modifier.fillMaxSize().padding(padding).background(FusionColors.Bg),
             contentPadding = PaddingValues(FusionSpacing.gutter), verticalArrangement = Arrangement.spacedBy(FusionSpacing.gutter)) {
             item { Text(stringResource(R.string.ag_title), style = FusionType.HeadingLarge) }
+            item { AutopilotCard(autopilot, vm.autopilot, now * 1000, run.running) }
+            item { Text("Autopilot timeline · last 50 ticks", style = FusionType.HeadingSmall) }
+            if (autopilot.timeline.isEmpty()) item { Text("Turn on Autopilot or tap Run now to record a tick.", style = FusionType.BodySmall) }
+            items(autopilot.timeline, key = { "autopilot:${it.id}" }) { tick -> AutopilotTimelineTick(tick) }
             item { BentoTile(Modifier.fillMaxWidth()) { SnapshotStatus(state, vm::refresh) } }
             item {
                 BentoTile(Modifier.fillMaxWidth()) {
@@ -109,14 +116,14 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                 BentoTile(Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.k24_agent_controls), style = FusionType.HeadingSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Checkbox(checked = dryRun, onCheckedChange = { dryRun = it }, enabled = !run.running, modifier = Modifier.size(48.dp))
+                        Checkbox(checked = dryRun, onCheckedChange = { dryRun = it }, enabled = !run.running && !autopilot.running, modifier = Modifier.size(48.dp))
                         Text(stringResource(R.string.k24_dry_run), modifier = Modifier.padding(top = 12.dp), style = FusionType.BodyMedium)
                     }
-                    Button(onClick = { if (dryRun) runAgent(true) else confirmLive = true }, enabled = !run.running,
+                    Button(onClick = { if (dryRun) runAgent(true) else confirmLive = true }, enabled = !run.running && !autopilot.running,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text(stringResource(if (run.running) R.string.k24_deciding else R.string.k24_run_agent))
                     }
-                    GuardianStopControl(state.module?.paused, vm::requestGuardianPause, feedback)
+                    GuardianStopControl(state.module?.paused, vm::requestGuardianPause, feedback, onStop = { vm.autopilot.setEnabled(false) })
                     Text(stringResource(R.string.k24_dry_explanation), style = FusionType.BodySmall)
                     run.error?.let { Text(readableAgentError(it), style = FusionType.BodyMedium, color = FusionColors.Red) }
                 }

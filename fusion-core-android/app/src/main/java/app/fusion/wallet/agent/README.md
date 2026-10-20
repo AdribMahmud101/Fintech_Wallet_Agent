@@ -2,8 +2,22 @@
 
 `MainViewModel.runAgentTick(dryRun)` calls `AgentRuntime`: live K4 snapshot →
 fusion-core candidates → MNN/AHEM-G in `:inference` → canonical passport →
-policy preview. The AI Agent screen's **Run agent now** button uses dry-run mode.
-HOLD creates no transaction. This is a manual foreground runtime.
+policy preview. HOLD creates no transaction. The AI Agent screen supports manual preview/live
+runs and foreground Autopilot (`autopilot/`). Autopilot runs immediately when
+switched on, then 1/5/15 minutes after each completed tick (default 5). Its **Run
+now** uses the same guarded path. Leaving the foreground cancels the worker;
+returning starts one tick with no background catch-up. **Stop** turns scheduling
+off immediately; guardian pause also stops it before contacting the signer.
+
+Autopilot refreshes the live snapshot and records HOLD for paused/unconfigured
+modules, expired/inactive sessions, read-only access or tier, guardian stop,
+missing network, stale data, or mismatched bill accounting. Missing session key
+or broadcast lease selects an explicitly labelled preview. Live mode uses only
+the existing runtime, signer and matching relay lease; no signer authority is
+added. The app-private, atomic journal keeps the latest 50 ticks, checks and
+verified receipt hashes across relaunch. Interrupted live attempts remain
+**execution not confirmed**, because cancelling UI work cannot undo an already
+submitted transaction. Journal failures turn automatic execution off.
 
 For an instantaneous executable choice, `dryRun=false` also invokes the private
 `SessionSignerService` in `:signer`. It independently checks the report against
