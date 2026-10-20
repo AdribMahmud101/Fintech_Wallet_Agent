@@ -127,4 +127,5 @@
     <string name="set_about_model_id">模型</string>
     <string name="set_about_network">网络</string>
     <string name="set_redo_onboarding">重新运行首次设置</string>
+    <string name="ob_policy_vendors_loading">正在加载供应商…</string>
 </resources>

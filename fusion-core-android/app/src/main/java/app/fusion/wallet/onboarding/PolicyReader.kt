@@ -66,6 +66,8 @@ data class PolicySummary(
     val safeAddress: String,
     val moduleAddress: String,
     val ruleNotice: String = "Changes need both owners (Safe 2-of-2)",
+    /** False while the vendor list (a history scan) is still loading; totals above are already final. */
+    val vendorsLoaded: Boolean = true,
 )
 
 class PolicyReader(
@@ -124,7 +126,7 @@ class PolicyReader(
         }
     }
 
-    suspend fun read(manifestJson: String): PolicySummary = withContext(Dispatchers.IO) {
+    suspend fun read(manifestJson: String, includeVendors: Boolean = true): PolicySummary = withContext(Dispatchers.IO) {
         val deployment = Deployment.parse(manifestJson)
         val transport = rpcTransport ?: JsonRpcClient(deployment.rpcUrl)
         val reader = ChainReader(transport)
@@ -139,8 +141,10 @@ class PolicyReader(
         val policy = decodedPolicy.policy
         val moduleState = ContractDecoders.module(batchResults[1], deployment.module, policy, block.timestamp)
 
-        // Read payee events to find verified vendors
-        val logs = try {
+        // Read payee events to find verified vendors. This scans history from the
+        // deployment block, which is slow on a public RPC, so callers can skip it
+        // and show the policy first.
+        val logs = if (!includeVendors) emptyList() else try {
             reader.logs(deployment.module, deployment.deploymentBlock, block.number)
         } catch (e: Exception) {
             emptyList()
@@ -206,6 +210,7 @@ class PolicyReader(
             guardianAddress = policy.guardian,
             safeAddress = deployment.safe,
             moduleAddress = deployment.module,
+            vendorsLoaded = includeVendors,
         )
     }
 }

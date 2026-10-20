@@ -501,7 +501,11 @@ fun PolicyReviewStep(vm: OnboardingViewModel) {
             BentoTile(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.ob_policy_vendors), style = FusionType.BodyMedium, modifier = Modifier.weight(1f))
-                    StatusChip(text = stringResource(R.string.ob_policy_vendors_count, summary.verifiedVendors.size), tone = FusionColors.Green)
+                    if (summary.vendorsLoaded) {
+                        StatusChip(text = stringResource(R.string.ob_policy_vendors_count, summary.verifiedVendors.size), tone = FusionColors.Green)
+                    } else {
+                        StatusChip(text = stringResource(R.string.ob_policy_vendors_loading), tone = FusionColors.Amber)
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))

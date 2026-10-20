@@ -133,8 +133,12 @@ class OnboardingViewModel(app: Application) : AndroidViewModel(app) {
         _policy.value = _policy.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val summary = PolicyReader().read(manifestJson)
-                _policy.value = PolicyState(loading = false, summary = summary)
+                // Phase 1: policy, limits and reserve in one batched read (fast).
+                val quick = PolicyReader().read(manifestJson, includeVendors = false)
+                _policy.value = PolicyState(loading = false, summary = quick)
+                // Phase 2: the vendor list needs a history scan; fill it in when it lands.
+                val full = runCatching { PolicyReader().read(manifestJson, includeVendors = true) }.getOrNull()
+                if (full != null) _policy.value = PolicyState(loading = false, summary = full)
             } catch (e: Exception) {
                 _policy.value = PolicyState(loading = false, error = e.message?.take(200) ?: "Could not read policy")
             }
