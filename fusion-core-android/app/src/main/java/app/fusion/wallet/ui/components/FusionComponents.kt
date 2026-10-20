@@ -76,7 +76,8 @@ fun BentoTile(
                 it.clickable(onClick = onClick).semantics { role = Role.Button }
             } else it
         }
-    Column(modifier.then(base).padding(padding), content = content)
+    // Even vertical rhythm inside every tile so rows never touch.
+    Column(modifier.then(base).padding(padding), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
 }
 
 /**

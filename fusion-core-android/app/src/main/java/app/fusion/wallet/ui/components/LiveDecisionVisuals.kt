@@ -110,9 +110,9 @@ fun AutopilotCountdown(nextAt: Long?, intervalMinutes: Int, now: Long, enabled: 
     val color = FusionColors.Indigo
     val track = FusionColors.Border
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Canvas(Modifier.size(30.dp)) {
-            drawCircle(track, style = Stroke(3.dp.toPx()))
-            drawArc(color, -90f, fraction * 360f, false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+        Canvas(Modifier.size(18.dp)) {
+            drawCircle(track, style = Stroke(2.5.dp.toPx()))
+            drawArc(color, -90f, fraction * 360f, false, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
         }
         Text("Next tick · ${(left + 999) / 1000}s", style = FusionType.BodySmall)
     }

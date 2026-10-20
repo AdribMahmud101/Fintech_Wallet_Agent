@@ -84,12 +84,16 @@ internal fun SnapshotStatus(state: WalletState, onRefresh: () -> Unit) {
 }
 
 @Composable
-internal fun ExternalAction(label: String, url: String, onError: (String) -> Unit = {}) {
+internal fun ExternalAction(label: String, url: String, onError: (String) -> Unit = {}) = ExternalActionSized(label, url, Modifier, onError)
+
+/** Same link button, sizable inside a row. */
+@Composable
+internal fun ExternalActionSized(label: String, url: String, modifier: Modifier, onError: (String) -> Unit = {}) {
     val context = LocalContext.current
     val missingHandler = stringResource(R.string.k24_link_unavailable)
     OutlinedButton(onClick = {
         if (!context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url)))) onError(missingHandler)
-    }, modifier = Modifier.heightIn(min = 48.dp)) { Text(label) }
+    }, modifier = modifier.heightIn(min = 48.dp)) { Text(label, maxLines = 1) }
 }
 
 @Composable

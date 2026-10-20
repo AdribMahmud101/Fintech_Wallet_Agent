@@ -59,11 +59,13 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     Text(evidence.source, style = FusionType.BodySmall)
                     arena?.measuredAt?.let { Text("Measured ${formatTimestamp(it)}", style = FusionType.BodySmall) }
                     evidence.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
-                    TextButton(onClick = evidenceVm::refresh, enabled = !evidence.refreshing, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ExternalActionSized("Arena", EVIDENCE_RAW + ARENA_PATH, Modifier.weight(1f)) { feedback(it, null) }
+                        ExternalActionSized("Held-out", EVIDENCE_RAW + HELDOUT_PATH, Modifier.weight(1f)) { feedback(it, null) }
+                    }
+                    TextButton(onClick = evidenceVm::refresh, enabled = !evidence.refreshing, modifier = Modifier.heightIn(min = 44.dp)) {
                         Text(if (evidence.refreshing) "Refreshing evidence…" else "Refresh evidence")
                     }
-                    ExternalAction("Arena evidence", EVIDENCE_RAW + ARENA_PATH) { feedback(it, null) }
-                    ExternalAction("Held-out evaluation", EVIDENCE_RAW + HELDOUT_PATH) { feedback(it, null) }
                 }
             }
             item { CustodySplitCard(state) }
