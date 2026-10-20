@@ -98,8 +98,6 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove,
                 onSend = { sendOpen = true }, onSwap = { swapOpen = true }, running = agent.running) }
-            item { Text("Owner (2-of-2): Send · Swap · policy · resume · Guardian: pause · AI: Deposit · Withdraw · Rebalance · Pay verified bills · Hold",
-                style = FusionType.BodySmall, color = FusionColors.TextMuted) }
             item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { app.fusion.wallet.ui.scout.ScoutTile(state, onOpenScout) }
@@ -176,7 +174,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     if (receiveOpen) state.treasury?.let { ReceiveSheet(it.safeAddress, onDismiss = { receiveOpen = false }) }
-    if (sendOpen) OwnerSendSheet(state, onDismiss = { sendOpen = false })
+    if (sendOpen) OwnerSendSheet(state, onSwap = { sendOpen = false; swapOpen = true }, onDismiss = { sendOpen = false })
     if (swapOpen) OwnerSwapSheet(state.treasury?.safeAddress, onDismiss = { swapOpen = false })
     if (previewOpen) EarnPreviewSheet(agent, state, txIndex, onDismiss = { previewOpen = false })
     if (askOpen) {
@@ -230,12 +228,16 @@ private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, o
         }
         Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
             style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
-        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onSend, enabled = state.treasury != null && state.source == DataSource.LIVE, modifier = Modifier.weight(1f)) { Text("Send") }
-            OutlinedButton(onClick = onReceive, enabled = state.treasury != null, modifier = Modifier.weight(1f)) { Text("↓ Receive") }
-            Button(onClick = onEarn, enabled = !running && state.treasury != null, modifier = Modifier.weight(1f)) { Text("+ Earn") }
+        // Three equal, single-line actions: labels never wrap and no extra rows crowd the hero.
+        val tight = PaddingValues(horizontal = 6.dp)
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onSend, enabled = state.treasury != null && state.source == DataSource.LIVE,
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Send", maxLines = 1, softWrap = false) }
+            OutlinedButton(onClick = onReceive, enabled = state.treasury != null,
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Receive", maxLines = 1, softWrap = false) }
+            Button(onClick = onEarn, enabled = !running && state.treasury != null,
+                contentPadding = tight, modifier = Modifier.weight(1f).height(44.dp)) { Text("Earn", maxLines = 1, softWrap = false) }
         }
-        TextButton(onClick = onSwap, enabled = state.treasury != null, modifier = Modifier.align(Alignment.End)) { Text("Swap · owner-signed") }
     }
 }
 

@@ -33,7 +33,7 @@ import java.math.BigInteger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OwnerSendSheet(state: WalletState, onDismiss: () -> Unit) {
+fun OwnerSendSheet(state: WalletState, onSwap: () -> Unit = {}, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var recipient by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
@@ -102,6 +102,7 @@ fun OwnerSendSheet(state: WalletState, onDismiss: () -> Unit) {
                     if (!context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url)))) feedback = "No browser available to open Safe{Wallet}"
                 }, modifier = Modifier.fillMaxWidth()) { Text("Open in Safe{Wallet}") }
             }
+            TextButton(onClick = onSwap) { Text("Swap tokens (owner-signed)") }
             feedback?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }

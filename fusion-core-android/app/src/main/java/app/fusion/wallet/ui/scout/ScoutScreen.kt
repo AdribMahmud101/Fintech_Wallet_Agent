@@ -112,13 +112,12 @@ fun ScoutTile(state: WalletState, onOpen: () -> Unit, modifier: Modifier = Modif
             else -> {
                 val eligible = scores.count { it.eligible }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(if (top.eligible) "Top pick: ${pretty(top.pool.project)}" else "No pool passes every rule",
-                            style = FusionType.BodyMedium, fontWeight = FontWeight.Medium)
-                        Text("$eligible of ${scores.size} pools eligible · rule-checked, not advice", style = FusionType.BodySmall, color = FusionColors.TextMuted)
-                    }
-                    top.conservativeApy?.let { Text(ScoutRules.pct(it), style = FusionType.HeadingSmall, color = FusionColors.Green) }
+                    Text(if (top.eligible) "Top pick: ${pretty(top.pool.project)}" else "No pool passes every rule",
+                        style = FusionType.BodyMedium, fontWeight = FontWeight.Medium, maxLines = 1, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    top.conservativeApy?.let { Text(ScoutRules.pct(it), style = FusionType.HeadingSmall, color = FusionColors.Green, maxLines = 1) }
                 }
+                Text("$eligible of ${scores.size} pools eligible · rule-checked, not advice", style = FusionType.BodySmall, color = FusionColors.TextMuted)
             }
         }
     }
