@@ -97,7 +97,13 @@ object ActivityTimelineBuilder {
                     state.payees.find { it.address.equals(address, true) }?.label ?: address
                 } ?: row.counterparty,
                 planner = indexed.planner)
-        }.distinctBy { it.id }.sortedWith(compareByDescending<ActivityItem> { it.blockNumber }.thenBy { it.id })
+        }.distinctBy { it.id }
+            // A payment emits both ActionExecuted and ObligationPaid, which render as the
+            // same "Bill paid" card twice. Merge only rows that would look identical
+            // (same tx and title); distinct events in one tx (e.g. a pause) stay separate.
+            .groupBy { (it.txHash.lowercase().ifBlank { it.id }) to it.title }
+            .map { (_, same) -> same.maxByOrNull { (if (it.amountRaw != null) 2 else 0) + (if (it.counterparty != null) 1 else 0) }!! }
+            .sortedWith(compareByDescending<ActivityItem> { it.blockNumber }.thenBy { it.id })
     }
 
     fun parseFrozen(json: String): List<ActivityItem> {

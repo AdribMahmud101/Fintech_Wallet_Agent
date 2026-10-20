@@ -19,7 +19,8 @@ class ActivityTxIndexTest {
         val state = WalletState(recentActions = listOf(action()), evidence = listOf(
             event("paid", "ObligationPaid"), event("executed", "ActionExecuted")))
         val rows = ActivityTimelineBuilder.build(state, SafetyData(), txIndex = index())
-        assertEquals(2, rows.size)
+        // Both events describe the same payment ("Bill paid"): one card, not two.
+        assertEquals(1, rows.size)
         for (row in rows) {
             assertEquals(Provenance.App, row.provenance)
             assertEquals(BigInteger("8000000"), row.amountRaw)
