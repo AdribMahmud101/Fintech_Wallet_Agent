@@ -30,7 +30,10 @@ data class WeekBucket(val label: String, val segments: List<Segment>)
 data class ProgressRow(val label: String, val valueText: String, val fraction: BigDecimal?, val tone: Color, val note: String? = null)
 
 @Composable
-fun DonutChart(segments: List<Segment>, centerTop: String, centerBottom: String, modifier: Modifier = Modifier) {
+fun DonutChart(
+    segments: List<Segment>, centerTop: String, centerBottom: String, modifier: Modifier = Modifier,
+    valueLabel: (BigInteger) -> String = { "${formatBigIntegerAmount(it)} USDC" },
+) {
     val percentages = segmentPercentages(segments.map { it.valueRaw })
     val total = segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
     val progress = rememberChartProgress()
@@ -41,7 +44,7 @@ fun DonutChart(segments: List<Segment>, centerTop: String, centerBottom: String,
         } else {
             Box(Modifier.padding(top = 4.dp, bottom = 10.dp).size(122.dp).semantics {
                 contentDescription = "$centerTop $centerBottom. " + segments.mapIndexed { i, s ->
-                    "${s.label}: ${formatBigIntegerAmount(s.valueRaw)} USDC, ${percentages[i]} percent"
+                    "${s.label}: ${valueLabel(s.valueRaw)}, ${percentages[i]} percent"
                 }.joinToString(". ")
             }, contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {

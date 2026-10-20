@@ -21,17 +21,19 @@ fun DecisionMixTile(state: WalletState, txIndex: TxIndex, activeReport: String?)
     val saved by produceState<String?>(null,activeReport) {
         value=activeReport ?: withContext(Dispatchers.IO) { runCatching { File(context.filesDir,"agent/last_tick.json").readText() }.getOrNull() }
     }
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text("Decision mix",style=FusionType.HeadingSmall)
-        val actions=state.chartEvidence?.actions
-        if (actions==null) Text("Decision history unavailable until the event index loads",style=FusionType.BodySmall)
+    val actions = state.chartEvidence?.actions
+    val counts = actions?.let { decisionMix(it, txIndex, saved) }
+    ChartTile(Modifier.fillMaxWidth()) {
+        ChartTileHeader("Decision mix", buildString {
+            append("AGENT + APP indexed executions and the latest saved live Hold only. Dry runs and rebalances excluded; a complete Hold history is unavailable.")
+            counts?.let { append("\n\n" + it.entries.joinToString(" · ") { row -> "${row.key} ${row.value}" }) }
+        })
+        if (counts == null) Text("Decision history unavailable until the event index loads", style = FusionType.BodySmall)
         else {
-            val counts=decisionMix(actions,txIndex,saved)
-            val colors=listOf(FusionColors.Amber,FusionColors.Green,FusionColors.Indigo,FusionColors.TextMuted)
-            val total=counts.values.fold(BigInteger.ZERO,BigInteger::add)
-            DonutChart(counts.entries.mapIndexed { i,row->Segment(row.key,row.value,colors[i]) },total.toString(),"recorded decisions")
-            Text(counts.entries.joinToString(" · ") { "${it.key} ${it.value}" },style=FusionType.BodySmall)
-            Text("AGENT + APP indexed executions and the latest saved live Hold only. Dry runs and rebalances excluded; a complete Hold history is unavailable.",style=FusionType.BodySmall)
+            val colors = listOf(FusionChart.Reserved, FusionChart.Cash, FusionChart.Sky, FusionChart.Muted)
+            val total = counts.values.fold(BigInteger.ZERO, BigInteger::add)
+            DonutChart(counts.entries.mapIndexed { i, row -> Segment(row.key, row.value, colors[i]) },
+                total.toString(), "decisions", valueLabel = { "$it decisions" })
         }
     }
 }
@@ -42,6 +44,6 @@ fun DailyLimitRing(module: ModuleState) {
     val fraction=gaugeFraction(module.dailyUsed.raw.toBigDecimal(),module.policy.dailyLimit.raw.toBigDecimal())
     RingGauge(fraction.toFloat(),FusionColors.Indigo,148.dp,12.dp,
         "Daily limit used: ${module.dailyUsed.display} / ${module.policy.dailyLimit.display} USDC. ${module.dailyRemaining.display} USDC remaining") {
-        Text("${fraction.multiply(100.toBigDecimal()).setScale(0,java.math.RoundingMode.HALF_UP)} %",style=FusionType.NumberMedium)
+        Text("${fraction.multiply(100.toBigDecimal()).setScale(0,java.math.RoundingMode.HALF_UP)} %",style=FusionType.HeadingMedium)
     }
 }
