@@ -7,7 +7,7 @@ Project brands are trademarks used here to identify the chain and integrated pro
 | --- | --- | --- |
 | `ic_crypto_usdc.xml` | https://github.com/spothq/cryptocurrency-icons/blob/master/svg/color/usdc.svg | CC0-1.0; https://github.com/spothq/cryptocurrency-icons/blob/master/LICENSE.md |
 | `ic_crypto_eth.xml` | https://github.com/spothq/cryptocurrency-icons/blob/master/svg/color/eth.svg | CC0-1.0; same repository license |
-| `ic_network_base.xml` | https://github.com/base/brand-kit/blob/main/logo/TheSquare/Digital/Base_square_blue.svg | Base trademark asset, used under https://brand.base.org/ guidelines; no CC0 claim |
+| `ic_network_base.xml` | https://github.com/base/brand-kit/blob/aff30a2e31907bfd0f51f90d52b8b513492b42ad/logo/in-product/Base_Network_Logo.svg | Base trademark asset, used under https://brand.base.org/ guidelines; no CC0 claim |
 | `ic_brand_aave.xml` | https://github.com/aave/branding-assets/blob/master/Aave/Aave%20Ghost%20White.svg | Official Aave brand asset, usage terms: https://aave.com/brand (unaltered geometry, identification only) |
 | `ic_brand_safe.xml` | https://github.com/safe-global/safe-wallet-web/blob/dev/apps/web/public/images/logo-no-text.svg | Safe trademark asset; repository GPL-3.0 https://github.com/safe-global/safe-wallet-web/blob/dev/LICENSE.md ; project mark used for identification |
 | `ic_open_in_new.xml`, `ic_copy.xml`, `ic_activity.xml` | https://fonts.google.com/icons | Material Symbols Rounded; Apache-2.0 https://github.com/google/material-design-icons/blob/master/LICENSE |
@@ -323,3 +323,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 ```
+
+## K26 Android conversion sanity
+
+Base uses the official in-product network mark at the pinned revision above (the newer TheSquare source is intentionally a solid square). USDC preserves the CC0 source geometry. Circles use two explicit semicircle arcs within the viewport; compact SVG arc flags are expanded to cubic curves with fontTools so Android does not parse adjacent arc flags as a single number. All paths use nonZero fill. JVM `BrandVectorTest` checks viewports, paths, colors and normalized geometry without Android or Paparazzi.
