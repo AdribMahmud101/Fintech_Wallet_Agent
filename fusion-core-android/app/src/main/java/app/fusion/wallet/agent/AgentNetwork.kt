@@ -15,9 +15,20 @@ internal object AgentNetwork {
     fun readOnly(context: Context, rpcUrl: String): RpcTransport {
         val config = File(context.filesDir, "agent/edge_rpc.json")
         if (!config.isFile) return JsonRpcClient(rpcUrl)
-        return RpcTransport { method, params ->
-            require(method in setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber"))
-            relay(context, method, params)
+        return readOnlyRelay({ method, params -> relay(context, method, params) }, { calls -> batch(context, calls) })
+    }
+    // Preserve RpcTransport batching across the loopback adapter. The SAM's
+    // default implementation serialized every phase-1/header read and made an
+    // otherwise coherent live snapshot exceed its unchanged five-block bound.
+    internal fun readOnlyRelay(request: (String, JSONArray) -> Any, readBatch: (List<Pair<String, JSONArray>>) -> List<Any>): RpcTransport = object : RpcTransport {
+        private val reads = setOf("eth_chainId", "eth_call", "eth_getLogs", "eth_getBlockByNumber")
+        override fun request(method: String, params: JSONArray): Any {
+            require(method in reads)
+            return request.invoke(method, params)
+        }
+        override fun batch(calls: List<Pair<String, JSONArray>>): List<Any> {
+            require(calls.all { it.first in reads })
+            return calls.chunked(50).flatMap(readBatch)
         }
     }
     fun batch(context: Context, calls: List<Pair<String, JSONArray>>): List<Any> {

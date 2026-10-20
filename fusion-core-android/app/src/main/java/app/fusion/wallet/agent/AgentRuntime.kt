@@ -30,7 +30,7 @@ object AgentRuntime {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(AgentRunState())
     val state = mutableState.asStateFlow()
-    private const val GOAL = "Maintain business runway and yield"
+    private const val GOAL = "Pay scheduled obligations, restore cash reserves, and invest available surplus within policy."
 
     suspend fun run(context: Context, repository: WalletRepository, dryRun: Boolean): Result<AgentTickResult> = mutex.withLock {
         mutableState.value = AgentRunState(running = true, result = mutableState.value.result)
@@ -48,6 +48,35 @@ object AgentRuntime {
         }
     }
 
+    /** Read-only recovery of an already signed/mined attempt. Never runs a new
+     * planner choice or permits a new signature. Preserve the original passport. */
+    suspend fun reconcile(context: Context): Result<AgentTickResult> = mutex.withLock {
+        try {
+            val result = withContext(Dispatchers.IO) {
+                val file = File(context.filesDir, "agent/last_tick.json")
+                val report = JSONObject(file.readText())
+                check(report.getString("source") == "APP" && !report.getBoolean("dryRun")) { "INVALID_REPORT" }
+                report.put("originalRequestId", report.getString("requestId"))
+                    .put("requestId", AgentNetwork.requireLease(context)).put("reconcileOnly", true)
+                val execution = SessionSignerClient.execute(context, report)
+                check(!execution.has("error")) { execution.optString("error", "SESSION_SIGNER_FAILED") }
+                check(execution.getString("passportJson") == report.getString("passportJson") &&
+                    execution.getString("decisionHash") == report.getString("decisionHash")) { "PASSPORT_HASH_MISMATCH" }
+                report.put("execution", execution).put("txHash", execution.getString("txHash"))
+                    .put("reconciledAfterReceiptReadFailure", true)
+                file.writeText(report.toString())
+                val passport = JSONObject(report.getString("passportJson"))
+                AgentTickResult(passport.getString("choiceLabel"), passport.getString("reasonCode"), passport.getString("route"),
+                    report.getString("decisionHash"), report.getString("passportJson"), report.getJSONObject("snapshot").getLong("blockNumber"),
+                    report.getJSONObject("preview").getBoolean("passed"), report.getJSONObject("model").getJSONObject("timings").getDouble("totalMs"),
+                    report.getJSONObject("model").getJSONObject("ahem").getJSONObject("g").getLong("vetoes"), false, report.toString(), execution.getString("txHash"))
+            }
+            mutableState.value = AgentRunState(result = result)
+            Result.success(result)
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { mutableState.value = AgentRunState(error = e.message); Result.failure(e) }
+    }
+
     private suspend fun decide(context: Context, repository: WalletRepository, dryRun: Boolean): AgentTickResult {
         val requestId = if (dryRun) null else AgentNetwork.requireLease(context)
         val manifest = context.assets.open("deployments/84532.json").bufferedReader().use { it.readText() }
@@ -58,7 +87,8 @@ object AgentRuntime {
         val billsFile = File(context.filesDir, "agent/obligations.json")
         val decisionRepository = if (billsFile.isFile) {
             check(billsFile.length() <= 65_536) { "Bill metadata exceeds limit" }
-            ChainWalletRepository(manifest, billsFile.readText(), AgentNetwork.readOnly(context, deployment.rpcUrl))
+            ChainWalletRepository(manifest, billsFile.readText(), AgentNetwork.readOnly(context, deployment.rpcUrl),
+                eventIndex = SharedEventIndexes.forContext(context, deployment))
         } else repository
         decisionRepository.refresh()
         var state = decisionRepository.state.value
@@ -67,9 +97,14 @@ object AgentRuntime {
             state = decisionRepository.state.value
         }
         check(state.status == LoadStatus.READY) { "Live snapshot unavailable: ${state.error}" }
-        check(state.accountingMatches == true) { "ACCOUNTING_MISMATCH: commitment or unpaid total differs" }
+        check(state.historyError == null) { "Live history unavailable: ${state.historyError}" }
+        check(state.accountingMatches == true) { "ACCOUNTING_MISMATCH: ${state.accountingError ?: "commitment or unpaid total differs"}" }
         val reader = ChainReader(AgentNetwork.readOnly(context, deployment.rpcUrl))
         var snapshot = SnapshotAdapter.build(state, deployment, reader)
+        // Verify immutable owner history before the critical fresh-snapshot window.
+        // The refresh below requires the same mandate hash and nonce, and native
+        // allocation generation rechecks expiry/policy/session against that refresh.
+        val allocation = OwnerAllocationMandate.read(context, JSONObject(manifest), snapshot)
         if (!dryRun) {
             val fresh = SignerSnapshot.read(context, JSONObject(manifest), snapshot)
             check(fresh.getJSONObject("moduleState").getString("mandateHash") == snapshot.getJSONObject("moduleState").getString("mandateHash") &&
@@ -80,13 +115,51 @@ object AgentRuntime {
         val allBills = SnapshotAdapter.obligations(state)
         val commitment = checked(buildCommitment(allBills.toString()))
         check(commitment.getString("root").equals(module.obligationsRoot, true)) { "Commitment proof root mismatch" }
-        // Optional, explicitly provisioned rate scenarios. Missing rates cannot invent yield.
-        val rateFile = File(context.filesDir, "agent/rates.json")
-        val rates = if (rateFile.isFile) JSONArray(rateFile.readText()) else JSONArray()
-        val set = checked(candidates(snapshot.toString(), SnapshotAdapter.obligations(state, true).toString(),
+        // Use the same pinned live reserve APR as Home, never a provisioned scenario.
+        // A failed rate read leaves no yield deposit; reserve recovery still works.
+        val rates = JSONArray()
+        val rateEvidence = JSONObject().put("block", snapshot.getLong("blockNumber"))
+            .put("blockHash", snapshot.getString("blockHash")).put("pool", ChartEvidenceReader.AAVE_POOL)
+            .put("asset", ChartEvidenceReader.AAVE_USDC)
+        runCatching {
+            val reserve = reader.call(ChartEvidenceReader.AAVE_POOL,
+                ChartEvidenceReader.RESERVE_DATA + Abi.addressWord(ChartEvidenceReader.AAVE_USDC),
+                snapshot.getLong("blockNumber"))
+            require(reserve.size >= 15)
+            val bps = reserve.uint(2).multiply(java.math.BigInteger.valueOf(10_000))
+                .divide(java.math.BigInteger.TEN.pow(27)).longValueExact()
+            rates.put(JSONObject().put("vault", deployment.vaultA).put("rateBps", bps).put("isSimulated", false))
+            rateEvidence.put("status", "LIVE").put("liquidityRateRay", reserve.uint(2).toString()).put("aprBps", bps)
+        }.onFailure { rateEvidence.put("status", "UNAVAILABLE") }
+        var set = checked(candidates(snapshot.toString(), SnapshotAdapter.obligations(state, true).toString(),
             SnapshotAdapter.payees(state).toString(), commitment.getJSONObject("proofs").toString(), rates.toString(),
             deployment.safe, deployment.module)).getJSONObject("set")
-        val prompt = checked(plannerPrompt(set.toString(), GOAL))
+        if (allocation != null) {
+            set = checked(allocationCandidates(snapshot.toString(), allocation.toString(), deployment.safe, deployment.module)).getJSONObject("set")
+        }
+        // Authorization is a verified core candidate fact, never an untrusted note.
+        val goal = GOAL
+        // ERC-4626 shares are not asset units. Bind exact pinned conversions,
+        // then rehash the whole candidate set BEFORE the model sees its labels.
+        val quotes = JSONArray()
+        val unquoted = set.getJSONArray("candidates")
+        for (i in 0 until unquoted.length()) {
+            val candidate = unquoted.getJSONObject(i)
+            val action = candidate.getJSONObject("action")
+            val kind = candidate.getInt("kind")
+            if (kind != 0 && kind != 1) continue
+            val vault = action.getString(if (kind == 0) "destinationVault" else "sourceVault")
+            val amount = java.math.BigInteger(action.getString("assets"))
+            val tag = snapshot.getLong("blockNumber")
+            val conversion = reader.call(vault, "0xc6e6f592" + Abi.uintWord(amount), tag).requireSize(1).uint(0)
+            val previewSelector = if (kind == 0) Views.PREVIEW_DEPOSIT else Views.PREVIEW_WITHDRAW
+            val previewShares = reader.call(vault, previewSelector + Abi.uintWord(amount), tag).requireSize(1).uint(0)
+            quotes.put(JSONObject().put("vault", vault).put("kind", kind).put("assets", amount.toString())
+                .put("blockHash", snapshot.getString("blockHash")).put("convertToShares", conversion.toString())
+                .put("preview", previewShares.toString()))
+        }
+        set = checked(quoteCandidates(set.toString(), snapshot.toString(), quotes.toString(), deployment.safe, deployment.module)).getJSONObject("set")
+        val prompt = checked(plannerPrompt(set.toString(), goal))
         val request = JSONObject().put("prompt", prompt.getString("prompt")).put("labels", prompt.getJSONArray("labels"))
             .put("candidateSetDigest", set.getString("candidateSetDigest")).put("mode", "ahem-g").put("budgetMs", 25000)
         val model = PlannerClient.choose(context, request)
@@ -112,7 +185,7 @@ object AgentRuntime {
                 .put("ahem", JSONObject().put("g", JSONObject().put("mode", "ENFORCED").put("vetoes", stats.getLong("vetoes"))
                     .put("retries", stats.getLong("retries")).put("forcedTokens", stats.getLong("forcedTokens")))
                     .put("l", JSONObject().put("mode", "OFF"))))
-            .put("userGoalSha256", "0x" + MessageDigest.getInstance("SHA-256").digest(GOAL.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) })
+            .put("userGoalSha256", "0x" + MessageDigest.getInstance("SHA-256").digest(goal.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) })
             .put("choiceLabel", choice).put("choiceId", candidate.getString("id")).put("reasonCode", validated.getString("reasonCode"))
             .put("route", if (choice == "H") "HOLD" else candidate.getString("route")).put("createdAtChain", snapshot.getLong("blockTimestamp"))
         val built = checked(buildPassport(passport.toString()))
@@ -122,13 +195,17 @@ object AgentRuntime {
         val report = JSONObject().put("source", "APP").put("requestId", requestId ?: JSONObject.NULL).put("dryRun", dryRun).put("planner", passport.getJSONObject("planner"))
             .put("snapshot", snapshot).put("candidateSet", set).put("chosenCandidate", candidate)
             .put("decisionHash", hash).put("passportJson", canonical).put("preview", preview).put("model", model)
-            .put("rates", rates).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
+            .put("rates", rates).put("rateEvidence", rateEvidence).put("vaultQuotes", quotes).put("rpcTransport", if (File(context.filesDir, "agent/edge_rpc.json").isFile) "live HTTPS via edge loopback relay" else "Android HTTPS").put("device", "${Build.MANUFACTURER} ${Build.MODEL}").put("android", Build.VERSION.RELEASE)
+        if (allocation != null) report.put("allocationMandate", allocation)
         val dir = File(context.filesDir, "agent").apply { mkdirs() }
         File(dir, if (dryRun) "m2_passport.json" else "last_passport.json").writeText(canonical)
         File(dir, "last_tick.json").writeText(report.toString())
         val execution = if (!dryRun && choice != "H") {
             check(preview.getBoolean("passed")) { "Policy preview blocked execution" }
-            val signed = SessionSignerClient.execute(context, report)
+            val first = SessionSignerClient.execute(context, report)
+            val signed = recoverSessionReceipt(first, report,
+                { File(context.noBackupFilesDir, "agent/pending.json").isFile },
+                { original -> SessionSignerClient.execute(context, original) })
             check(!signed.has("error")) { signed.optString("error", "SESSION_SIGNER_FAILED") }
             report.put("execution", signed).put("txHash", signed.getString("txHash"))
             File(dir, "last_tick.json").writeText(report.toString())

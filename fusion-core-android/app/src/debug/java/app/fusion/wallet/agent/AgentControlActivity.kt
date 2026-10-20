@@ -33,6 +33,7 @@ class AgentControlActivity : ComponentActivity() {
             val result = try {
                 if (mode == "m1") PlannerClient.fixedProbe(this@AgentControlActivity)
                 else if (mode == "probe-suite") GateProbeSuite.run(this@AgentControlActivity)
+                else if (mode == "reconcile") JSONObject(AgentRuntime.reconcile(this@AgentControlActivity).getOrThrow().reportJson)
                 else {
                     val tick = AgentRuntime.run(this@AgentControlActivity,
                         app.fusion.wallet.data.ChainWalletRepository.fromAssets(this@AgentControlActivity), mode != "broadcast").getOrThrow()

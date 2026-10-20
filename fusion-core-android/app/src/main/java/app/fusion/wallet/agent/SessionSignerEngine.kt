@@ -39,15 +39,14 @@ internal class SessionSignerEngine(
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
         check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(chainId)) { "WRONG_CHAIN" }
         journal.load()?.let { old ->
-            val receipt = receipt(old.getString("txHash"))
-            if (receipt != null) {
-                val confirmed = confirm(old, receipt)
-                journal.clear()
-                check(old.getString("decisionHash") == report.getString("decisionHash")) { "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN" }
-                return@withLock confirmed
-            }
-            error("PENDING_SESSION_ATTEMPT: ${old.getString("txHash")}")
+            val confirmed = awaitConfirmation(old)
+            journal.clear()
+            check(old.getString("decisionHash") == report.getString("decisionHash")) { "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN" }
+            return@withLock confirmed
         }
+        // This flag only removes authority: receipt reconciliation cannot ever
+        // reach verification of a new action, key access, signing or broadcast.
+        check(!report.optBoolean("reconcileOnly")) { "NO_PENDING_SESSION_ATTEMPT" }
         val checked = verify(report)
         trace("verified")
         check(checked.getString("to").equals(module, true)) { "MODULE_MISMATCH" }
@@ -98,9 +97,7 @@ internal class SessionSignerEngine(
         try {
             check(rpc("eth_sendRawTransaction", JSONArray().put(raw)).toString().equals(hash, true)) { "BROADCAST_HASH_MISMATCH" }
         } catch (_: Exception) { /* Lost reply or already-known: only the receipt proves success. */ }
-        var mined: JSONObject? = null
-        repeat(60) { if (mined == null) { mined = receipt(hash); if (mined == null) pause() } }
-        val confirmed = confirm(pending, mined ?: error("PENDING_SESSION_ATTEMPT: $hash"))
+        val confirmed = awaitConfirmation(pending)
         trace("confirmed")
         journal.clear()
         confirmed
@@ -117,6 +114,20 @@ internal class SessionSignerEngine(
         check(state.bool(0) && !state.bool(1) && state.address(13).equals(session, true) && state.long(14) > time) { "SESSION_INACTIVE" }
         check(state.uint(8).toString() == action.getString("expectedNonce") && state.uint(2).toString() == action.getString("policyEpoch") &&
             state.bytes32(4) == original.getJSONObject("moduleState").getString("mandateHash") && action.getLong("deadline") >= time) { "STALE_STATE_OR_UNSUPPORTED_ROUTE" }
+    }
+    private suspend fun awaitConfirmation(pending: JSONObject): JSONObject {
+        repeat(60) {
+            try {
+                val mined = receipt(pending.getString("txHash"))
+                if (mined != null) return confirm(pending, mined)
+            } catch (_: java.io.IOException) {
+                // Only read failures are retried. Integrity refusals propagate;
+                // the durable signed attempt is never re-signed or re-sent.
+                trace("receipt_read_retry")
+            }
+            pause()
+        }
+        error("PENDING_SESSION_ATTEMPT: ${pending.getString("txHash")}")
     }
     private fun receipt(hash: String): JSONObject? = rpc("eth_getTransactionReceipt", JSONArray().put(hash)).let { if (it == JSONObject.NULL) null else it as JSONObject }
     private fun confirm(pending: JSONObject, receipt: JSONObject): JSONObject {

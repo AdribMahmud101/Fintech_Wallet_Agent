@@ -57,7 +57,12 @@ class SessionSignerService : Service() {
                 check(hashes.length() == measured.length() && hashes.keys().asSequence().all { hashes.getString(it) == measured.optString(it) }) { "PLANNER_PIN_MISMATCH" }
                 val planner = JSONObject(report.getString("passportJson")).getJSONObject("planner")
                 check(planner.getString("libMnnSha256") == hashes.getString("libMNN.so") && planner.getString("libllmSha256") == hashes.getString("libllm.so") && planner.getString("modelSha256") == hashes.getString("llm.mnn")) { "PLANNER_PIN_MISMATCH" }
+                OwnerAllocationMandate.verifyForSigning(this, manifest, report.getJSONObject("snapshot"), report)
                 val fresh = SignerSnapshot.read(this, manifest, report.getJSONObject("snapshot"))
+                if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                    // Public chain state only; evidence for the unchanged freshness refusal.
+                    File(filesDir, "agent/signer_snapshot.json").writeText(fresh.toString())
+                }
                 AgentRuntime.checked(verifyForSigning(report.toString(), fresh.toString(), d.safe, d.module))
             },
             sign = { tx, activeAddress ->
@@ -90,7 +95,7 @@ internal class FileSessionJournal(private val dir: File) : SessionJournal {
 internal fun safeSessionError(error: Exception): String {
     var code = error.message.orEmpty()
     if (code.startsWith("{")) code = runCatching { JSONObject(code).optString("message") }.getOrDefault("")
-    val allowed = setOf("DRY_RUN_CANNOT_BROADCAST", "SESSION_LOCK_REQUIRED", "WRONG_CHAIN", "MODULE_MISMATCH", "PASSPORT_HASH_MISMATCH", "SIMULATION_DIGEST_MISMATCH", "FEE_LIMIT", "GAS_LIMIT", "SESSION_NEEDS_GAS", "SIGNED_HASH_MISMATCH", "STALE_STATE_OR_UNSUPPORTED_ROUTE", "SESSION_INACTIVE", "RECEIPT_MISMATCH", "EVENT_MISMATCH", "REORG", "CODE_PIN_MISMATCH", "IMPLEMENTATION_PIN_MISMATCH", "PLANNER_PIN_MISMATCH", "HOLDINGS_CHANGED", "INVALID_REPORT", "INVALID_PASSPORT", "INVALID_CONTEXT_OR_HOLD", "INVALID_SNAPSHOT", "INVALID_SET", "INVALID_CANDIDATE", "CANDIDATE_BINDING_MISMATCH", "INVALID_MODEL_OUTPUT", "FRESH_POLICY_PREVIEW_FAILED", "SESSION_KEY_NOT_IMPORTED", "SESSION_KEY_MISMATCH", "SESSION_WRAPPING_KEY_UNAVAILABLE", "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN", "JOURNAL_HASH_MISMATCH", "SIGNING_FAILED")
+    val allowed = setOf("INVALID_OWNER_ALLOCATION", "NO_PENDING_SESSION_ATTEMPT", "DRY_RUN_CANNOT_BROADCAST", "SESSION_LOCK_REQUIRED", "WRONG_CHAIN", "MODULE_MISMATCH", "PASSPORT_HASH_MISMATCH", "SIMULATION_DIGEST_MISMATCH", "FEE_LIMIT", "GAS_LIMIT", "SESSION_NEEDS_GAS", "SIGNED_HASH_MISMATCH", "STALE_STATE_OR_UNSUPPORTED_ROUTE", "SESSION_INACTIVE", "RECEIPT_MISMATCH", "EVENT_MISMATCH", "REORG", "CODE_PIN_MISMATCH", "IMPLEMENTATION_PIN_MISMATCH", "PLANNER_PIN_MISMATCH", "HOLDINGS_CHANGED", "INVALID_REPORT", "INVALID_PASSPORT", "INVALID_CONTEXT_OR_HOLD", "INVALID_SNAPSHOT", "INVALID_SET", "INVALID_CANDIDATE", "CANDIDATE_BINDING_MISMATCH", "INVALID_MODEL_OUTPUT", "FRESH_POLICY_PREVIEW_FAILED", "SESSION_KEY_NOT_IMPORTED", "SESSION_KEY_MISMATCH", "SESSION_WRAPPING_KEY_UNAVAILABLE", "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN", "JOURNAL_HASH_MISMATCH", "SIGNING_FAILED")
     if (error is SignerRefused) return error.message!!
     if (SignerRefusal.entries.any { code == "SignerRefused::${it.name}" }) return code
     return if (code in allowed || Regex("(?:PENDING_SESSION_ATTEMPT|SESSION_TX_REVERTED): 0x[0-9a-f]{64}").matches(code)) code else "SESSION_SIGNER_FAILED"

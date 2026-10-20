@@ -674,6 +674,8 @@ internal object IntegrityCheckingUniffiLib {
     }
 
     internal fun ensureInitialized() = Unit
+    external fun uniffi_fusion_android_core_checksum_func_allocation_candidates(
+    ): Int
     external fun uniffi_fusion_android_core_checksum_func_build_commitment(
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_build_passport(
@@ -685,6 +687,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_fusion_android_core_checksum_func_planner_prompt(
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_preview(
+    ): Int
+    external fun uniffi_fusion_android_core_checksum_func_quote_candidates(
     ): Int
     external fun uniffi_fusion_android_core_checksum_func_sign_prepared(
     ): Int
@@ -707,6 +711,8 @@ internal object UniffiLib {
     }
 
     internal fun ensureInitialized() = Unit
+    external fun uniffi_fusion_android_core_fn_func_allocation_candidates(`snapshotJson`: RustBuffer.ByValue,`mandateJson`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_build_commitment(`obligations`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_build_passport(`decision`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
@@ -718,6 +724,8 @@ internal object UniffiLib {
     external fun uniffi_fusion_android_core_fn_func_planner_prompt(`set`: RustBuffer.ByValue,`goal`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_preview(`candidateJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`decisionHash`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+    ): RustBuffer.ByValue
+    external fun uniffi_fusion_android_core_fn_func_quote_candidates(`setJson`: RustBuffer.ByValue,`snapshotJson`: RustBuffer.ByValue,`quotesJson`: RustBuffer.ByValue,`safe`: RustBuffer.ByValue,`module`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
     external fun uniffi_fusion_android_core_fn_func_sign_prepared(`tx`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`policy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
     ): RustBuffer.ByValue
@@ -844,6 +852,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if ((lib.uniffi_fusion_android_core_checksum_func_allocation_candidates() and 0xFFFF) != 23210) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_fusion_android_core_checksum_func_build_commitment() and 0xFFFF) != 33241) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -860,6 +871,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_preview() and 0xFFFF) != 60782) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_fusion_android_core_checksum_func_quote_candidates() and 0xFFFF) != 61725) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_fusion_android_core_checksum_func_sign_prepared() and 0xFFFF) != 34106) {
@@ -1051,7 +1065,26 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
             FfiConverterString.write(value, buf)
         }
     }
-} fun `buildCommitment`(`obligations`: kotlin.String): kotlin.String {
+}
+        /**
+         * A separate owner-signed operational mandate, not a yield recommendation.
+         * Kotlin in BOTH runtime and signer independently verifies the successful 2/2
+         * Safe authorization receipt. The ordinary economics strategy is unchanged.
+         */ fun `allocationCandidates`(`snapshotJson`: kotlin.String, `mandateJson`: kotlin.String, `safe`: kotlin.String, `module`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_fusion_android_core_fn_func_allocation_candidates(
+
+
+        FfiConverterString.lower(`snapshotJson`),
+        FfiConverterString.lower(`mandateJson`),
+        FfiConverterString.lower(`safe`),
+        FfiConverterString.lower(`module`),_status)
+}
+    )
+    }
+
+ fun `buildCommitment`(`obligations`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_fusion_android_core_fn_func_build_commitment(
@@ -1123,6 +1156,26 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         FfiConverterString.lower(`candidateJson`),
         FfiConverterString.lower(`snapshotJson`),
         FfiConverterString.lower(`decisionHash`),
+        FfiConverterString.lower(`safe`),
+        FfiConverterString.lower(`module`),_status)
+}
+    )
+    }
+
+
+        /**
+         * Bind policy share limits to real ERC-4626 conversions before presenting
+         * candidates to the planner. Every quote must match the snapshot and exact
+         * asset amount. This changes IDs/digest before inference, never after choice.
+         */ fun `quoteCandidates`(`setJson`: kotlin.String, `snapshotJson`: kotlin.String, `quotesJson`: kotlin.String, `safe`: kotlin.String, `module`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_fusion_android_core_fn_func_quote_candidates(
+
+
+        FfiConverterString.lower(`setJson`),
+        FfiConverterString.lower(`snapshotJson`),
+        FfiConverterString.lower(`quotesJson`),
         FfiConverterString.lower(`safe`),
         FfiConverterString.lower(`module`),_status)
 }
