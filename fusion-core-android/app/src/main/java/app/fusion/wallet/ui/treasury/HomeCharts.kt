@@ -54,9 +54,11 @@ fun HomeAllocationAndRunway(state: WalletState) {
                     color = FusionChart.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             } else {
                 val days = runway.days
+                // Sky while it is only an early estimate, green when comfortable, teal in between, coral when short; no amber.
+                val runwayTone = when { runway.status.startsWith("Early") -> FusionChart.Sky; days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Teal; else -> FusionChart.Coral }
                 RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
-                    when { runway.status.startsWith("Early") -> FusionChart.Reserved; days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
-                    arcColor = FusionChart.Reserved)
+                    runwayTone,
+                    arcColor = runwayTone)
             }
         } })
         state.agentGas?.let { gas ->
@@ -143,11 +145,15 @@ private fun InsightRow(text: String, tone: Color) {
 
 
 /** Home-specific amount legend; shared charts keep their own units and legend contracts. */
+/** Donut-only colors: violet for spare cash and rose for bills (amber clashed with the dark theme); Earning stays sky. */
+private val ALLOCATION_SPARE = androidx.compose.ui.graphics.Color(0xFF8B5CF6)
+private val ALLOCATION_BILLS = androidx.compose.ui.graphics.Color(0xFFF472B6)
+
 @Composable
 private fun HomeAllocation(buckets: Buckets) {
     val segments = listOf(
-        Segment("Spare cash", buckets.surplus.raw, FusionChart.Cash),
-        Segment("For bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
+        Segment("Spare cash", buckets.surplus.raw, ALLOCATION_SPARE),
+        Segment("For bills", buckets.reserve.raw + buckets.buffer.raw, ALLOCATION_BILLS),
         Segment("Earning", buckets.deployed.raw, FusionChart.Sky))
     val percentages = segmentPercentages(segments.map { it.valueRaw })
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

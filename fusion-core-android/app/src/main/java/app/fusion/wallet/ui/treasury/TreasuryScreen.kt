@@ -130,36 +130,45 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         module == null -> "Status unavailable"
                         module.paused -> "Paused"
                         !module.configured -> "Not configured"
-                        !module.sessionActive -> "Monitor only · no active session"
+                        !module.sessionActive -> "Monitor only"
                         else -> "Active"
                     }
-                    if (autopilot.enabled) Text(autopilotStatus(autopilot, now), style = FusionType.BodyMedium)
-                    AutopilotCountdown(autopilot.nextTickAtMillis, autopilot.intervalMinutes, now, autopilot.enabled && !autopilot.running)
-                    StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
+                    // One calm header line: state, where the AI runs, and the Autopilot countdown when it is on.
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionChart.Muted)
+                        Text("On-device AI · private", style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                    }
+                    if (autopilot.enabled) {
+                        Text(autopilotStatus(autopilot, now), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                        AutopilotCountdown(autopilot.nextTickAtMillis, autopilot.intervalMinutes, now, autopilot.enabled && !autopilot.running)
+                    }
                     val runtimeReport = agent.result?.let { runCatching { org.json.JSONObject(it.reportJson) }.getOrNull() }
                     val lastTick = autopilot.timeline.firstOrNull { it.outcome != "RUNNING" }
                         ?.takeIf { it.timeMillis >= (runtimeReport?.optLong("completedAtMillis") ?: 0) || it.reportJson == agent.result?.reportJson }
                     Text(lastTick?.let { "Last decision: ${it.reason}" }
                         ?: agent.result?.let { "Last decision: ${app.fusion.wallet.ui.common.decisionReason(org.json.JSONObject(it.reportJson), it.reason)}" }
                         ?: lastDecisionEntry?.let { "Last decision: ${activityTitle(it.kind)}" }
-                        ?: "No in-app decision recorded", style = FusionType.BodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    lastDecisionTx?.let { RecordedProvenanceChip(activityProvenance(lastDecisionEntry?.source)) }
-                    StatusChip("On-device AI · Private", FusionColors.Indigo)
+                        ?: "No in-app decision recorded", style = FusionType.BodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     module?.let { m ->
                         val allowance = aiAllowance(m.dailyUsed.raw, m.policy.dailyLimit.raw, m.policy.microMax.raw)
-                        app.fusion.wallet.ui.common.allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) }
+                        val lines = app.fusion.wallet.ui.common.allowanceLabels(m, state.blockTime)
+                        // Two lines of detail (daily limit with the reset time, hard max) live on the AI Agent screen.
+                        val left = lines.getOrNull(0)?.replace(Regex("""(\d[\d,]*)\.(\d{3,})""")) { r -> "%,.2f".format(java.util.Locale.US, r.value.replace(",", "").toDouble()) }
+                        val per = lines.getOrNull(1)?.substringBefore(" · max")
+                        Text(listOfNotNull(left, per).joinToString(" · "), style = FusionType.BodySmall, color = FusionColors.TextMuted)
                         LinearProgressIndicator(progress = { allowance.fraction }, modifier = Modifier.fillMaxWidth(), color = FusionColors.Green)
-                    } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = previewMove, enabled = !agent.running && !autopilot.running && state.treasury != null) {
-                            Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
+                    } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = previewMove, enabled = !agent.running && !autopilot.running && state.treasury != null,
+                            modifier = Modifier.weight(1f).height(44.dp)) {
+                            Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run), maxLines = 1)
                         }
-                        OutlinedButton(onClick = { vm.autopilot.setEnabled(false); stopOpen = true }, enabled = autopilot.enabled || (module != null && !module.paused)) {
-                            Text(stringResource(R.string.home_agent_stop), color = FusionColors.Red)
+                        OutlinedButton(onClick = { vm.autopilot.setEnabled(false); stopOpen = true }, enabled = autopilot.enabled || (module != null && !module.paused),
+                            modifier = Modifier.height(44.dp)) {
+                            Text(stringResource(R.string.home_agent_stop), color = FusionColors.Red, maxLines = 1)
                         }
                     }
-                    Text("Dry run · live policy preview, no broadcast", style = FusionType.BodySmall)
-                    agent.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
+                    agent.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Red) }
                     stopHash?.let { TxLink(it) }
                 }
             }
