@@ -2,7 +2,6 @@ package app.fusion.wallet.ui.charts
 
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.theme.FusionTheme
+import app.fusion.wallet.ui.theme.FusionChartMotion
 
 /**
  * Small hand-drawn charts (no chart library). Rules every chart follows:
@@ -53,13 +53,21 @@ import app.fusion.wallet.ui.theme.FusionTheme
  *  - draw-in animation is skipped when the system animation scale is 0 (reduced motion).
  */
 @Composable
-fun rememberChartProgress(): Float {
+fun rememberChartProgress(replayKey: Any? = Unit): Float {
     val context = LocalContext.current
-    val reduced = remember {
-        runCatching { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
+    // Key by availability when data loads asynchronously: the entrance must not finish
+    // behind an unavailable/insufficient-history message. Never animate numeric labels.
+    val a = remember(context, replayKey) {
+        val reduced = runCatching {
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        }.getOrDefault(false)
+        Animatable(if (reduced) 1f else 0f)
     }
-    val a = remember { Animatable(if (reduced) 1f else 0f) }
-    LaunchedEffect(Unit) { if (!reduced) a.animateTo(1f, tween(200, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(a) {
+        // Compose applies the live system duration scale, including changes to zero
+        // during playback. Do not multiply the duration by a second settings read.
+        if (a.value < 1f) a.animateTo(1f, tween(FusionChartMotion.EnterMillis, easing = FusionChartMotion.EnterEasing))
+    }
     return a.value
 }
 

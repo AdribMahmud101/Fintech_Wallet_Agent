@@ -53,7 +53,7 @@ fun AreaLineChart(
     val cutoff = System.currentTimeMillis() / 1000 - 30 * 86400L
     val filtered = points.filter { it.timestampSeconds >= cutoff }.sortedBy { it.timestampSeconds }.distinctBy { it.timestampSeconds }
     val summary = balanceSummary(filtered, 30)
-    val progress = rememberChartProgress()
+    val progress = rememberChartProgress(filtered.size >= 4)
     val date = remember { SimpleDateFormat("MMM d, HH:mm z", Locale.getDefault()) }
     val explanation = buildString {
         append("Reconstructed Safe USDC cash from transfers and module checkpoints. Historical vault values are unavailable; vault assets are separate. Change compares the first and last verified samples in the last 30 days; the window can be shorter than 30 days. Points retain their actual timestamp spacing, including initial funding.")
@@ -92,13 +92,18 @@ fun AreaLineChart(
                 }
                 val area = Path().apply { addPath(line); lineTo(offsets.last().x,size.height); lineTo(offsets.first().x,size.height); close() }
                 clipRect(right = size.width * progress) {
-                    drawPath(area, Brush.verticalGradient(listOf(FusionChart.Sky.copy(alpha = .28f), Color.Transparent)))
-                    drawPath(line, FusionChart.Sky, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
-                    if (progress >= .99f) {
-                        val end = Offset(offsets.last().x, offsets.last().y)
-                        drawCircle(Brush.radialGradient(listOf(FusionChart.Sky.copy(alpha = .5f), Color.Transparent), end, 7.dp.toPx()), 7.dp.toPx(), end)
-                        drawCircle(FusionChart.Sky, 3.5.dp.toPx(), end)
-                    }
+                    drawPath(area, Brush.verticalGradient(listOf(FusionChart.Sky.copy(alpha = .28f), Color.Transparent), startY = pad, endY = size.height))
+                    drawPath(line, FusionChart.Sky.copy(alpha = .08f), style = Stroke(7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(line, FusionChart.Sky, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                }
+                // Fade in only after the reveal reaches the last verified sample.
+                // Outside the clip so its halo is not sliced in half at the edge.
+                val markerAlpha = ((size.width * progress - offsets.last().x) / pad).coerceIn(0f, 1f)
+                if (markerAlpha > 0f) {
+                    val end = Offset(offsets.last().x, offsets.last().y)
+                    drawCircle(Brush.radialGradient(listOf(FusionChart.Sky.copy(alpha = .5f * markerAlpha), Color.Transparent), end, 7.dp.toPx()), 7.dp.toPx(), end)
+                    drawCircle(FusionChart.Surface.copy(alpha = markerAlpha), 5.dp.toPx(), end)
+                    drawCircle(FusionChart.Sky.copy(alpha = markerAlpha), 3.5.dp.toPx(), end)
                 }
             }
         }

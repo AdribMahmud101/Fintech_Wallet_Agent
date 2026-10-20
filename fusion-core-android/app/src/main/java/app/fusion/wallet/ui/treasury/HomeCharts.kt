@@ -49,7 +49,7 @@ fun HomeAllocationAndRunway(state: WalletState) {
         val evidence = state.chartEvidence
         val runway = evidence?.let { cashRunway(it.cashRaw, it.outflowRaw, it.historyStart, it.through) }
         ChartTileHeader("Cash runway", buildString {
-            append("Safe cash divided by average daily outflow over the observed last 30 days. Bill payments and owner sends count once; vault deposits and self-transfers are excluded. At least 7 days of history is required. Arc scale: 90 days, capped visually; the center shows uncapped days. Healthy: 60+ days. Keep an eye on it: 21–59 days. Low: under 21 days.")
+            append("Safe cash divided by average daily outflow over the observed last 30 days. Bill payments and owner sends count once; vault deposits and self-transfers are excluded. At least 7 days of history is required. Full ring: 90 days, capped visually; the center shows uncapped days. Healthy: 60+ days. Keep an eye on it: 21–59 days. Low: under 21 days.")
             if (evidence != null && runway != null) append("\n\n${formatBigIntegerAmount(evidence.cashRaw)} USDC cash; ${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1, java.math.RoundingMode.DOWN)} days.")
         })
         if (runway?.days == null) Box(Modifier.fillMaxWidth().heightIn(min = 166.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {

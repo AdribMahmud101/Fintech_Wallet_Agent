@@ -1,5 +1,9 @@
 # K28 charts and evidence contract
 
+K29 restores the legacy 700 ms chart entrance, full-ring gauge sweep and
+multi-bucket donut gaps. The umbrella `docs/ux/LEGACY_DASHBOARD.md` records the
+source comparison and current motion details; the evidence contract below remains.
+
 All money stays in `BigInteger` raw USDC units or `BigDecimal`. Only dimensionless
 ratios and canvas coordinates become `Float`. Charts are read-only and create no
 transaction or signing authority. They use `FusionChart` reference surfaces (18 dp radius, #111418 fill, #1F242B border, 16 dp inner padding);
@@ -71,11 +75,11 @@ reference's sans values. The hero is 32 sp with baseline-aligned 16 sp USDC;
 chart titles are single-line 14 sp regular #8B949E. Vault values are 26 sp sans.
 The hero has the diagonal #0F2A22 → #0E1512 gradient.
 
-- Allocation: 122 dp ring, 17 dp butt stroke, 2° gaps, compact center (e.g. 9.4K),
+- Allocation: 122 dp ring, 17 dp butt stroke, 3° gaps between multiple buckets (reduced for tiny buckets), compact center (e.g. 9.4K),
   8 dp legend dots, single-line labels and always-visible percentages.
 - Runway: same ring dimensions, #262B33 track, clockwise progress from 12 o'clock,
   rounded amber progress cap and a colored textual status. Insufficient history stays
-  text-only; no decorative ring is substituted. The 270° progress scale is 90 days.
+  text-only; no decorative ring is substituted. The full 360° progress scale is 90 days.
 - Balance: 120 dp plot, 2.5 dp sky line, 28%-to-transparent fill, 7 dp end dot with
   14 dp glow. No axes, grid or per-sample markers. The 10%-padded actual min/max
   range preserves constant series and funding cliffs without forcing a zero baseline.
