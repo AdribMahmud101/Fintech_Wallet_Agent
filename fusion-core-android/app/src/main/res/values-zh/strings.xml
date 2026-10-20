@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- K43: proof screen -->
+    <string name="prf_title">链上已验证</string>
+    <string name="prf_subtitle">自 Safe 部署以来的每一笔已记录交易，按其执行的 AI 操作分组。</string>
+    <string name="prf_ai_count">%1$s 笔 AI 自主执行交易</string>
+    <string name="prf_index_count">记录索引中共 %1$s 笔交易</string>
+    <string name="prf_attacks_stopped">已拦截攻击 %1$s / %2$s</string>
+    <string name="prf_arena_link">打开攻击竞技场报告</string>
+    <string name="prf_attacks_unavailable">暂时无法获取攻击竞技场证据。</string>
+    <string name="prf_arena_refreshing">正在刷新竞技场证据…</string>
+    <string name="prf_index_unavailable">暂无交易索引。</string>
+    <string name="prf_index_hint">链上快照加载后会从 evidence/tx_index.json 流式获取索引。请检查网络后刷新。</string>
+    <string name="prf_op_asset">资产管理</string>
+    <string name="prf_op_transactions">交易支付</string>
+    <string name="prf_op_risk">风险控制</string>
+    <string name="prf_op_owner">所有者 / 部署配置</string>
+    <string name="prf_time_unavailable">未记录时间</string>
+    <string name="prf_contracts">已部署合约</string>
+    <string name="prf_contracts_hint">该钱包实际运行的合约地址，直接取自部署清单。</string>
+    <string name="prf_receipt_note">点按任意交易，通过固化的 Base Sepolia RPC 只读复核其实际回执——状态与区块，绝无签名。</string>
+    <string name="prf_receipt_confirmed">已确认</string>
+    <string name="prf_receipt_reverted">已回滚</string>
+    <string name="prf_receipt_block">Gas 消耗：%1$s</string>
+    <string name="prf_receipt_loading">正在读取链上回执…</string>
+    <string name="prf_receipt_unavailable">无法获取链上回执：未能与记录区块核验一致。</string>
+    <string name="prf_receipt_retry">重试</string>
+    <string name="prf_sheet_close">关闭</string>
+    <string name="prf_chip">链上已验证</string>
+    <string name="prf_chip_count">%1$s 笔已记录交易 · 点按查看完整证明</string>
+    <string name="prf_chip_hint">打开链上证明页</string>
+
+    <!-- K43: settings entry for the proof screen -->
+    <string name="set_proof">链上已验证证明</string>
+    <string name="set_proof_desc">按 AI 操作分组的全部已记录交易，附实时回执核验与 BaseScan 链接。</string>
+</resources>

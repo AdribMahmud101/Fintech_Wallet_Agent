@@ -105,7 +105,11 @@ private fun shortAddr(a: String): String = if (a.length > 12) "${a.take(6)}…${
 // ---- Step 1: Welcome & role -----------------------------------------------------------------
 
 @Composable
-fun WelcomeRoleStep(role: OnboardingRole, onRole: (OnboardingRole) -> Unit) {
+fun WelcomeRoleStep(
+    role: OnboardingRole,
+    onRole: (OnboardingRole) -> Unit,
+    onWatchOnly: () -> Unit,
+) {
     StepHeader(stringResource(R.string.ob_welcome_title), stringResource(R.string.ob_welcome_subtitle))
     Text(stringResource(R.string.ob_role_title), style = FusionType.HeadingSmall)
     Spacer(Modifier.height(12.dp))
@@ -133,6 +137,16 @@ fun WelcomeRoleStep(role: OnboardingRole, onRole: (OnboardingRole) -> Unit) {
                 }
             }
         }
+    }
+    Spacer(Modifier.height(20.dp))
+    // The judges' path (win plan K43): the public APK holds no keys, so watching the live
+    // deployed Safe read-only is the correct zero-setup experience — and the default for judges.
+    Text(stringResource(R.string.ob_watch_title), style = FusionType.HeadingSmall)
+    Spacer(Modifier.height(8.dp))
+    BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
+        Text(stringResource(R.string.ob_watch_desc), style = FusionType.BodyMedium, color = FusionColors.TextMuted)
+        Spacer(Modifier.height(10.dp))
+        PrimaryButton(stringResource(R.string.ob_watch_action), onWatchOnly)
     }
 }
 

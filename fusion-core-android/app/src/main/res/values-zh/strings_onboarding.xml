@@ -128,4 +128,9 @@
     <string name="set_about_network">网络</string>
     <string name="set_redo_onboarding">重新运行首次设置</string>
     <string name="ob_policy_vendors_loading">正在加载供应商…</string>
+
+    <!-- K43: onboarding watch-only path -->
+    <string name="ob_watch_action">旁观演示钱包实盘运行</string>
+    <string name="ob_watch_title">Watch the live demo wallet</string>
+    <string name="ob_watch_desc">这台手机上没有密钥。你正以只读方式旁观 AI 实际操作的真实钱包。</string>
 </resources>

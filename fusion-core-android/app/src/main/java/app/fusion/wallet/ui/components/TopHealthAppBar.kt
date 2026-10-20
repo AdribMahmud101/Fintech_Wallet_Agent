@@ -48,7 +48,7 @@ import app.fusion.wallet.ui.theme.FusionTheme
 import app.fusion.wallet.ui.theme.MonoStyle
 import app.fusion.wallet.ui.theme.Obsidian
 
-/** Four spec destinations: Treasury, Bills, Agent, Safety; plus Judge mode. */
+/** Four spec destinations: Treasury, Bills, Agent, Safety; plus Judge mode and the proof screen. */
 enum class NavRoute {
     Treasury,
     Bills,
@@ -57,7 +57,7 @@ enum class NavRoute {
     Settings,
     Safety,
     Judge,
-    @Deprecated("Use Safety") Proof;
+    Proof,
 }
 
 /**

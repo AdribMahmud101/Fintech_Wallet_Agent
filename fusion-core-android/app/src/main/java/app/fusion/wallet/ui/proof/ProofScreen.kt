@@ -1,84 +1,77 @@
 package app.fusion.wallet.ui.proof
 
-import app.fusion.wallet.ui.common.startActivitySafe
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
-import app.fusion.wallet.data.ArenaScenario
-import app.fusion.wallet.data.BlockedOnChain
-import app.fusion.wallet.data.DataSource
-import app.fusion.wallet.data.LoadStatus
-import app.fusion.wallet.data.SafetyData
+import app.fusion.wallet.data.Deployment
 import app.fusion.wallet.ui.MainViewModel
-import app.fusion.wallet.ui.common.BentoGap
-import app.fusion.wallet.ui.common.BentoRow
-import app.fusion.wallet.ui.common.BentoTile
-import app.fusion.wallet.ui.common.Muted
-import app.fusion.wallet.ui.common.Notice
-import app.fusion.wallet.ui.common.ScreenHeader
-import app.fusion.wallet.ui.common.StatTile
-import app.fusion.wallet.ui.common.Tone
-import app.fusion.wallet.ui.components.ObsidianCard
-import app.fusion.wallet.ui.components.StatusPill
-import app.fusion.wallet.ui.shorten
-import app.fusion.wallet.ui.theme.Accessible
-import app.fusion.wallet.ui.theme.FusionDims
-import app.fusion.wallet.ui.theme.MonoStyle
+import app.fusion.wallet.ui.activity.ActivityItem
+import app.fusion.wallet.ui.activity.ActivityReceipt
+import app.fusion.wallet.ui.activity.ActivityReceiptReader
+import app.fusion.wallet.ui.activity.ActivityTimelineBuilder
+import app.fusion.wallet.ui.activity.RecordedProvenanceChip
+import app.fusion.wallet.ui.activity.rememberTxIndex
+import app.fusion.wallet.ui.components.AmountText
+import app.fusion.wallet.ui.components.BentoTile
+import app.fusion.wallet.ui.components.StatusChip
+import app.fusion.wallet.ui.components.TxLink
+import app.fusion.wallet.ui.common.formatEpochSeconds
+import app.fusion.wallet.ui.common.startActivitySafe
+import app.fusion.wallet.ui.safety.SafetyScreenModel
+import app.fusion.wallet.ui.safety.SafetyScreenState
+import app.fusion.wallet.ui.settings.SettingsViewModel
+import app.fusion.wallet.ui.theme.FusionColors
+import app.fusion.wallet.ui.theme.FusionType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private const val ARENA_URL =
+    "https://github.com/AdribMahmud101/fusion_wallet/blob/main/evidence/results/ARENA.md"
 
 /**
- * Safety screen — real and honest.
- *
- * Counts come from the frozen evidence files (arena [SafetyData] + Base Sepolia reverts), never
- * from live logs: a reverted attack emits no event, so it can never be reconstructed from history.
- * The three tiles read "21 / 24 attacks stopped", "0 / 30 attacks succeeded", and the live stop
- * state. Scenarios that escaped or are not implemented are listed honestly under "Known limits".
- * Emergency Unwind is explanatory text, not a dead button — it is a 2-of-2 Safe owner action.
+ * Proof screen (win plan wow factor 9): every indexed on-chain transaction grouped by Topic F
+ * operation — asset management, transactions, risk control, owner/setup — each row with its
+ * recorded source badge, time, amount, BaseScan link, and a live receipt check (status and block,
+ * fetched read-only from the pinned Base Sepolia RPC) on tap. Header counts read the recorded
+ * index only ("N AI-executed txs"); the attacks-stopped count links to ARENA.md on GitHub.
+ * Every number is real recorded data; failures are shown plainly, never papered over.
  */
 @Composable
 fun ProofScreen(
@@ -87,291 +80,245 @@ fun ProofScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val safety by vm.safety.collectAsStateWithLifecycle()
-    var userDismissedError by rememberSaveable { mutableStateOf(false) }
+    val arenaVm: SafetyScreenModel = viewModel()
+    val arena by arenaVm.state.collectAsStateWithLifecycle()
+    val settings: SettingsViewModel = viewModel()
+    val txIndex = rememberTxIndex()
+    val context = LocalContext.current
+    var frozen by remember { mutableStateOf(emptyList<ActivityItem>()) }
+    LaunchedEffect(Unit) {
+        frozen = try {
+            withContext(Dispatchers.IO) {
+                ActivityTimelineBuilder.parseFrozen(
+                    context.assets.open("evidence/base-sepolia.json").bufferedReader().use { it.readText() })
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (_: Exception) { emptyList() }
+    }
+    val sections = remember(state.evidence, state.recentActions, state.payees, safety, frozen, txIndex) {
+        ProofBuilder.build(state, safety, frozen, txIndex)
+    }
+    var selected by remember { mutableStateOf<ActivityItem?>(null) }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = FusionDims.gutter, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(BentoGap),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            ScreenHeader(
-                title = stringResource(R.string.safe_title),
-                subtitle = stringResource(R.string.safe_subtitle),
-                trailing = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        if (state.source == DataSource.DEMO) {
-                            StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
-                        }
-                        IconButton(onClick = { vm.refresh() }, modifier = Modifier.size(48.dp)) {
-                            if (state.refreshing) {
-                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSurface)
-                            } else {
-                                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh_button), modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    }
-                },
-            )
-        }
-
-        if (state.status == LoadStatus.ERROR && !userDismissedError) {
-            item { Notice(text = state.error ?: "Can't reach the network", onDismiss = { userDismissedError = true }) }
-        }
-
-        // Headline + honest scorecard tiles
-        item { SafetyHeadlineTile(safety) }
-        item { ScorecardRow(safety, paused = state.module?.paused) }
-
-        // Emergency Unwind — explanatory, owner action (no dead button)
-        item { EmergencyUnwindCard() }
-
-        // Blocked on-chain (reverted) — from Base Sepolia receipts
-        item {
-            SectionTitle(
-                stringResource(R.string.safe_onchain_title),
-                trailing = safety.blockedOnChain.size.takeIf { it > 0 }?.toString(),
-            )
-        }
-        if (!safety.loaded) {
-            item { LoadingTile() }
-        } else if (safety.blockedOnChain.isEmpty()) {
-            item { EmptyTile(stringResource(R.string.safe_onchain_empty)) }
-        } else {
-            items(safety.blockedOnChain, key = { it.txHash }) { BlockedAttackCard(it) }
-        }
-
-        // Arena scenarios that were stopped
-        val stoppedScenarios = safety.scenarios.filter { it.isStopped }
-        if (stoppedScenarios.isNotEmpty()) {
-            item { SectionTitle(stringResource(R.string.safe_arena_title), trailing = stoppedScenarios.size.toString()) }
-            items(stoppedScenarios, key = { it.id }) { ScenarioRow(it) }
-        }
-
-        // Known limits — escaped / not implemented, listed honestly
-        item { SectionTitle(stringResource(R.string.safe_known_limits_title), trailing = safety.knownLimits.size.takeIf { it > 0 }?.toString()) }
-        if (safety.knownLimits.isEmpty() && safety.loaded) {
-            item { EmptyTile(stringResource(R.string.safe_known_limits_empty)) }
-        } else {
-            items(safety.knownLimits, key = { it.id }) { ScenarioRow(it) }
-        }
-    }
-}
-
-// ---- Headline ---------------------------------------------------------------------------------
-
-@Composable
-private fun SafetyHeadlineTile(safety: SafetyData) {
-    val hasData = safety.loaded && safety.scenarioCount > 0
-    BentoTile(modifier = Modifier.fillMaxWidth(), tint = Tone.Good, padding = 18.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(CircleShape).background(Tone.Good.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Shield, contentDescription = null, tint = Tone.Good, modifier = Modifier.size(24.dp))
-            }
-            Spacer(Modifier.width(14.dp))
+        item(key = "header") {
             Column {
-                Text(
-                    text = if (hasData) stringResource(R.string.pf_headline_some, safety.stopped.toString(), safety.scenarioCount.toString())
-                    else stringResource(R.string.pf_headline_none),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = if (hasData && safety.measuredAt != null)
-                        stringResource(R.string.safe_measured_on, app.fusion.wallet.ui.common.formatTimestamp(safety.measuredAt), safety.scenarioCount.toString())
-                    else stringResource(R.string.pf_headline_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Muted,
-                )
+                Text(stringResource(R.string.prf_title), style = FusionType.HeadingMedium)
+                Text(stringResource(R.string.prf_subtitle), style = FusionType.BodySmall, color = FusionColors.TextMuted)
             }
         }
-    }
-}
-
-@Composable
-private fun ScorecardRow(safety: SafetyData, paused: Boolean?) {
-    BentoRow {
-        StatTile(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            label = stringResource(R.string.safe_tile_stopped),
-            value = stringResource(R.string.safe_count_pair, safety.stopped.toString(), safety.scenarioCount.toString()),
-            color = Tone.Good,
-        )
-        StatTile(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            label = stringResource(R.string.safe_tile_succeeded),
-            value = stringResource(R.string.safe_count_pair, safety.asrNumerator.toString(), safety.asrDenominator.toString()),
-            color = if (safety.asrNumerator == 0) Tone.Good else Tone.Bad,
-        )
-        StatTile(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            label = stringResource(R.string.safe_tile_stop),
-            value = if (paused == true) stringResource(R.string.safe_stop_paused) else stringResource(R.string.safe_stop_armed),
-            color = if (paused == true) Tone.Warn else Tone.Good,
-        )
-    }
-}
-
-// ---- Section helpers --------------------------------------------------------------------------
-
-@Composable
-private fun SectionTitle(title: String, trailing: String? = null) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-        if (trailing != null) Text(trailing, style = MaterialTheme.typography.bodySmall, color = Muted)
-    }
-}
-
-@Composable
-private fun LoadingTile() {
-    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onSurface)
-            Text(stringResource(R.string.tr_loading), style = MaterialTheme.typography.bodyLarge, color = Muted)
+        item(key = "counts") { ProofCountsTile(sections, arena, arenaVm::refresh, arena.refreshing) }
+        if (sections.indexedCount == 0 && !state.refreshing) {
+            item(key = "index-missing") { IndexUnavailableTile(vm::refresh) }
         }
-    }
-}
-
-@Composable
-private fun EmptyTile(text: String) {
-    BentoTile(Modifier.fillMaxWidth(), padding = 16.dp) {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = Muted)
-    }
-}
-
-// ---- Blocked attack (on-chain revert) ---------------------------------------------------------
-
-@Composable
-private fun BlockedAttackCard(row: BlockedOnChain) {
-    val context = LocalContext.current
-    ObsidianCard(modifier = Modifier.fillMaxWidth(), level = 1) {
-        Column(Modifier.padding(14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(30.dp).clip(CircleShape).background(Tone.Good.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Tone.Good, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.safe_tried, row.scenario),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
+        state.error?.let { error ->
+            item(key = "state-error") {
+                BentoTile(Modifier.fillMaxWidth()) {
+                    Text(error, style = FusionType.BodySmall, color = FusionColors.Amber)
+                    TextButton(onClick = vm::refresh) { Text(stringResource(R.string.refresh_button)) }
                 }
-                Spacer(Modifier.width(8.dp))
-                StatusPill(label = stringResource(R.string.safe_sc_stopped), tone = Tone.Good)
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Block #${row.blockNumber}" + (row.decisionHash?.let { " · ${shorten(it)}" } ?: ""),
-                style = MonoStyle.copy(fontSize = 12.sp),
-                color = Muted,
-            )
-            Spacer(Modifier.height(6.dp))
-            BaseScanLink(url = row.explorerUrl, context = context)
         }
-    }
-}
-
-// ---- Arena scenario row -----------------------------------------------------------------------
-
-@Composable
-private fun ScenarioRow(s: ArenaScenario) {
-    val tone = when {
-        s.isStopped -> Tone.Good
-        s.status == "escaped" -> Tone.Bad
-        else -> Tone.Warn
-    }
-    val statusLabel = when (s.status) {
-        "escaped" -> stringResource(R.string.safe_sc_escaped)
-        "not_implemented" -> stringResource(R.string.safe_sc_not_impl)
-        else -> stringResource(R.string.safe_sc_stopped)
-    }
-    ObsidianCard(modifier = Modifier.fillMaxWidth(), level = 2) {
-        Column(Modifier.padding(12.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = s.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                )
-                StatusPill(label = statusLabel, tone = tone)
+        sections.sections.forEach { section ->
+            item(key = "section:${section.operation.name}") {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(proofOperationLabel(section.operation), style = FusionType.HeadingSmall)
+                    Text(section.rows.size.toString(), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                }
             }
-            if (s.isStopped && s.stoppingLayer != null) {
+            items(section.rows, key = { "${section.operation.name}:${it.id}" }) { row ->
+                ProofTransactionCard(row, onClick = { selected = row })
+            }
+        }
+        item(key = "contracts-header") {
+            Column {
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.safe_stopped_at, layerLabel(s.stoppingLayer)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Muted,
-                )
+                Text(stringResource(R.string.prf_contracts), style = FusionType.HeadingSmall)
+                Text(stringResource(R.string.prf_contracts_hint), style = FusionType.BodySmall, color = FusionColors.TextMuted)
             }
         }
+        items(settings.contracts, key = { "contract:${it.address}" }) { contract ->
+            BentoTile(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(contract.label, style = FusionType.BodyMedium)
+                        Text(contract.address, style = FusionType.NumberCaption, color = FusionColors.TextMuted, maxLines = 1)
+                    }
+                    ExplorerLink(contract.explorerUrl)
+                }
+            }
+        }
+        item(key = "receipt-note") {
+            Text(stringResource(R.string.prf_receipt_note), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+        }
     }
+
+    selected?.let { row -> ProofReceiptSheet(row, onDismiss = { selected = null }) }
 }
 
 @Composable
-private fun layerLabel(layer: String): String = when (layer.lowercase()) {
-    "contract" -> stringResource(R.string.safe_layer_contract)
-    "rust_policy_preview", "rust_candidate_policy" -> stringResource(R.string.safe_layer_rules)
-    "ahem_g" -> stringResource(R.string.safe_layer_grammar)
-    "output_validator" -> stringResource(R.string.safe_layer_validator)
-    "signer" -> stringResource(R.string.safe_layer_signer)
-    "reflex_latch_then_contract" -> stringResource(R.string.safe_layer_reflex)
-    "durable_journal" -> stringResource(R.string.safe_layer_journal)
-    else -> layer.replace('_', ' ')
-}
-
-// ---- Emergency Unwind (owner action, no dead button) ------------------------------------------
-
-@Composable
-private fun EmergencyUnwindCard() {
-    ObsidianCard(modifier = Modifier.fillMaxWidth(), level = 1) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Info, contentDescription = null, tint = Tone.Earning, modifier = Modifier.size(18.dp))
+private fun ProofCountsTile(
+    sections: ProofSections,
+    arena: SafetyScreenState,
+    onRefreshArena: () -> Unit,
+    arenaRefreshing: Boolean,
+) {
+    val context = LocalContext.current
+    BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green) {
+        Text(
+            text = stringResource(R.string.prf_ai_count, sections.aiExecutedCount.toString()),
+            style = FusionType.HeadingMedium,
+        )
+        Text(
+            text = stringResource(R.string.prf_index_count, sections.indexedCount.toString()),
+            style = FusionType.BodySmall, color = FusionColors.TextMuted,
+        )
+        Spacer(Modifier.height(10.dp))
+        val evidence = arena.arena
+        if (evidence != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) {
+                        runCatching { context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(ARENA_URL))) }
+                    }
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Verified, contentDescription = null, tint = FusionColors.Green, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    stringResource(R.string.safe_unwind_owner_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
+                    text = stringResource(R.string.prf_attacks_stopped, evidence.stopped.toString(), evidence.scenarios.size.toString()),
+                    style = FusionType.BodyMedium, fontWeight = FontWeight.SemiBold,
                 )
-                StatusPill(label = stringResource(R.string.safe_unwind_owner_tag), tone = Tone.Warn)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.prf_arena_link), style = FusionType.BodySmall, color = FusionColors.Indigo)
+                Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = FusionColors.Indigo, modifier = Modifier.size(12.dp))
             }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                stringResource(R.string.safe_unwind_owner_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = Muted,
-            )
+        } else {
+            Column {
+                Text(stringResource(R.string.prf_attacks_unavailable), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+                TextButton(onClick = onRefreshArena, enabled = !arenaRefreshing) {
+                    Text(if (arenaRefreshing) stringResource(R.string.prf_arena_refreshing) else stringResource(R.string.refresh_button))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun BaseScanLink(url: String, context: android.content.Context) {
+private fun IndexUnavailableTile(onRefresh: () -> Unit) {
+    BentoTile(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.prf_index_unavailable), style = FusionType.BodyMedium, color = FusionColors.Amber)
+        Text(stringResource(R.string.prf_index_hint), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+        TextButton(onClick = onRefresh) { Text(stringResource(R.string.refresh_button)) }
+    }
+}
+
+@Composable
+private fun proofOperationLabel(operation: ProofOperation): String = stringResource(when (operation) {
+    ProofOperation.AssetManagement -> R.string.prf_op_asset
+    ProofOperation.Transactions -> R.string.prf_op_transactions
+    ProofOperation.RiskControl -> R.string.prf_op_risk
+    ProofOperation.OwnerSetup -> R.string.prf_op_owner
+})
+
+@Composable
+private fun ProofTransactionCard(row: ActivityItem, onClick: () -> Unit) {
+    BentoTile(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(row.title, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f), maxLines = 2)
+            Spacer(Modifier.width(8.dp))
+            RecordedProvenanceChip(row.provenance)
+        }
+        row.amountRaw?.let { AmountText(it, style = FusionType.NumberSmall) }
+        row.counterparty?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.TextMuted, maxLines = 1) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = row.timestampSeconds?.let { formatEpochSeconds(it) }
+                    ?: (if (row.blockNumber > 0) "Block ${row.blockNumber}" else stringResource(R.string.prf_time_unavailable)),
+                style = FusionType.BodySmall, color = FusionColors.TextMuted,
+            )
+            row.planner?.let { StatusChip(it, FusionColors.Indigo) }
+        }
+        TxLink(row.txHash, explorerUrl = row.explorerUrl)
+    }
+}
+
+@Composable
+private fun ExplorerLink(url: String) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
-            .heightIn(min = 48.dp)
-            .clickable(role = Role.Button) { context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            .padding(vertical = 4.dp),
+            .clickable(role = Role.Button) { runCatching { context.startActivitySafe(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(R.string.view_on_basescan),
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-            color = Accessible.AccentText,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.width(3.dp))
-        Icon(Icons.Filled.OpenInNew, contentDescription = stringResource(R.string.view_on_basescan), tint = Accessible.AccentText, modifier = Modifier.size(12.dp))
+        Text(stringResource(R.string.view_on_basescan), style = FusionType.BodySmall.copy(fontWeight = FontWeight.Medium), color = FusionColors.Indigo)
+        Icon(Icons.Filled.OpenInNew, contentDescription = null, tint = FusionColors.Indigo, modifier = Modifier.size(12.dp))
+    }
+}
+
+/**
+ * Live receipt check on tap: the pinned Base Sepolia RPC (read-only) fetches the actual receipt,
+ * verifies it against the recorded block and its canonical header hash, and shows status, gas and
+ * timestamp. Nothing is signed or broadcast here; failures say so and offer a retry.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProofReceiptSheet(row: ActivityItem, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var receipt by remember(row.txHash) { mutableStateOf<ActivityReceipt?>(null) }
+    var loading by remember(row.txHash) { mutableStateOf(true) }
+    var attempt by remember(row.txHash) { mutableIntStateOf(0) }
+    LaunchedEffect(row.txHash, attempt) {
+        loading = true
+        try {
+            receipt = withContext(Dispatchers.IO) {
+                val deployment = Deployment.parse(context.assets.open("deployments/84532.json").bufferedReader().use { it.readText() })
+                ActivityReceiptReader.read(deployment, row)
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (_: Exception) { receipt = null
+        } finally { loading = false }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = FusionColors.SurfaceRaised) {
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(row.title, style = FusionType.HeadingMedium)
+            RecordedProvenanceChip(row.provenance)
+            row.planner?.let { StatusChip(it, FusionColors.Indigo) }
+            row.amountRaw?.let { AmountText(it, exact = true, style = FusionType.NumberSmall) }
+            Text(
+                text = row.timestampSeconds?.let { formatEpochSeconds(it) }
+                    ?: (if (row.blockNumber > 0) "Block ${row.blockNumber}" else stringResource(R.string.prf_time_unavailable)),
+                style = FusionType.BodySmall, color = FusionColors.TextMuted,
+            )
+            receipt?.let { r ->
+                StatusChip(
+                    text = if (r.reverted) stringResource(R.string.prf_receipt_reverted) else stringResource(R.string.prf_receipt_confirmed),
+                    tone = if (r.reverted) FusionColors.Red else FusionColors.Green,
+                )
+                Text(stringResource(R.string.prf_receipt_block, r.gasUsed.toString()), style = FusionType.BodySmall)
+                Text(formatEpochSeconds(r.timestampSeconds), style = FusionType.BodySmall)
+            }
+            if (loading) Text(stringResource(R.string.prf_receipt_loading), style = FusionType.BodySmall, color = FusionColors.TextMuted)
+            if (!loading && receipt == null) {
+                Text(stringResource(R.string.prf_receipt_unavailable), style = FusionType.BodySmall, color = FusionColors.Amber)
+                TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.prf_receipt_retry)) }
+            }
+            TxLink(row.txHash, explorerUrl = row.explorerUrl)
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.prf_sheet_close)) }
+        }
     }
 }
