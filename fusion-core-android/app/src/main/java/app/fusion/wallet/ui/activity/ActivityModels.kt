@@ -64,7 +64,7 @@ object ActivityTimelineBuilder {
                 txHash = ev.txHash, blockNumber = ev.blockNumber,
                 passportHash = validPassport(action?.decisionHash ?: ev.decisionHash) ?: evidence?.passportHash,
                 gasUsed = evidence?.gasUsed,
-                details = "Observed module event: ${ev.kind}", explorerUrl = ev.explorerUrl)
+                details = "Observed module event: ${activityTitle(ev.kind)}", explorerUrl = ev.explorerUrl)
         }.toMutableList()
         val liveTx = rows.map { it.txHash.lowercase() }.toSet()
         state.recentActions.filter { it.txHash.lowercase() !in liveTx }.forEach { action ->

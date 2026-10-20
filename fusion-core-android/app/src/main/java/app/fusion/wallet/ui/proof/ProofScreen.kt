@@ -182,7 +182,7 @@ private fun SafetyHeadlineTile(safety: SafetyData) {
                 )
                 Text(
                     text = if (hasData && safety.measuredAt != null)
-                        stringResource(R.string.safe_measured_on, safety.measuredAt!!.take(10), safety.scenarioCount.toString())
+                        stringResource(R.string.safe_measured_on, app.fusion.wallet.ui.common.formatTimestamp(safety.measuredAt), safety.scenarioCount.toString())
                     else stringResource(R.string.pf_headline_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,

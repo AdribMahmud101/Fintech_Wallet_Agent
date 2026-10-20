@@ -85,7 +85,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         else -> "Active"
                     }
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
-                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${it.reason}" }
+                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${app.fusion.wallet.ui.common.readableCode(it.reason)}" }
                         ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
