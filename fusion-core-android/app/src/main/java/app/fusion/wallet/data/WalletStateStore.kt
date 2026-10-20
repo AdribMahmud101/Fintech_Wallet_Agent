@@ -25,6 +25,9 @@ object WalletStateStore {
         state.blockTime?.let { root.put("blockTime", it) }
         state.capturedAtEpochMillis?.let { root.put("capturedAt", it) }
         state.observedHeadBlock?.let { root.put("observedHeadBlock", it) }
+        root.put("balanceHistory", JSONArray().apply { state.balanceHistory.forEach {
+            put(JSONObject().put("time", it.timestampSeconds).put("raw", it.balanceRaw.toString()))
+        } })
         root.put("agentSource", state.agentSource)
         root.put("planner", state.planner)
         state.accountingMatches?.let { root.put("accountingMatches", it) }
@@ -60,6 +63,9 @@ object WalletStateStore {
                 blockTime = root.optLongOrNull("blockTime"),
                 capturedAtEpochMillis = root.optLongOrNull("capturedAt"),
                 observedHeadBlock = root.optLongOrNull("observedHeadBlock"),
+                balanceHistory = root.optJSONArray("balanceHistory").mapObjects {
+                    BalanceSample(it.getLong("time"), BigInteger(it.getString("raw")))
+                },
                 agentSource = root.optString("agentSource", "SCRIPT"),
                 planner = root.optString("planner", "deterministic"),
                 accountingMatches = if (root.has("accountingMatches")) root.getBoolean("accountingMatches") else null,

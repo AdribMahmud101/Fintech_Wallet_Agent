@@ -320,10 +320,7 @@ private fun ContractAddressRow(label: String, address: String) {
 @Composable
 private fun EvidenceRowCard(row: EvidenceRow) {
     val context = LocalContext.current
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
-    val timeStr = remember(row.blockTime) {
-        if (row.blockTime > 0) dateFormat.format(Date(row.blockTime * 1000)) else "—"
-    }
+    val timeStr = app.fusion.wallet.ui.common.formatEpochSeconds(row.blockTime.takeIf { it > 0 })
 
     val whatItProves = remember(row.kind) {
         when {
@@ -340,7 +337,7 @@ private fun EvidenceRowCard(row: EvidenceRow) {
             row.kind.contains("SessionKeyRegistered", ignoreCase = true) ->
                 "Proves bounded ephemeral session key delegation"
             else ->
-                "Proves on-chain emission of event '${row.kind}' anchored at block #${row.blockNumber}"
+                "Proves on-chain emission of event '${app.fusion.wallet.ui.activity.activityTitle(row.kind)}' anchored at block #${row.blockNumber}"
         }
     }
 
@@ -379,7 +376,7 @@ private fun EvidenceRowCard(row: EvidenceRow) {
                 }
 
                 StatusPill(
-                    label = row.kind,
+                    label = app.fusion.wallet.ui.activity.activityTitle(row.kind),
                     tone = if (isRevert) Tone.Warn else Tone.Earning,
                 )
             }

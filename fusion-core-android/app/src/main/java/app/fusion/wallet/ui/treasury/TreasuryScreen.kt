@@ -46,7 +46,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(1000); value = System.currentTimeMillis() }
     }
-    LaunchedEffect(state.evidence, state.recentActions) { historyVm.load(state) }
+    LaunchedEffect(state.balanceHistory, state.refreshing, state.historyError) { historyVm.load(state) }
     Box(modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
@@ -71,7 +71,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now) }
             item { BucketsTile(state.buckets) }
-            item { BalanceAreaChart(history.points, state.buckets?.total?.raw,
+            item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
             item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
@@ -85,7 +85,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         else -> "Active"
                     }
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
-                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${it.reason}" }
+                    Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${app.fusion.wallet.ui.common.readableCode(it.reason)}" }
                         ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -145,10 +145,6 @@ private fun TreasuryHero(state: WalletState, now: Long) {
             AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
             Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(R.drawable.ic_network_base), null, tint = Color.Unspecified, modifier = Modifier.size(20.dp))
-            StatusChip("Base Sepolia · TEST", FusionColors.Indigo)
-        }
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
             state.source == DataSource.DEMO -> "Demo data"
@@ -177,23 +173,12 @@ private fun BucketsTile(buckets: Buckets?) {
         val total = values.fold(BigInteger.ZERO, BigInteger::add)
         val summary = labels.zip(values).joinToString { (label, raw) -> "$label ${formatBigIntegerAmount(raw)} USDC" }
         Canvas(Modifier.padding(vertical = 16.dp).fillMaxWidth().height(20.dp).semantics { contentDescription = "100 percent of Safe cash. $summary" }) {
-            var x = 0f
-            if (total.signum() == 0) drawRect(FusionColors.Border)
-            values.forEachIndexed { i, raw ->
-                val width = size.width * chartFraction(raw, total)
-                if (width > 0) {
-                    drawRect(colors[i], Offset(x, 0f), Size(width, size.height))
-                    // Numbered patterns: none / diagonal ticks / vertical ticks; labels below follow this order.
-                    if (i > 0) {
-                        var tick = x + 3.dp.toPx()
-                        while (tick < x + width) {
-                            drawLine(FusionColors.Bg.copy(alpha = .6f), Offset(tick, 0f),
-                                Offset(if (i == 1) (tick + 5.dp.toPx()).coerceAtMost(x + width) else tick, size.height), 1.dp.toPx())
-                            tick += 8.dp.toPx()
-                        }
-                    }
-                    x += width
-                }
+            val segments = bucketSegments(values)
+            if (segments.isEmpty()) drawRect(FusionColors.Border)
+            segments.forEach { segment ->
+                val left = size.width * segment.start.toFloat()
+                val right = size.width * segment.end.toFloat()
+                drawRect(colors[segment.bucketIndex], Offset(left, 0f), Size(right - left, size.height))
             }
         }
         values.forEachIndexed { i, raw ->

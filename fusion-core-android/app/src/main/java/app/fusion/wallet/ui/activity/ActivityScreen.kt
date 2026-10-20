@@ -26,7 +26,6 @@ import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +53,6 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
         }
     }
     val visible = rows.filter { it.matches(filter) }
-    val date = remember { SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault()) }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text(stringResource(R.string.act_title), style = FusionType.HeadingMedium)
@@ -93,7 +91,7 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
                 row.amountRaw?.let { AmountText(it, style = FusionType.NumberSmall) }
                     ?: Text("Amount not recorded", style = FusionType.BodySmall)
                 Text(row.counterparty ?: "Counterparty not recorded", style = FusionType.BodySmall)
-                Text(row.timestampSeconds?.let { date.format(Date(it * 1000)) } ?: "Time unavailable · Block ${row.blockNumber}", style = FusionType.BodySmall)
+                Text(row.timestampSeconds?.let { app.fusion.wallet.ui.common.formatEpochSeconds(it) } ?: "Time unavailable · Block ${row.blockNumber}", style = FusionType.BodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ProvenanceChip(row.provenance)
                     if (row.isBlocked) StatusChip("Blocked · reverted", FusionColors.Red)
@@ -126,7 +124,7 @@ fun ActivityScreen(vm: MainViewModel = viewModel()) {
                 Text("Block ${row.blockNumber}", style = FusionType.NumberBody)
                 Text("Gas: ${receipt?.gasUsed?.let { "$it units" } ?: row.gasUsed ?: if (receiptLoading) "reading receipt…" else "receipt unavailable"}", style = FusionType.BodyMedium)
                 receipt?.let { r ->
-                    Text(date.format(Date(r.timestampSeconds * 1000)), style = FusionType.BodySmall)
+                    Text(app.fusion.wallet.ui.common.formatEpochSeconds(r.timestampSeconds), style = FusionType.BodySmall)
                     StatusChip(if (r.reverted) "Reverted" else "Confirmed", if (r.reverted) FusionColors.Red else FusionColors.Green)
                 }
                 if (!receiptLoading && receipt == null) TextButton(onClick = { attempt++ }) { Text("Retry receipt") }

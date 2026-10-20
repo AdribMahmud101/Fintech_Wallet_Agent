@@ -20,22 +20,19 @@ class ChainWalletRepository(
     private val obligationsResolver: ObligationsResolver = ObligationsResolver(),
     private val extraObligationsJson: List<String> = emptyList(),
     private val snapshotCache: SnapshotCache? = null,
+    eventIndex: EventIndex? = null,
 ) : WalletRepository {
     private val deployment = Deployment.parse(manifestJson)
     private val reader = ChainReader(rpc ?: JsonRpcClient(deployment.rpcUrl))
     private val mutableState = MutableStateFlow(WalletState(chainId = deployment.chainId))
     override val state = mutableState.asStateFlow()
     private val refreshLock = Mutex()
-    private var history: List<ChainLog> = emptyList()
-    private var historyThrough: Long? = null
-    private var cachedBlockNumber: Long? = null
-    private val historicalHeaders = mutableMapOf<String, BlockHeader>()
+    private val eventIndex = eventIndex ?: EventIndex(deployment)
 
     init {
         val cached = snapshotCache?.read()?.let { WalletStateStore.decode(it) }
         if (cached != null) {
             mutableState.value = cached.copy(refreshing = true)
-            cachedBlockNumber = cached.blockNumber
             PerfTracker.logFirstPaint(isCached = true)
         }
     }
@@ -61,7 +58,8 @@ class ChainWalletRepository(
                 if (p2Error.message?.contains("reorganized") == true || p2Error.message?.contains("rolled back") == true) {
                     throw p2Error
                 }
-                mutableState.value = mutableState.value.copy(refreshing = false)
+                mutableState.value = mutableState.value.copy(refreshing = false,
+                    historyError = "Event history unavailable; refresh to resume. ${p2Error.message.orEmpty().take(120)}")
             }
         } catch (cancelled: CancellationException) {
             mutableState.value = previous.copy(refreshing = false)
@@ -107,6 +105,7 @@ class ChainWalletRepository(
             accountingMatches = previous.accountingMatches,
             accountingError = previous.accountingError,
             capturedAtEpochMillis = capturedAt,
+            balanceHistory = previous.balanceHistory,
             refreshing = true,
         )
     }
@@ -186,33 +185,23 @@ class ChainWalletRepository(
         return Phase1Result(block, cash, policy, module, queue, vaults, buckets, capturedAt, deployment.chainId, deployment.safe, deployment.asset)
     }
 
-    private fun readPhase2(p1: Phase1Result, previous: WalletState): WalletState {
+    private suspend fun readPhase2(p1: Phase1Result, previous: WalletState): WalletState {
         fun call(address: String, data: String) = reader.call(address, data, p1.block.number)
         val block = p1.block
 
-        // Re-read the most recent 64 blocks on each refresh so shallow reorgs remove old logs.
-        val lastKnownBlock = historyThrough ?: cachedBlockNumber
-        val from = lastKnownBlock?.takeIf { it <= block.number }?.let {
-            maxOf(deployment.deploymentBlock, it - 63)
-        } ?: deployment.deploymentBlock
-        val logs = history.filter { it.blockNumber < from } + reader.logs(deployment.module, from, block.number)
-        val blockCache = mutableMapOf(block.number to block)
-        fun header(log: ChainLog): BlockHeader {
-            val header = blockCache.getOrPut(log.blockNumber) {
-                historicalHeaders[log.blockHash] ?: reader.block(ChainReader.tag(log.blockNumber))
-            }
-            require(header.hash.equals(log.blockHash, true)) { "Log block was reorganized" }
-            historicalHeaders[log.blockHash] = header
-            return header
-        }
+        val indexed = eventIndex.sync(reader, block, refreshTail = true)
+        val logs = indexed.logs.filter { it.address.equals(deployment.module, true) }
+        fun header(log: ChainLog): BlockHeader = indexed.headers.getValue(log.blockNumber)
         val payeeIds = logs.filter { it.topics.firstOrNull() == ModuleEvents.PAYEE_ADDED }.map {
             require(it.topics.size == 3)
             Abi(it.topics[1]).requireSize(1).bytes32(0)
         }.distinct()
-        val payees = payeeIds.map { id ->
-            val value = call(deployment.module, Views.PAYEE + Abi.hashWord(id)).requireSize(4)
-            val sanctioned = call(deployment.sanctionsList, Views.SANCTIONED + Abi.addressWord(value.address(0))).requireSize(1).bool(0)
-            ContractDecoders.payee(value, id, block.timestamp, sanctioned)
+        val payeeValues = reader.batchCalls(payeeIds.map { deployment.module to (Views.PAYEE + Abi.hashWord(it)) }, block.number)
+        val sanctions = reader.batchCalls(payeeValues.map {
+            deployment.sanctionsList to (Views.SANCTIONED + Abi.addressWord(it.requireSize(4).address(0)))
+        }, block.number)
+        val payees = payeeIds.mapIndexed { i, id ->
+            ContractDecoders.payee(payeeValues[i], id, block.timestamp, sanctions[i].requireSize(1).bool(0))
         }
         val paidLogs = logs.filter { it.topics.firstOrNull() == ModuleEvents.PAID }
         val actions = logs.filter { it.topics.firstOrNull() == ModuleEvents.EXECUTED }.takeLast(50).map { log ->
@@ -223,14 +212,12 @@ class ChainWalletRepository(
             if (kind == ActionKind.PAY_OBLIGATION) require(payment != null) { "Missing payment event" }
             ModuleEvents.action(log, header(log).timestamp, payment?.let(ModuleEvents::paidRecipient))
         }.reversed()
-        val evidence = logs.takeLast(100).map { ModuleEvents.evidence(it, header(it).timestamp, deployment.explorerBaseUrl) }.reversed()
+        val evidence = logs.map { ModuleEvents.evidence(it, header(it).timestamp, deployment.explorerBaseUrl) }.reversed()
         val (obligations, accountingError) = readObligations(p1.module) { data -> call(deployment.module, data) }
         val end = reader.block(ChainReader.tag(block.number))
         require(end.hash.equals(block.hash, true)) { "Snapshot block was reorganized; refresh again" }
         val head = reader.block("latest")
         require(head.number >= block.number && head.timestamp >= block.timestamp) { "Chain time or height rolled back" }
-        history = logs
-        historyThrough = block.number
         return WalletState(
             status = LoadStatus.READY, chainId = deployment.chainId, blockNumber = block.number,
             blockHash = block.hash, blockTime = block.timestamp,
@@ -239,6 +226,8 @@ class ChainWalletRepository(
             vaults = p1.vaults, module = p1.module, queue = p1.queue, payees = payees, recentActions = actions,
             evidence = evidence, obligations = obligations, accountingMatches = accountingError == null,
             accountingError = accountingError, capturedAtEpochMillis = p1.capturedAt, observedHeadBlock = head.number,
+            balanceHistory = BalanceReconstruction.reconstruct(p1.cash, block, indexed.logs, indexed.headers,
+                deployment.asset, deployment.safe),
             refreshing = false,
         )
     }
@@ -271,7 +260,8 @@ class ChainWalletRepository(
             )
             val cache = FileSnapshotCache.forContext(context)
             return ChainWalletRepository(asset("deployments/84532.json"), asset("deployments/obligations-84532.json"),
-                rpcUrl?.let(::JsonRpcClient), extraObligationsJson = extra, snapshotCache = cache)
+                rpcUrl?.let(::JsonRpcClient), extraObligationsJson = extra, snapshotCache = cache,
+                eventIndex = SharedEventIndexes.forContext(context, Deployment.parse(asset("deployments/84532.json"))))
         }
     }
 }

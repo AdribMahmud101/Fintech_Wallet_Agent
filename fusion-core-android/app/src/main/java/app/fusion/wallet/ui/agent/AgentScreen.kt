@@ -18,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.fusion.wallet.ui.common.formatEpochSeconds
+import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.data.*
@@ -178,7 +180,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                     action.payee?.let { address -> Text(vendorName(state.payees.firstOrNull { it.address.equals(address, true) }?.id, address), style = FusionType.BodySmall) }
                     AmountText(action.amount.raw)
                     ProvenanceChip(if (action.txHash == decision?.txHash) "APP" else action.source)
-                    Text("Block ${action.blockNumber} · ${java.util.Date(action.blockTime * 1_000)}", style = FusionType.BodySmall)
+                    Text("Block ${action.blockNumber} · ${formatEpochSeconds(action.blockTime)}", style = FusionType.BodySmall)
                     TxLink(action.txHash)
                 }
             }
@@ -195,8 +197,8 @@ private fun LatestDecision(decision: DecisionDetails, onCopy: () -> Unit) {
     BentoTile(Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.k24_latest_decision), style = FusionType.HeadingMedium)
         StatusChip(when (decision.dryRun) { true -> "Dry run"; false -> "Live run"; null -> "Run mode unknown" }, FusionColors.Indigo)
-        Text("${decision.choice} · ${decision.reason.replace('_', ' ')}", style = FusionType.HeadingSmall)
-        Text("Planner: ${decision.planner ?: "not recorded"}", style = FusionType.NumberCaption)
+        Text("${decision.choice} · ${readableCode(decision.reason)}", style = FusionType.HeadingSmall)
+        Text("Planner: ${readableCode(decision.planner)}", style = FusionType.NumberCaption)
         Text("Load: ${decision.loadMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
         Text("Decode: ${decision.decodeMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
         Text("Inference total: ${decision.inferenceMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)
@@ -208,15 +210,15 @@ private fun LatestDecision(decision: DecisionDetails, onCopy: () -> Unit) {
                 if (candidate.label == decision.choice) StatusChip("Chosen · ${candidate.label}", FusionColors.Green)
                 Text("${candidate.label} · ${candidate.title}", style = FusionType.BodyMedium)
                 candidate.amount?.let { AmountText(it, style = FusionType.NumberBody) }
-                Text(candidate.reason.replace('_', ' '), style = FusionType.BodySmall)
+                Text(readableCode(candidate.reason), style = FusionType.BodySmall)
             }
         }
         if (decision.candidates.isEmpty()) Text("Candidate list not recorded", style = FusionType.BodySmall)
         Text(stringResource(R.string.k24_policy_checks), style = FusionType.HeadingSmall)
         decision.checks.forEach { check ->
             Column(Modifier.padding(vertical = 6.dp)) {
-                StatusChip(check.status, when (check.status) { "PASS" -> FusionColors.Green; "FAIL" -> FusionColors.Red; else -> FusionColors.Amber })
-                Text(check.name, style = FusionType.BodyMedium)
+                StatusChip(readableCode(check.status), when (check.status) { "PASS" -> FusionColors.Green; "FAIL" -> FusionColors.Red; else -> FusionColors.Amber })
+                Text(readableCode(check.name), style = FusionType.BodyMedium)
                 Text(check.message, style = FusionType.BodySmall)
             }
         }

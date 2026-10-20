@@ -17,6 +17,8 @@ import app.fusion.wallet.R
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.agent.*
 import app.fusion.wallet.ui.common.startActivitySafe
+import app.fusion.wallet.ui.common.formatTimestamp
+import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.shell.ShellViewModel
 import app.fusion.wallet.ui.theme.*
@@ -50,7 +52,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     } else Text("Attack success metrics unavailable", style = FusionType.BodyMedium)
                     Text("ASR measures off-chain proposal admission in the evaluated corpora; it does not measure realized on-chain loss.", style = FusionType.BodySmall)
                     Text(evidence.source, style = FusionType.BodySmall)
-                    arena?.measuredAt?.let { Text("Arena measured $it", style = FusionType.BodySmall) }
+                    arena?.measuredAt?.let { Text("Measured ${formatTimestamp(it)}", style = FusionType.BodySmall) }
                     evidence.error?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
                     TextButton(onClick = evidenceVm::refresh, enabled = !evidence.refreshing, modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(if (evidence.refreshing) "Refreshing evidence…" else "Refresh evidence")
@@ -115,7 +117,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
 private fun AttackCard(scenario: AttackScenario, knownLimit: Boolean, feedback: (String, String?) -> Unit) {
     BentoTile(Modifier.fillMaxWidth()) {
         Text("${scenario.id} · ${scenario.description}", style = FusionType.HeadingSmall)
-        StatusChip(if (knownLimit) scenario.status.uppercase() else "Stopped · ${safetyLayerTitle(scenario.stoppingLayer.orEmpty())}", if (knownLimit) FusionColors.Red else FusionColors.Green)
+        StatusChip(if (knownLimit) readableCode(scenario.status) else "Stopped · ${safetyLayerTitle(scenario.stoppingLayer.orEmpty())}", if (knownLimit) FusionColors.Red else FusionColors.Green)
         if (knownLimit || scenario.stoppingLayer == "off-chain impl pin" || scenario.stoppingLayer == "durable_journal") {
             scenario.explanation?.let { Text(it, style = FusionType.BodyMedium) }
         }
