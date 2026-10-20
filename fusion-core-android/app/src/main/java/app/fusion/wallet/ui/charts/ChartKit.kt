@@ -141,7 +141,7 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
             }
         }
         Row(Modifier.widthIn(max = 162.dp).fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            weeks.forEach { week -> Text(week.label, modifier = Modifier.width(36.dp), softWrap = false,
+            weeks.forEach { week -> Text(week.label, modifier = Modifier.width(24.dp).wrapContentWidth(unbounded = true), softWrap = false,
                 style = FusionType.BodySmall, color = FusionChart.Muted, textAlign = TextAlign.Center, maxLines = 1) }
         }
         Spacer(Modifier.height(6.dp))
