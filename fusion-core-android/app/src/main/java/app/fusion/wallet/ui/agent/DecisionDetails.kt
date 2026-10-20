@@ -1,5 +1,6 @@
 package app.fusion.wallet.ui.agent
 
+import app.fusion.wallet.ui.common.readableCheckMessage
 import org.json.JSONObject
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -33,7 +34,7 @@ data class DecisionDetails(
                 },
                 checks = if (checks == null) emptyList() else (0 until checks.length()).map { index ->
                     val c = checks.getJSONObject(index)
-                    DecisionCheck(c.optString("name", c.optString("ruleId")), c.optString("status", "UNKNOWN"), c.optString("message"))
+                    DecisionCheck(c.optString("name", c.optString("ruleId")), c.optString("status", "UNKNOWN"), readableCheckMessage(c.optString("message")))
                 },
                 hash = report.getString("decisionHash"),
                 txHash = (report.optString("txHash").takeIf { it.isNotBlank() && it != "null" }

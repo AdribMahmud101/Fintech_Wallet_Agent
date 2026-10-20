@@ -11,6 +11,7 @@ import app.fusion.wallet.agent.AgentRunState
 import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.data.TxIndex
 import app.fusion.wallet.ui.agent.DecisionDetails
+import app.fusion.wallet.ui.common.readableCheckMessage
 import app.fusion.wallet.ui.common.readableCode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,7 +32,7 @@ fun EarnPreviewSheet(agent: AgentRunState, state: WalletState, txIndex: TxIndex,
                     if (details?.checks.isNullOrEmpty()) Text("No individual policy checks recorded")
                     details?.checks?.forEach { check ->
                         Text("${readableCode(check.status)} · ${readableCode(check.name)}")
-                        if (check.message.isNotBlank()) Text(readableCode(check.message), style = MaterialTheme.typography.bodySmall)
+                        if (check.message.isNotBlank()) Text(readableCode(readableCheckMessage(check.message)), style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 else -> Text("No dry-run decision available")

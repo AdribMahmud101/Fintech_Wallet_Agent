@@ -31,6 +31,15 @@ fun formatEpochSeconds(value: Long?, zone: TimeZone = TimeZone.getDefault(), loc
 private fun formatEpochMillis(value: Long, zone: TimeZone, locale: Locale): String =
     SimpleDateFormat("d MMM, HH:mm z", locale).apply { timeZone = zone }.format(Date(value))
 
+/**
+ * fusion-core's lifecycle check prints `paused={not_paused}`, so `paused=true` means the module is live.
+ * Core output stays as-is because committed evidence carries it; only the display is corrected.
+ */
+fun readableCheckMessage(message: String): String =
+    message.replace(Regex("\\bpaused=(true|false)", RegexOption.IGNORE_CASE)) {
+        if (it.groupValues[1].equals("true", true)) "module live" else "module paused"
+    }
+
 /** Presentation labels only; stored evidence and enum identifiers remain unchanged. */
 fun readableCode(value: String?, fallback: String = "Not recorded"): String {
     if (value.isNullOrBlank()) return fallback

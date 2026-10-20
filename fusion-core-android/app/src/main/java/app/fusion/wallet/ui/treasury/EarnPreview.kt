@@ -10,7 +10,7 @@ import org.json.JSONObject
 fun earnPreviewSummary(result: AgentTickResult, state: WalletState, txIndex: TxIndex = TxIndex.Empty): String {
     val report = JSONObject(result.reportJson)
     val candidate = report.getJSONObject("chosenCandidate")
-    val reason = readableCode(result.reason)
+    val reason = if (result.reason.equals("hold", true)) "nothing is worth moving right now" else readableCode(result.reason)
     if (result.choiceLabel == "H" || !result.previewPassed) return "The AI would hold: $reason" +
         if (!result.previewPassed) " · policy checks did not pass" else ""
     val action = candidate.getJSONObject("action")
