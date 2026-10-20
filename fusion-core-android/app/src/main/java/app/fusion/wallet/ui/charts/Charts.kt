@@ -105,7 +105,7 @@ fun RingGauge(progress: Float, color: Color, size: Dp, stroke: Dp, description: 
             val sz = Size(this.size.width - sw, this.size.height - sw)
             drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
             val sweep = 360f * progress.coerceIn(0f, 1f) * p
-            if (sweep > 0f) drawArc(color, -90f, sweep.coerceAtLeast(2f), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
+            if (sweep > 0f) drawArc(color, -90f, sweep, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
         center()
     }
@@ -193,7 +193,7 @@ fun LabeledBar(label: String, valueText: String, fraction: Float, color: Color, 
             Text(valueText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
         }
         Box(Modifier.padding(top = 4.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(FusionTheme.surfaces.level3)) {
-            Box(Modifier.fillMaxWidth((fraction.coerceIn(0.02f, 1f)) * p).height(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
+            Box(Modifier.fillMaxWidth((fraction.coerceIn(0f, 1f)) * p).height(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
         }
     }
 }

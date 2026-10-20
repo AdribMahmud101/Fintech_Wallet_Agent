@@ -49,6 +49,7 @@ data class WalletState(
     val observedHeadBlock: Long? = null,
     val balanceHistory: List<BalanceSample> = emptyList(),
     val historyError: String? = null,
+    val chartEvidence: ChartEvidence? = null,
 ) {
     val dataLabel: String get() = if (source == DataSource.DEMO) "DEMO" else "Base Sepolia · LIVE"
 

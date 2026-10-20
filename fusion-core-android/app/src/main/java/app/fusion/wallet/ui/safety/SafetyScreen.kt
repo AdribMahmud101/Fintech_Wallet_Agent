@@ -61,6 +61,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                     ExternalAction("Held-out evaluation", EVIDENCE_RAW + HELDOUT_PATH) { feedback(it, null) }
                 }
             }
+            item { Column { SafetyCharts(evidence) } }
             item {
                 BentoTile(Modifier.fillMaxWidth()) {
                     Text("Five safety layers", style = FusionType.HeadingMedium)

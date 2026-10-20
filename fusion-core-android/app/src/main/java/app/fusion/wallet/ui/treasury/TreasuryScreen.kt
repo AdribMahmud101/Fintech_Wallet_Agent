@@ -1,6 +1,5 @@
 package app.fusion.wallet.ui.treasury
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -8,13 +7,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +29,6 @@ import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.math.BigInteger
 
 @Composable
 fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
@@ -78,9 +72,11 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now) }
-            item { BucketsTile(state.buckets) }
+            item { HomeAllocationAndRunway(state) }
             item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
+            item { HomeSpendingAndRates(state, txIndex) }
+            item { WorthKnowing(state) }
             item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
                     Text(stringResource(R.string.home_agent_title), style = FusionType.HeadingSmall)
@@ -147,15 +143,21 @@ private fun TreasuryHero(state: WalletState, now: Long) {
     BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(painterResource(R.drawable.ic_crypto_usdc), "USDC", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
-            Text("Total treasury", style = FusionType.HeadingSmall)
+            Text("Spare cash", style = FusionType.HeadingSmall)
         }
-        val total = state.buckets?.total?.raw
+        val total = state.buckets?.surplus?.raw
         if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
         else {
             // Currency on a separate line keeps large exact amounts readable on a phone.
             AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
             Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
         }
+        state.buckets?.let { buckets ->
+            val covered=buckets.shortfall.raw.signum()==0
+            Text(if (state.accountingMatches!=true) "Bill coverage unverified" else if (covered) "✓ Your bills are covered" else "⚠ ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
+                style=FusionType.BodyMedium,color=if (covered && state.accountingMatches==true) FusionColors.Green else FusionColors.Amber,modifier=Modifier.padding(top=8.dp))
+        }
+        Text("What is left after bills and the safety cushion. Your AI agent can only use this.",style=FusionType.BodySmall,modifier=Modifier.padding(top=8.dp))
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
             state.source == DataSource.DEMO -> "Demo data"
@@ -169,38 +171,6 @@ private fun TreasuryHero(state: WalletState, now: Long) {
         state.treasury?.let { Text("Safe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}", style = FusionType.BodySmall) }
         if (state.accountingMatches == false) Text(app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty(),
             style = FusionType.BodySmall, color = FusionColors.Amber)
-    }
-}
-
-@Composable
-private fun BucketsTile(buckets: Buckets?) {
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.home_buckets_title), style = FusionType.HeadingSmall)
-        if (buckets == null) { Text("Buckets unavailable until balances and policy load.", style = FusionType.BodySmall); return@BentoTile }
-        // Owed coverage, buffer and surplus partition Safe cash. Deployed vault assets are separate.
-        val values = listOf(buckets.reserve.raw, buckets.buffer.raw, buckets.surplus.raw)
-        val labels = listOf("Owed · covered", "Buffer", "Surplus")
-        val colors = listOf(FusionColors.Amber, FusionColors.Indigo, FusionColors.Green)
-        val total = values.fold(BigInteger.ZERO, BigInteger::add)
-        val summary = labels.zip(values).joinToString { (label, raw) -> "$label ${formatBigIntegerAmount(raw)} USDC" }
-        Canvas(Modifier.padding(vertical = 16.dp).fillMaxWidth().height(20.dp).semantics { contentDescription = "100 percent of Safe cash. $summary" }) {
-            val segments = bucketSegments(values)
-            if (segments.isEmpty()) drawRect(FusionColors.Border)
-            segments.forEach { segment ->
-                val left = size.width * segment.start.toFloat()
-                val right = size.width * segment.end.toFloat()
-                drawRect(colors[segment.bucketIndex], Offset(left, 0f), Size(right - left, size.height))
-            }
-        }
-        values.forEachIndexed { i, raw ->
-            Text("${i + 1}. ${labels[i]}", style = FusionType.BodySmall)
-            AmountText(raw, style = FusionType.NumberBody)
-        }
-        if (total.signum() == 0) Text("No Safe cash in this snapshot.", style = FusionType.BodySmall)
-        Text("Total owed · ${formatBigIntegerAmount(buckets.owed.raw)} USDC", style = FusionType.BodySmall)
-        if (buckets.shortfall.raw.signum() > 0) Text("Uncovered owed · ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC",
-            color = FusionColors.Amber, style = FusionType.BodySmall)
-        Text("Vault assets · ${formatBigIntegerAmount(buckets.deployed.raw)} USDC (outside cash buckets)", style = FusionType.BodySmall)
     }
 }
 
