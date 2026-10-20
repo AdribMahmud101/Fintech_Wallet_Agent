@@ -50,7 +50,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     }
     LaunchedEffect(state.balanceHistory, state.refreshing, state.historyError) { historyVm.load(state) }
     Box(modifier.fillMaxSize()) {
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 // A title row contains only the bounded refresh action; freshness belongs in the hero.
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -140,24 +140,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
 
 @Composable
 private fun TreasuryHero(state: WalletState, now: Long) {
-    BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(R.drawable.ic_crypto_usdc), "USDC", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
-            Text("Spare cash", style = FusionType.HeadingSmall)
-        }
-        val total = state.buckets?.surplus?.raw
-        if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
-        else {
-            // Currency on a separate line keeps large exact amounts readable on a phone.
-            AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
-            Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
-        }
-        state.buckets?.let { buckets ->
-            val covered=buckets.shortfall.raw.signum()==0
-            Text(if (state.accountingMatches!=true) "Bill coverage unverified" else if (covered) "✓ Your bills are covered" else "⚠ ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
-                style=FusionType.BodyMedium,color=if (covered && state.accountingMatches==true) FusionColors.Green else FusionColors.Amber,modifier=Modifier.padding(top=8.dp))
-        }
-        Text("What is left after bills and the safety cushion. Your AI agent can only use this.",style=FusionType.BodySmall,modifier=Modifier.padding(top=8.dp))
+    ChartTile(Modifier.fillMaxWidth(), hero = true) {
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
             state.source == DataSource.DEMO -> "Demo data"
@@ -165,12 +148,27 @@ private fun TreasuryHero(state: WalletState, now: Long) {
             state.isDisplayStale(now) || state.refreshing -> "Cached snapshot"
             else -> "Live snapshot"
         }
-        Text("$source${age?.let { " · Updated $it s ago" } ?: ""}${if (state.refreshing) " · refreshing" else ""}",
-            style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
-        state.blockNumber?.let { Text("Block $it", style = FusionType.NumberCaption) }
-        state.treasury?.let { Text("Safe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}", style = FusionType.BodySmall) }
-        if (state.accountingMatches == false) Text(app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty(),
-            style = FusionType.BodySmall, color = FusionColors.Amber)
+        val explanation = buildString {
+            append("What is left after bills and the safety cushion. Your AI agent can only use this.")
+            append("\n\n$source")
+            age?.let { append(" · Updated $it s ago") }
+            if (state.refreshing) append(" · refreshing")
+            state.blockNumber?.let { append("\nBlock $it") }
+            state.treasury?.let { append("\nSafe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}") }
+            if (state.accountingMatches == false) append("\n" + app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty())
+        }
+        ChartTileHeader("Spare cash", explanation)
+        val total = state.buckets?.surplus?.raw
+        if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
+        else ChartAmount(formatBigIntegerAmount(total), state.treasury?.symbol ?: "USDC")
+        state.buckets?.let { buckets ->
+            val covered = buckets.shortfall.raw.signum() == 0
+            Text(if (state.accountingMatches != true) "Bill coverage unverified" else if (covered) "✓ Your bills are covered" else "⚠ ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
+                style = FusionChart.Status, color = if (covered && state.accountingMatches == true) FusionChart.Cash else FusionChart.Reserved,
+                modifier = Modifier.padding(top = 8.dp))
+        }
+        Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
+            style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
     }
 }
 

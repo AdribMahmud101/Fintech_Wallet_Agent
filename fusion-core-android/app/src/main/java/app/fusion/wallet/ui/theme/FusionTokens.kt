@@ -35,6 +35,22 @@ object FusionColors {
     val Red = Color(0xFFE5484D)
 }
 
+/** Reference Home chart palette and surfaces, independent of transaction/status colors. */
+object FusionChart {
+    val Surface = Color(0xFF111418)
+    val Border = Color(0xFF1F242B)
+    val Track = Color(0xFF262B33)
+    val Muted = Color(0xFF8B949E)
+    val Cash = Color(0xFF19C37D)
+    val Reserved = Color(0xFFF59E0B)
+    val Sky = Color(0xFF38BDF8)
+    val Teal = Color(0xFF2DD4BF)
+    val Coral = Color(0xFFF87171)
+    val Title get() = FusionType.BodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp, color = Muted)
+    val Value get() = FusionType.HeadingLarge.copy(fontWeight = FontWeight.SemiBold)
+    val Status get() = FusionType.BodyMedium.copy(fontSize = 16.sp)
+}
+
 @OptIn(ExperimentalTextApi::class)
 private fun weightedFont(resource: Int, weight: FontWeight): Font =
     if (Build.VERSION.SDK_INT >= 26) Font(resource, weight,
