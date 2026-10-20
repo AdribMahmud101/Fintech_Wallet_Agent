@@ -16,8 +16,9 @@ import app.fusion.wallet.ui.theme.*
 fun SafetyCharts(evidence: SafetyScreenState) {
     val context=LocalContext.current
     val metrics=remember { runCatching { context.resources.openRawResource(R.raw.k28_benchmarks).bufferedReader().use { BenchmarkMetrics.parse(it.readText()) } }.getOrNull() }
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text("Stopped at each layer",style=FusionType.HeadingSmall)
+    ChartTile(Modifier.fillMaxWidth()) {
+        ChartTileHeader("Stopped at each layer",
+            "Actual recorded stopping layers, divided by all recorded scenarios. No expected-layer credit. Recorded stopping layer · ${evidence.source} · evidence/results/latest.json")
         val arena=evidence.arena
         if (arena==null) Text("Layer counts unavailable until evidence loads",style=FusionType.BodySmall)
         else {
@@ -25,7 +26,6 @@ fun SafetyCharts(evidence: SafetyScreenState) {
                 arena.layerCounts.filterKeys { key->safetyDiagramLayers.none { key in it.second } }.map { safetyLayerTitle(it.key) to it.value }
             ProgressBars(layers.map { (label,count)->ProgressRow(label,"$count / ${arena.scenarios.size} scenarios",
                 gaugeFraction(count.toBigDecimal(),arena.scenarios.size.toBigDecimal()),FusionColors.Green) },Modifier.padding(top=12.dp))
-            Text("Recorded stopping layer · ${evidence.source} · evidence/results/latest.json",style=FusionType.BodySmall)
         }
     }
     Spacer(Modifier.height(16.dp))
