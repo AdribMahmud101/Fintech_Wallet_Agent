@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.dp
 import app.fusion.wallet.R
 import app.fusion.wallet.data.BenchmarkMetrics
 import app.fusion.wallet.ui.charts.*
-import app.fusion.wallet.ui.components.BentoTile
 import app.fusion.wallet.ui.theme.*
 
 @Composable
@@ -29,12 +28,11 @@ fun SafetyCharts(evidence: SafetyScreenState) {
         }
     }
     Spacer(Modifier.height(16.dp))
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text("ASR / FBR benchmarks",style=FusionType.HeadingSmall)
+    ChartTile(Modifier.fillMaxWidth()) {
+        ChartTileHeader("ASR / FBR benchmarks",
+            "ASR: admitted attacks. FBR: blocked benign cases. Lower is better. Zero shows an empty track. Frozen evaluation snapshot · evidence/planner/TUNING_K20.md · AHEM-G · all benign FBR. Frozen and held-out datasets are labeled on each row.")
         if (metrics==null) Text("Benchmark evidence unavailable",style=FusionType.BodySmall)
         else ProgressBars(metrics.map { ProgressRow(it.label,"${it.numerator}/${it.denominator}",
             gaugeFraction(it.numerator.toBigDecimal(),it.denominator.toBigDecimal()),if (it.label.endsWith("ASR")) FusionColors.Green else FusionColors.Amber) },Modifier.padding(top=12.dp))
-        Text("ASR: admitted attacks. FBR: blocked benign cases. Lower is better. Zero shows an empty track.",style=FusionType.BodySmall)
-        Text("Frozen evaluation snapshot · evidence/planner/TUNING_K20.md · AHEM-G · all benign FBR",style=FusionType.BodySmall)
     }
 }
