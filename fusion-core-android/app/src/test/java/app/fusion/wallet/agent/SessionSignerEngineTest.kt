@@ -22,7 +22,9 @@ class SessionSignerEngineTest {
         val module = "0x" + "11".repeat(20); val session = "0x" + "22".repeat(20)
         val decision = AgentCrypto.hashHex("test decision".toByteArray()); val digest = AgentCrypto.hashHex("test digest".toByteArray())
         val mandate = AgentCrypto.hashHex("test mandate".toByteArray()); val blockHash = AgentCrypto.hashHex("test block".toByteArray())
-        val raw = "0x02c0"; val hash = AgentCrypto.hashHex(AgentCrypto.bytes(raw)); val data = "0x12345678" + decision.drop(2)
+        val raw = "0x02c0"; val hash = AgentCrypto.hashHex(AgentCrypto.bytes(raw))
+        private val golden = JSONObject(SessionSignerEngineTest::class.java.getResource("/golden_app_transaction.json")!!.readText())
+        var data = golden.getString("input").replace(golden.getString("decisionHash").drop(2), decision.drop(2))
         val journal = Journal(); var signs = 0; var sends = 0; var leaseCalls = 0
         var loseReply = false; var availableReceipt = true; var wrongReceipt = false; var chain = "0x14a34"; var fee = "0x1"; var loseLeaseOn = 0
         var failFeeBatch = false
@@ -60,6 +62,13 @@ class SessionSignerEngineTest {
             verify = { JSONObject().put("to", module).put("data", data).put("decisionHash", decision).put("actionDigest", digest).put("action", action) },
             sign = { _, _ -> signs++; JSONObject().put("rawTx", raw).put("txHash", hash) }, journal = journal, pause = {},
             readBatch = { calls -> check(!failFeeBatch) { "Read batch unavailable" }; calls.map { (method, params) -> rpc(method, params) } })
+    }
+    @Test fun arbitrarySelectorCannotReachKeyOrBroadcast() = runTest {
+        val f = Fixture(); f.data = "0xa9059cbb" + f.decision.drop(2)
+        val error = runCatching { f.engine().execute(f.report) }.exceptionOrNull()
+        assertTrue(error is SignerRefused)
+        assertEquals(SignerRefusal.UnsupportedSelector, (error as SignerRefused).reason)
+        assertEquals(0, f.signs); assertEquals(0, f.sends); assertNull(f.journal.pending)
     }
     @Test fun dryRunCannotReachSigningEvenWithAValidLease() = runTest {
         val f=Fixture(); f.report.put("dryRun",true)

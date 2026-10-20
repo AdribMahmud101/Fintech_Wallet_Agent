@@ -8,7 +8,14 @@ HOLD creates no transaction. This is a manual foreground runtime.
 For an instantaneous executable choice, `dryRun=false` also invokes the private
 `SessionSignerService` in `:signer`. It independently checks the report against
 fresh chain state and contract pins, simulates the module call, bounds gas/fees,
-and signs with the Keystore-wrapped session key. It journals the signed attempt
+and signs with the Keystore-wrapped session key. Immediately before key access,
+its Kotlin allowlist checks the configured module and chain, zero value, and an
+`execute` or `queueAction` selector derived from the contract ABI. Native signing
+repeats those checks and ABI-decodes the entire call, returning a typed
+`SignerRefused::...` error without signing any other transaction. Deployment
+configuration is a separate native argument, never taken from the prepared tx.
+The umbrella script `scripts/android_planner/generate_session_allowlist.py`
+regenerates selectors and the golden app test vector (`--check` checks freshness). It journals the signed attempt
 before sending and verifies the receipt, sender, calldata and `ActionExecuted`
 event before returning a confirmed transaction. Guardian keys use their existing
 separate envelope; no signer/ source is modified.

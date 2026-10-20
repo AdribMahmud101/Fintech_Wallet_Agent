@@ -29,13 +29,15 @@ internal class SessionSignerEngine(
     private val pause: suspend () -> Unit = { delay(2000) },
     private val readBatch: (List<Pair<String, JSONArray>>) -> List<Any> = { calls -> calls.map { (method, params) -> rpc(method, params) } },
     private val trace: (String) -> Unit = {},
+    private val chainId: Long = 84532,
 ) {
+    private val signingPolicy = SessionSigningPolicy(module, chainId)
     private val mutex = Mutex()
     suspend fun execute(report: JSONObject): JSONObject = mutex.withLock {
         trace("start")
         check(report.opt("dryRun") == false) { "DRY_RUN_CANNOT_BROADCAST" }
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
-        check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(84532)) { "WRONG_CHAIN" }
+        check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(chainId)) { "WRONG_CHAIN" }
         journal.load()?.let { old ->
             val receipt = receipt(old.getString("txHash"))
             if (receipt != null) {
@@ -78,8 +80,9 @@ internal class SessionSignerEngine(
         authority(report, checked, block, state)
         trace("authority_checked")
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
-        val prepared = JSONObject().put("chainId", 84532).put("nonce", nonce).put("to", module).put("value", "0")
+        val prepared = JSONObject().put("chainId", chainId).put("nonce", nonce).put("to", module).put("value", "0")
             .put("data", data).put("gasLimit", gas.longValueExact()).put("maxFeePerGas", fee.longValueExact()).put("maxPriorityFeePerGas", tip.longValueExact())
+        signingPolicy.validate(prepared)
         val signed = sign(prepared, session)
         trace("signed")
         val raw = signed.getString("rawTx"); val hash = signed.getString("txHash")
