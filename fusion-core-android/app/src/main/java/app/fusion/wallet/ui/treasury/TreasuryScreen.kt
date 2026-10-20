@@ -160,7 +160,7 @@ private fun TreasuryHero(state: WalletState, now: Long) {
             style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
         state.blockNumber?.let { Text("Block $it", style = FusionType.NumberCaption) }
         state.treasury?.let { Text("Safe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}", style = FusionType.BodySmall) }
-        if (state.accountingMatches == false) Text("Bill metadata does not match the on-chain commitment. ${state.accountingError.orEmpty()}",
+        if (state.accountingMatches == false) Text(app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty(),
             style = FusionType.BodySmall, color = FusionColors.Amber)
     }
 }

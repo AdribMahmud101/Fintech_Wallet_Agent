@@ -19,3 +19,16 @@ fun Context.startActivitySafe(intent: Intent): Boolean {
         false
     }
 }
+
+/**
+ * The data layer keeps a machine-readable code ("ACCOUNTING_MISMATCH: …") so tests
+ * and the agent can classify the error; people see a plain sentence instead.
+ */
+fun accountingMessageForPeople(error: String?): String? = when {
+    error == null -> null
+    error.contains("differs from bundled bills") ->
+        "Bill details for the current on-chain commitment are not published yet. Totals come straight from the chain."
+    error.startsWith("ACCOUNTING_MISMATCH") ->
+        "The bill list does not add up to the unpaid total on-chain. Showing on-chain totals."
+    else -> error
+}

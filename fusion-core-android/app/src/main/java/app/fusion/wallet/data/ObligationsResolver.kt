@@ -88,11 +88,16 @@ class ObligationsResolver(
             } catch (_: Exception) {}
         }
 
-        // 3. Try primary raw GitHub URL
+        // 3. The bill set published under this exact root (scripts/index_obligations.py).
+        //    Every owner commitment is indexed by its Merkle root, so this one fetch
+        //    stays correct no matter how many times the owners re-commit.
+        fetchAndCheck("https://raw.githubusercontent.com/AdribMahmud101/fusion_wallet/main/evidence/obligations/by-root/${onChainRoot.lowercase()}.json", onChainRoot)?.let { return it }
+
+        // 4. Try primary raw GitHub URL
         val primaryUrl = "https://raw.githubusercontent.com/AdribMahmud101/fusion_wallet/main/evidence/obligations-84532.json"
         fetchAndCheck(primaryUrl, onChainRoot)?.let { return it }
 
-        // 4. Try candidate paths under evidence/agent/
+        // 5. Try candidate paths under evidence/agent/
         for (url in candidateSource.listAgentEvidenceUrls()) {
             fetchAndCheck(url, onChainRoot)?.let { return it }
         }

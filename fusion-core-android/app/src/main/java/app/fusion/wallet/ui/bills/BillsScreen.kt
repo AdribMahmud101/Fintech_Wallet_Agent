@@ -69,7 +69,7 @@ fun BillsScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                 }
             }
             if (state.accountingError != null && !showVendors) item {
-                BentoTile(Modifier.fillMaxWidth()) { Text(state.accountingError.orEmpty(), style = FusionType.BodyMedium, color = FusionColors.Amber) }
+                BentoTile(Modifier.fillMaxWidth()) { Text(app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty(), style = FusionType.BodyMedium, color = FusionColors.Amber) }
             }
             if (links.error != null) item {
                 BentoTile(Modifier.fillMaxWidth()) { Text("Receipt / queue detail unavailable: ${links.error}", style = FusionType.BodySmall, color = FusionColors.Amber) }
