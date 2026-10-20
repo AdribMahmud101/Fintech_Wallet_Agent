@@ -21,6 +21,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.AgentRuntime
+import app.fusion.wallet.ui.activity.activityProvenance
+import app.fusion.wallet.ui.activity.activityTitle
+import app.fusion.wallet.ui.activity.RecordedProvenanceChip
+import app.fusion.wallet.ui.activity.rememberTxIndex
 import app.fusion.wallet.data.*
 import app.fusion.wallet.signer.GuardianStopDialog
 import app.fusion.wallet.ui.MainViewModel
@@ -38,6 +42,10 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     val historyVm: BalanceHistoryViewModel = viewModel()
     val history by historyVm.state.collectAsStateWithLifecycle()
     val agent by AgentRuntime.state.collectAsStateWithLifecycle()
+    val txIndex = rememberTxIndex()
+    val lastDecisionTx = if (agent.result != null) agent.result?.txHash
+        else state.recentActions.maxByOrNull { it.blockNumber }?.txHash
+    val lastDecisionEntry = txIndex.find(lastDecisionTx)
     val scope = rememberCoroutineScope()
     var askOpen by rememberSaveable { mutableStateOf(false) }
     var stopOpen by rememberSaveable { mutableStateOf(false) }
@@ -86,8 +94,11 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                     }
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
                     Text(agent.result?.let { "Last decision: ${it.choiceLabel} · ${app.fusion.wallet.ui.common.readableCode(it.reason)}" }
+                        ?: lastDecisionEntry?.let { "Last decision: ${activityTitle(it.kind)}" }
                         ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                    lastDecisionTx?.let { RecordedProvenanceChip(activityProvenance(lastDecisionEntry?.source)) }
+                    lastDecisionEntry?.planner?.let { StatusChip(it, FusionColors.Indigo) }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = { scope.launch { vm.runAgentTick(true) } }, enabled = !agent.running && state.treasury != null) {
                             Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
