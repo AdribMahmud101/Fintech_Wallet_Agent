@@ -30,38 +30,40 @@ private fun ChartPair(first: @Composable (Modifier)->Unit, second: @Composable (
 
 @Composable
 fun HomeAllocationAndRunway(state: WalletState) {
-    ChartPair(first={ modifier -> ChartTile(modifier) {
-        val buckets = state.buckets
-        ChartTileHeader("Where it sits", buildString {
-            append("Cash is Safe idle cash after funded bills and the safety cushion. Bills includes the funded bill reserve and safety cushion. Earning is current vault assets. These sum to Safe cash plus vault assets.")
-            buckets?.let {
-                append("\n\nCash ${formatBigIntegerAmount(it.surplus.raw)} USDC; reserved ${formatBigIntegerAmount(it.reserve.raw + it.buffer.raw)} USDC; earning ${formatBigIntegerAmount(it.deployed.raw)} USDC.")
-                if (it.shortfall.raw.signum() > 0) append("\n${formatBigIntegerAmount(it.shortfall.raw)} USDC bills unfunded.")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChartPair(first={ modifier -> ChartTile(modifier) {
+            val buckets = state.buckets
+            ChartTileHeader("Where it sits", buildString {
+                append("Spare cash is Safe idle cash after funded bills and the safety cushion. For bills includes the funded bill reserve and safety cushion (owed plus buffer when fully funded). Earning is current vault assets. These sum to Safe cash plus vault assets.")
+                buckets?.let {
+                    append("\n\nSpare cash ${formatBigIntegerAmount(it.surplus.raw)} USDC; reserved ${formatBigIntegerAmount(it.reserve.raw + it.buffer.raw)} USDC; earning ${formatBigIntegerAmount(it.deployed.raw)} USDC.")
+                    if (it.shortfall.raw.signum() > 0) append("\n${formatBigIntegerAmount(it.shortfall.raw)} USDC bills unfunded.")
+                }
+            })
+            if (buckets == null) Text("Allocation unavailable until balances and bills load", style = FusionType.BodySmall)
+            else HomeAllocation(buckets)
+        } },second={ modifier -> ChartTile(modifier) {
+            val evidence = state.chartEvidence
+            val runway = evidence?.let { cashRunway(it.cashRaw, it.outflowRaw, it.historyStart, it.through) }
+            ChartTileHeader("Cash runway", buildString {
+                append("Safe cash divided by average daily outflow over the observed last 30 days. Bill payments and owner sends count once; vault deposits and self-transfers are excluded. At least 7 days of history is required. Full ring: 90 days, capped visually; the center shows uncapped days. Healthy: 60+ days. Keep an eye on it: 21–59 days. Low: under 21 days.")
+                if (evidence != null && runway != null) append("\n\n${formatBigIntegerAmount(evidence.cashRaw)} USDC cash; ${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1, java.math.RoundingMode.DOWN)} days.")
+            })
+            if (runway?.days == null) Box(Modifier.fillMaxWidth().heightIn(min = 166.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Text(runway?.status ?: "Runway history unavailable", style = FusionType.BodyMedium,
+                    color = FusionChart.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            } else {
+                val days = runway.days
+                RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
+                    when { runway.status.startsWith("Early") -> FusionChart.Reserved; days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
+                    arcColor = FusionChart.Reserved)
             }
-        })
-        if (buckets == null) Text("Allocation unavailable until balances and bills load", style = FusionType.BodySmall)
-        else DonutChart(listOf(
-            Segment("Cash", buckets.surplus.raw, FusionChart.Cash),
-            Segment("Bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
-            Segment("Earning", buckets.deployed.raw, FusionChart.Sky)),
-            chartAmountLabel(buckets.total.raw), "USDC")
-    } },second={ modifier -> ChartTile(modifier) {
-        val evidence = state.chartEvidence
-        val runway = evidence?.let { cashRunway(it.cashRaw, it.outflowRaw, it.historyStart, it.through) }
-        ChartTileHeader("Cash runway", buildString {
-            append("Safe cash divided by average daily outflow over the observed last 30 days. Bill payments and owner sends count once; vault deposits and self-transfers are excluded. At least 7 days of history is required. Full ring: 90 days, capped visually; the center shows uncapped days. Healthy: 60+ days. Keep an eye on it: 21–59 days. Low: under 21 days.")
-            if (evidence != null && runway != null) append("\n\n${formatBigIntegerAmount(evidence.cashRaw)} USDC cash; ${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1, java.math.RoundingMode.DOWN)} days.")
-        })
-        if (runway?.days == null) Box(Modifier.fillMaxWidth().heightIn(min = 166.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
-            Text(runway?.status ?: "Runway history unavailable", style = FusionType.BodyMedium,
-                color = FusionChart.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        } else {
-            val days = runway.days
-            RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
-                when { runway.status.startsWith("Early") -> FusionChart.Reserved; days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
-                arcColor = FusionChart.Reserved)
+        } })
+        state.agentGas?.let { gas ->
+            val eth = gas.balanceWei.toBigDecimal().movePointLeft(18).round(java.math.MathContext(6)).stripTrailingZeros().toPlainString()
+            StatusChip("Agent gas: $eth ETH" + (gas.estimatedMoves?.let { " (~$it moves)" } ?: ""), FusionChart.Muted)
         }
-    } })
+    }
 }
 
 @Composable
@@ -133,5 +135,32 @@ private fun InsightRow(text: String, tone: Color) {
         verticalAlignment = Alignment.Top) {
         Box(Modifier.padding(top = 7.dp).size(8.dp).background(tone, CircleShape))
         Text(text, style = FusionType.BodyMedium)
+    }
+}
+
+
+/** Home-specific amount legend; shared charts keep their own units and legend contracts. */
+@Composable
+private fun HomeAllocation(buckets: Buckets) {
+    val segments = listOf(
+        Segment("Spare cash", buckets.surplus.raw, FusionChart.Cash),
+        Segment("For bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
+        Segment("Earning", buckets.deployed.raw, FusionChart.Sky))
+    val percentages = segmentPercentages(segments.map { it.valueRaw })
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        DonutChart(segments.map { chartFraction(it.valueRaw, buckets.total.raw) }, segments.map { it.color }, 122.dp, 17.dp,
+            segments.mapIndexed { i, segment -> "${segment.label}: ${formatBigIntegerAmount(segment.valueRaw)} USDC, ${percentages[i]} percent" }.joinToString(". ")) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(chartAmountLabel(buckets.total.raw), style = FusionType.HeadingSmall)
+                Text("USDC", style = FusionType.BodySmall)
+            }
+        }
+        segments.forEachIndexed { i, segment ->
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.size(6.dp).background(segment.color, CircleShape))
+                Text(segment.label, Modifier.weight(1f), style = FusionType.BodySmall)
+                Text("${chartAmountLabel(segment.valueRaw)} · ${percentages[i]}%", style = FusionType.BodySmall)
+            }
+        }
     }
 }

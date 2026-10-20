@@ -479,7 +479,7 @@
     <string name="home_agent_title">AI Agent</string>
     <string name="home_agent_active">Active</string>
     <string name="home_agent_paused">Paused</string>
-    <string name="home_agent_run">Run Agent</string>
+    <string name="home_agent_run">Preview next move</string>
     <string name="home_agent_stop">Stop</string>
     <string name="home_agent_stop_confirm_title">Guardian Emergency Stop</string>
     <string name="home_agent_stop_confirm_desc">This calls requestPause() using the guardian key on Base Sepolia. The AI agent will be prevented from executing further transactions.</string>

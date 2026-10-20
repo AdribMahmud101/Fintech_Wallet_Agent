@@ -20,6 +20,7 @@ data class TxIndexEntry(
 )
 
 class TxIndex private constructor(private val entries: Map<String, TxIndexEntry>) {
+    fun all(): List<TxIndexEntry> = entries.values.toList()
     fun find(txHash: String?): TxIndexEntry? = txHash?.let { entries[it.lowercase()] }
 
     companion object {
