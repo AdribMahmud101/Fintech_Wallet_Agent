@@ -14,8 +14,11 @@ class ChartEvidenceTest {
     private fun raw(n: Long)=BigInteger.valueOf(n)*Money.SCALE
     @Test fun runwayUsesObservedWindowAndThresholds() {
         val end=40*86400L
-        assertNull(cashRunway(raw(100),raw(10),end-6*86400,end).days)
-        assertEquals("Not enough history yet",cashRunway(raw(100),raw(10),end-6*86400,end).status)
+        assertNull(cashRunway(raw(100),raw(10),end-6*3600,end).days)
+        assertEquals("Not enough history yet",cashRunway(raw(100),raw(10),end-6*3600,end).status)
+        val early = cashRunway(raw(100),raw(10),end-6*86400,end)
+        assertEquals("Early estimate · 6 days of data",early.status)
+        assertEquals(0, early.days!!.compareTo(java.math.BigDecimal("60.00000000")))
         assertEquals("No outflow recorded",cashRunway(raw(100),raw(0),0,end).status)
         assertEquals("Healthy",cashRunway(raw(200),raw(100),0,end).status)
         assertEquals("Keep an eye on it",cashRunway(raw(70),raw(100),0,end).status)

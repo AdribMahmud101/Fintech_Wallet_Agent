@@ -8,6 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -165,9 +168,15 @@ private fun TreasuryHero(state: WalletState, now: Long) {
         else ChartAmount(formatBigIntegerAmount(total), state.treasury?.symbol ?: "USDC")
         state.buckets?.let { buckets ->
             val covered = buckets.shortfall.raw.signum() == 0
-            Text(if (state.accountingMatches != true) "Bill coverage unverified" else if (covered) "✓ Your bills are covered" else "⚠ ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
-                style = FusionChart.Status, color = if (covered && state.accountingMatches == true) FusionChart.Cash else FusionChart.Reserved,
-                modifier = Modifier.padding(top = 8.dp))
+            val ok = covered && state.accountingMatches == true
+            val tone = if (ok) FusionChart.Cash else FusionChart.Reserved
+            androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                androidx.compose.material3.Icon(
+                    if (ok) androidx.compose.material.icons.Icons.Filled.CheckCircle else androidx.compose.material.icons.Icons.Filled.Warning,
+                    contentDescription = null, tint = tone, modifier = Modifier.padding(end = 8.dp).size(22.dp))
+                Text(if (state.accountingMatches != true) "Bill coverage unverified" else if (covered) "Your bills are covered" else "${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
+                    style = FusionChart.Status, color = tone)
+            }
         }
         Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
             style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))

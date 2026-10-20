@@ -21,10 +21,15 @@ fun cashRunway(cash: BigInteger, outflow: BigInteger, historyStart: Long, now: L
     require(cash.signum() >= 0 && outflow.signum() >= 0)
     val seconds = (now-historyStart).coerceIn(0,30*86400L)
     val observed = seconds.toBigDecimal().divide(86400.toBigDecimal(), 8, RoundingMode.HALF_UP)
-    if (seconds < 7*86400) return Runway(null,"Not enough history yet",observed)
+    if (seconds < 12*3600) return Runway(null,"Not enough history yet",observed)
     if (outflow.signum() == 0) return Runway(null,"No outflow recorded",observed)
     val days = cash.toBigDecimal().multiply(seconds.toBigDecimal())
         .divide(outflow.toBigDecimal().multiply(86400.toBigDecimal()), 8, RoundingMode.DOWN)
+    // Under a week of data the number is real but young: say so instead of hiding it.
+    if (seconds < 7*86400) {
+        val n = observed.setScale(0, RoundingMode.UP).toInt().coerceAtLeast(1)
+        return Runway(days, "Early estimate · $n day${if (n == 1) "" else "s"} of data", observed)
+    }
     return Runway(days, when { days >= 60.toBigDecimal() -> "Healthy"; days >= 21.toBigDecimal() -> "Keep an eye on it"; else -> "Low" },observed)
 }
 
