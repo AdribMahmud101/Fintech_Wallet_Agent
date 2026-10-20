@@ -1,6 +1,3 @@
-import java.util.Properties
-
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,13 +5,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// DeepInfra key for DEBUG builds only, read from the gitignored local.properties. Release builds
-// never embed a key; they read it from the Keystore-wrapped store the user fills in Settings.
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.isFile) f.inputStream().use { load(it) }
-}
-
+// No API key is ever compiled into the APK (debug or release). The DeepInfra key lives only in the
+// Keystore-wrapped store the user fills in Settings (or the debug-only AdvisorKeyImportActivity).
 
 android {
     namespace = "app.fusion.wallet"
@@ -36,11 +28,9 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            buildConfigField("String", "DEEPINFRA_KEY_DEBUG", "\"" + (localProps.getProperty("DEEPINFRA_API_KEY") ?: "") + "\"")
         }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "DEEPINFRA_KEY_DEBUG", "\"\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

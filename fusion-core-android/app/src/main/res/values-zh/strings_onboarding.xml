@@ -99,6 +99,7 @@
     <string name="set_network">网络与部署</string>
     <string name="set_model">设备端模型</string>
     <string name="set_keys">密钥</string>
+    <string name="set_advisor">云端顾问（可选）</string>
     <string name="set_language">语言</string>
     <string name="set_judge">评委模式</string>
     <string name="set_about">关于</string>

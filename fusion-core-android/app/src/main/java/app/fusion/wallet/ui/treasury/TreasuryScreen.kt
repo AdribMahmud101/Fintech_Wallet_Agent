@@ -162,7 +162,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     if (previewOpen) EarnPreviewSheet(agent, state, txIndex, onDismiss = { previewOpen = false })
     if (askOpen) {
         val accountant: AccountantViewModel = viewModel()
-        AskAccountantSheet(vm = accountant, onDismiss = { askOpen = false })
+        AskAccountantSheet(vm = accountant, wallet = state, onDismiss = { askOpen = false })
     }
     if (stopOpen) GuardianStopDialog(requestPause = {
         val result = vm.requestGuardianPause()

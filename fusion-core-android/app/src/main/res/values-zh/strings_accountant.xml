@@ -56,6 +56,7 @@
     <string name="acc_title">询问会计师</string>
     <string name="acc_mode_cloud">云端协助已开启 · 仅分享取整后的摘要</string>
     <string name="acc_mode_local">云端协助已关闭 · 回答只在本机生成</string>
+    <string name="acc_offline_title">本机分析</string>
     <string name="acc_topic_LIQUIDITY">现金</string>
     <string name="acc_topic_RESERVES">账款预留</string>
     <string name="acc_topic_CONCENTRATION">分散度</string>

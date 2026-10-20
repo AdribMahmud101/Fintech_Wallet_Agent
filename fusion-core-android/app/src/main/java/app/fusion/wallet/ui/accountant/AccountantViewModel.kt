@@ -154,7 +154,10 @@ class AccountantViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveApiKey(key: String) {
         if (!requireOwner() || key.isBlank()) return
-        svc.keyStore.save(key)
+        if (!svc.keyStore.save(key)) {
+            _state.update { it.copy(message = "That does not look like a DeepInfra API key.") }
+            return
+        }
         _state.update { it.copy(hasApiKey = true, message = "API key stored encrypted on this device.") }
     }
 

@@ -18,6 +18,8 @@ import app.fusion.wallet.ui.common.readableCode
 import app.fusion.wallet.ui.components.BentoTile
 import app.fusion.wallet.ui.components.StatusChip
 import app.fusion.wallet.ui.components.TxLink
+import app.fusion.wallet.ui.advisor.WhyButton
+import app.fusion.wallet.ui.advisor.toFacts
 import app.fusion.wallet.ui.theme.FusionColors
 import app.fusion.wallet.ui.theme.FusionType
 
@@ -77,5 +79,6 @@ fun AutopilotTimelineTick(tick: AutopilotTick) {
             if (check.message.isNotBlank()) Text(readableCheckMessage(check.message), style = FusionType.BodySmall)
         }
         tick.txHash?.takeIf { tick.outcome == "EXECUTED" }?.let { TxLink(it) }
+        if (tick.outcome != "RUNNING") WhyButton("tick:${tick.id}", facts = { tick.toFacts() })
     }
 }

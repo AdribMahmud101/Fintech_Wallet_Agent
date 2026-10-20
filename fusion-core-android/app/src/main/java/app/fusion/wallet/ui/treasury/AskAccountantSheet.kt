@@ -40,7 +40,10 @@ import app.fusion.wallet.R
 import app.fusion.wallet.accountant.agent.CloudOutcome
 import app.fusion.wallet.accountant.cloud.BriefLimits
 import app.fusion.wallet.accountant.data.InsightTopic
+import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.ui.accountant.AccountantViewModel
+import app.fusion.wallet.ui.advisor.LiveAccountantSection
+import app.fusion.wallet.ui.advisor.PolicyProposalSection
 import app.fusion.wallet.ui.common.CardTitle
 import app.fusion.wallet.ui.common.Muted
 import app.fusion.wallet.ui.common.severityColor
@@ -53,7 +56,7 @@ import app.fusion.wallet.ui.theme.Obsidian
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AskAccountantSheet(vm: AccountantViewModel, onDismiss: () -> Unit) {
+fun AskAccountantSheet(vm: AccountantViewModel, wallet: WalletState, onDismiss: () -> Unit) {
     val s by vm.state.collectAsStateWithLifecycle()
     var topic by rememberSaveable { mutableStateOf(InsightTopic.GENERAL.name) }
     var question by rememberSaveable { mutableStateOf("") }
@@ -81,6 +84,11 @@ fun AskAccountantSheet(vm: AccountantViewModel, onDismiss: () -> Unit) {
                 )
             }
             Text(stringResource(if (cloudOn) R.string.acc_mode_cloud else R.string.acc_mode_local), style = MaterialTheme.typography.bodySmall, color = Muted)
+
+            // K40: live-wallet Q&A and goal → policy proposal through the cloud advisor (off → "Advisor off").
+            LiveAccountantSection(wallet)
+            PolicyProposalSection(wallet)
+            Text(stringResource(R.string.acc_offline_title), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
 
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 InsightTopic.entries.forEach { e ->

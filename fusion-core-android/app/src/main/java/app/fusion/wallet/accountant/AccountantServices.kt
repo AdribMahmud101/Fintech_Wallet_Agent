@@ -1,9 +1,7 @@
 package app.fusion.wallet.accountant
 
 import android.content.Context
-import app.fusion.wallet.BuildConfig
 import app.fusion.wallet.accountant.agent.AccountantAgent
-import app.fusion.wallet.accountant.cloud.ChainedKeyProvider
 import app.fusion.wallet.accountant.cloud.DeepInfraClient
 import app.fusion.wallet.accountant.cloud.HttpUrlConnectionTransport
 import app.fusion.wallet.accountant.cloud.KeystoreApiKeyStore
@@ -18,7 +16,7 @@ class AccountantServices private constructor(context: Context) {
     val readModel = RoomReadModel(db.readDao())
     val audit = RoomAudit(db.sinkDao())
 
-    private val client = DeepInfraClient(HttpUrlConnectionTransport(), ChainedKeyProvider(keyStore, BuildConfig.DEEPINFRA_KEY_DEBUG))
+    private val client = DeepInfraClient(HttpUrlConnectionTransport(), keyStore)
 
     val agent = AccountantAgent(readModel, audit, client) { System.currentTimeMillis() / 1000 }
 

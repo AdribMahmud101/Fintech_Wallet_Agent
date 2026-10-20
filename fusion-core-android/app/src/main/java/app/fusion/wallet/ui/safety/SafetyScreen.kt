@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.agent.*
+import app.fusion.wallet.ui.advisor.CheckExternalTextCard
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.formatTimestamp
 import app.fusion.wallet.ui.common.readableCode
@@ -62,6 +63,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                 }
             }
             item { Column { SafetyCharts(evidence) } }
+            item { CheckExternalTextCard() }
             item {
                 BentoTile(Modifier.fillMaxWidth()) {
                     Text("Five safety layers", style = FusionType.HeadingMedium)

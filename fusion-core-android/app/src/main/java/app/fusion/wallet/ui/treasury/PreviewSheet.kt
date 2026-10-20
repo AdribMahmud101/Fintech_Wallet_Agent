@@ -11,6 +11,8 @@ import app.fusion.wallet.agent.AgentRunState
 import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.data.TxIndex
 import app.fusion.wallet.ui.agent.DecisionDetails
+import app.fusion.wallet.ui.advisor.WhyButton
+import app.fusion.wallet.ui.advisor.toFacts
 import app.fusion.wallet.ui.common.readableCheckMessage
 import app.fusion.wallet.ui.common.readableCode
 
@@ -29,6 +31,7 @@ fun EarnPreviewSheet(agent: AgentRunState, state: WalletState, txIndex: TxIndex,
                     Text(runCatching { earnPreviewSummary(result, state, txIndex) }.getOrDefault("Decision details unavailable"))
                     Text("Policy checks · snapshot block ${result.snapshotBlock}", style = MaterialTheme.typography.titleSmall)
                     val details = runCatching { DecisionDetails.parse(result.reportJson, result.passportJson) }.getOrNull()
+                    if (details != null) WhyButton("preview:${details.hash}", facts = { details.toFacts() })
                     if (details?.checks.isNullOrEmpty()) Text("No individual policy checks recorded")
                     details?.checks?.forEach { check ->
                         Text("${readableCode(check.status)} · ${readableCode(check.name)}")

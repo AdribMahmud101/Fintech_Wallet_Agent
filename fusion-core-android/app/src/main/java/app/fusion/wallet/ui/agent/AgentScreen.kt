@@ -29,6 +29,8 @@ import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.activity.activityProvenance
 import app.fusion.wallet.ui.activity.RecordedProvenanceChip
 import app.fusion.wallet.ui.activity.rememberTxIndex
+import app.fusion.wallet.ui.advisor.WhyButton
+import app.fusion.wallet.ui.advisor.toFacts
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.vendorName
 import app.fusion.wallet.ui.components.*
@@ -211,6 +213,7 @@ private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, onCopy: 
         Text(stringResource(R.string.k24_latest_decision), style = FusionType.HeadingMedium)
         StatusChip(when (decision.dryRun) { true -> "Dry run"; false -> "Live run"; null -> "Run mode unknown" }, FusionColors.Indigo)
         Text("${decision.choice} · ${readableCode(decision.reason)}", style = FusionType.HeadingSmall)
+        WhyButton("decision:${decision.hash}", facts = { decision.toFacts() })
         decision.txHash?.let { RecordedProvenanceChip(activityProvenance(txIndex.find(it)?.source)) }
         Text("Planner: ${readableCode(txIndex.find(decision.txHash)?.planner ?: decision.planner)}", style = FusionType.NumberCaption)
         Text("Load: ${decision.loadMs?.toPlainString() ?: "not recorded"} ms", style = FusionType.BodySmall)

@@ -54,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.BuildConfig
 import app.fusion.wallet.R
 import app.fusion.wallet.onboarding.DownloadState
+import app.fusion.wallet.ui.advisor.AdvisorSettingsSection
 import app.fusion.wallet.ui.onboarding.GUARDIAN_IMPORT_CLASS
 import app.fusion.wallet.ui.onboarding.PrimaryButton
 import app.fusion.wallet.ui.onboarding.SESSION_IMPORT_CLASS
@@ -132,6 +133,10 @@ fun SettingsScreen(
                 onImport = { launchKeyImport(context, SESSION_IMPORT_CLASS) },
                 onRemove = { vm.removeSession() },
             )
+
+            // --- Cloud advisor (K40): optional, off by default, key stored Keystore-encrypted ---
+            SectionHeader(stringResource(R.string.set_advisor))
+            AdvisorSettingsSection()
 
             // --- Language ---
             SectionHeader(stringResource(R.string.set_language))

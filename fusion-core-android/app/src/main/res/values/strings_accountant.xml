@@ -56,6 +56,7 @@
     <string name="acc_title">Ask the Accountant</string>
     <string name="acc_mode_cloud">Cloud help is on · only rounded summaries are shared</string>
     <string name="acc_mode_local">Cloud help is off · answers stay on this phone</string>
+    <string name="acc_offline_title">On-device analysis</string>
     <string name="acc_topic_LIQUIDITY">Cash</string>
     <string name="acc_topic_RESERVES">Bills reserve</string>
     <string name="acc_topic_CONCENTRATION">Spread</string>
