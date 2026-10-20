@@ -1,6 +1,10 @@
 package app.fusion.wallet.ui.treasury
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -101,21 +105,33 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
 
 @Composable
 fun WorthKnowing(state: WalletState) {
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text("Worth knowing",style=FusionType.HeadingSmall)
-        val buckets=state.buckets; val evidence=state.chartEvidence
-        if (buckets==null) Text("Insights need a verified balance and bill snapshot",style=FusionType.BodySmall)
+    ChartTile(Modifier.fillMaxWidth()) {
+        Text("Worth knowing", style = FusionType.HeadingSmall)
+        val buckets = state.buckets
+        val evidence = state.chartEvidence
+        if (buckets == null) Text("Insights need a verified balance and bill snapshot", style = FusionType.BodySmall)
         else {
-            Text("• ${formatBigIntegerAmount(buckets.surplus.raw)} USDC spare cash sits idle; ${formatBigIntegerAmount(buckets.deployed.raw)} USDC is in vaults.",style=FusionType.BodyMedium,modifier=Modifier.padding(top=12.dp))
-            val bill=state.obligations.filterNot { it.paid }.minByOrNull { it.dueAt }
-            if (state.accountingMatches==true && bill!=null) {
-                val date=SimpleDateFormat("MMM d, HH:mm z",Locale.getDefault()).format(Date(bill.dueAt*1000))
-                Text("• Your next bill is ${formatBigIntegerAmount(bill.amount.raw)} USDC, due $date; ${formatBigIntegerAmount(buckets.reserve.raw)} USDC is reserved for bills.",style=FusionType.BodyMedium,modifier=Modifier.padding(top=12.dp))
-            } else Text("• ${formatBigIntegerAmount(buckets.owed.raw)} USDC owed; ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC is unfunded.",style=FusionType.BodyMedium,modifier=Modifier.padding(top=12.dp))
-            if (evidence!=null) {
-                val runway=cashRunway(evidence.cashRaw,evidence.outflowRaw,evidence.historyStart,evidence.through)
-                runway.days?.let { Text("• ${formatBigIntegerAmount(evidence.cashRaw)} USDC cash covers ${it.setScale(1,java.math.RoundingMode.DOWN)} days at the observed pace of ${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1,java.math.RoundingMode.DOWN)} days.",style=FusionType.BodyMedium,modifier=Modifier.padding(top=12.dp)) }
+            if (evidence != null) {
+                val runway = cashRunway(evidence.cashRaw, evidence.outflowRaw, evidence.historyStart, evidence.through)
+                runway.days?.let {
+                    InsightRow("Your ${formatBigIntegerAmount(evidence.cashRaw)} USDC cash covers about ${it.setScale(0, java.math.RoundingMode.DOWN)} days at your current pace.", FusionChart.Reserved)
+                }
             }
+            val bill = state.obligations.filterNot { it.paid }.minByOrNull { it.dueAt }
+            if (state.accountingMatches == true && bill != null) {
+                val date = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(bill.dueAt * 1000))
+                InsightRow("Your next bill is ${formatBigIntegerAmount(bill.amount.raw)} USDC, due $date; ${formatBigIntegerAmount(buckets.reserve.raw)} USDC is reserved.", FusionChart.Cash)
+            } else InsightRow("${formatBigIntegerAmount(buckets.owed.raw)} USDC owed; ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC is unfunded.", FusionChart.Reserved)
+            InsightRow("${formatBigIntegerAmount(buckets.surplus.raw)} USDC spare cash is idle; ${formatBigIntegerAmount(buckets.deployed.raw)} USDC is earning in vaults.", FusionChart.Sky)
         }
+    }
+}
+
+@Composable
+private fun InsightRow(text: String, tone: Color) {
+    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top) {
+        Box(Modifier.padding(top = 7.dp).size(8.dp).background(tone, CircleShape))
+        Text(text, style = FusionType.BodyMedium)
     }
 }
