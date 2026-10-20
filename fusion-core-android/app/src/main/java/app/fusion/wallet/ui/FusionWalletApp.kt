@@ -142,7 +142,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                 }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO, wallet = walletState) },
+                    topBar = { androidx.compose.foundation.layout.Column { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO, wallet = walletState); app.fusion.wallet.ui.shell.ModelMissingBar() } },
                     bottomBar = { FusionBottomBar(selected = route, onSelect = shell::navigate) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
