@@ -22,6 +22,7 @@ import app.fusion.wallet.ui.advisor.CheckExternalTextCard
 import app.fusion.wallet.ui.common.startActivitySafe
 import app.fusion.wallet.ui.common.formatTimestamp
 import app.fusion.wallet.ui.common.readableCode
+import app.fusion.wallet.ui.owner.WhoCanDoWhatCard
 import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.shell.ShellViewModel
 import app.fusion.wallet.ui.theme.*
@@ -66,6 +67,7 @@ fun SafetyScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(),
                 }
             }
             item { CustodySplitCard(state) }
+            item { WhoCanDoWhatCard(state) }
             item { BentoTile(Modifier.fillMaxWidth()) {
                 Text("AI allowance", style = FusionType.HeadingSmall)
                 state.module?.let { m -> allowanceLabels(m, state.blockTime).forEach { Text(it, style = FusionType.BodySmall) } }

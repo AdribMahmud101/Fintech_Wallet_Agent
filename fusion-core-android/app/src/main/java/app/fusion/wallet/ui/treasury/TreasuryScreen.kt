@@ -24,6 +24,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.onboarding.OnboardingPrefs
 import app.fusion.wallet.ui.receive.ReceiveSheet
+import app.fusion.wallet.ui.owner.OwnerSendSheet
+import app.fusion.wallet.ui.owner.OwnerSwapSheet
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.autopilot.autopilotStatus
 import app.fusion.wallet.agent.AgentRuntime
@@ -57,6 +59,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     val scope = rememberCoroutineScope()
     var moreOpen by rememberSaveable { mutableStateOf(false) }
     var receiveOpen by rememberSaveable { mutableStateOf(false) }
+    var sendOpen by rememberSaveable { mutableStateOf(false) }
+    var swapOpen by rememberSaveable { mutableStateOf(false) }
     var previewOpen by rememberSaveable { mutableStateOf(false) }
     val previewMove: () -> Unit = {
         previewOpen = true
@@ -92,7 +96,10 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             } }
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
-            } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
+            } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove,
+                onSend = { sendOpen = true }, onSwap = { swapOpen = true }, running = agent.running) }
+            item { Text("Owner (2-of-2): Send · Swap · policy · resume · Guardian: pause · AI: Deposit · Withdraw · Rebalance · Pay verified bills · Hold",
+                style = FusionType.BodySmall, color = FusionColors.TextMuted) }
             item { CustodySplitPill(state) }
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { app.fusion.wallet.ui.scout.ScoutTile(state, onOpenScout) }
@@ -169,6 +176,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     if (receiveOpen) state.treasury?.let { ReceiveSheet(it.safeAddress, onDismiss = { receiveOpen = false }) }
+    if (sendOpen) OwnerSendSheet(state, onDismiss = { sendOpen = false })
+    if (swapOpen) OwnerSwapSheet(state.treasury?.safeAddress, onDismiss = { swapOpen = false })
     if (previewOpen) EarnPreviewSheet(agent, state, txIndex, onDismiss = { previewOpen = false })
     if (askOpen) {
         val accountant: AccountantViewModel = viewModel()
@@ -185,7 +194,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
 }
 
 @Composable
-private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, onEarn: () -> Unit, running: Boolean) {
+private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, onEarn: () -> Unit, onSend: () -> Unit, onSwap: () -> Unit, running: Boolean) {
     ChartTile(Modifier.fillMaxWidth(), hero = true) {
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
@@ -222,9 +231,11 @@ private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, o
         Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
             style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onSend, enabled = state.treasury != null && state.source == DataSource.LIVE, modifier = Modifier.weight(1f)) { Text("Send") }
             OutlinedButton(onClick = onReceive, enabled = state.treasury != null, modifier = Modifier.weight(1f)) { Text("↓ Receive") }
             Button(onClick = onEarn, enabled = !running && state.treasury != null, modifier = Modifier.weight(1f)) { Text("+ Earn") }
         }
+        TextButton(onClick = onSwap, enabled = state.treasury != null, modifier = Modifier.align(Alignment.End)) { Text("Swap · owner-signed") }
     }
 }
 
