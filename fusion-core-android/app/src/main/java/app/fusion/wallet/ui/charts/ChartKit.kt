@@ -36,7 +36,8 @@ fun DonutChart(
 ) {
     val percentages = segmentPercentages(segments.map { it.valueRaw })
     val total = segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
-    val progress = rememberChartProgress()
+    val progress = rememberChartProgress(total.signum() > 0)
+    val arcs = bucketSegments(segments.map { it.valueRaw })
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         if (total.signum() == 0) {
             Text(centerTop, style = FusionType.HeadingSmall)
@@ -51,11 +52,13 @@ fun DonutChart(
                     val stroke = 17.dp.toPx()
                     val diameter = size.minDimension - stroke
                     val top = Offset(stroke / 2, stroke / 2)
+                    drawArc(FusionChart.Track, 0f, 360f, false, top, Size(diameter, diameter), style = Stroke(stroke))
                     var angle = -90f
-                    bucketSegments(segments.map { it.valueRaw }).forEach { segment ->
+                    arcs.forEach { segment ->
                         val sweep = (segment.end - segment.start).toFloat() * 360f
-                        // Butt ends and angular gaps match the reference; tiny segments remain real.
-                        val gap = minOf(2f, sweep / 2)
+                        // Legacy butt caps and 3° separators; never enlarge a tiny
+                        // holding or cut a false seam in a single-bucket allocation.
+                        val gap = if (arcs.size > 1) minOf(3f, sweep / 2) else 0f
                         drawArc(segments[segment.bucketIndex].color, angle + gap / 2,
                             (sweep - gap) * progress, false, top, Size(diameter, diameter),
                             style = Stroke(stroke, cap = StrokeCap.Butt))
@@ -83,7 +86,7 @@ fun DonutChart(
 @Composable
 fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerUnit: String, status: String, tone: Color, modifier: Modifier = Modifier, arcColor: Color = tone) {
     val fraction = gaugeFraction(value, max).toFloat()
-    val progress = rememberChartProgress()
+    val progress = rememberChartProgress(fraction > 0f)
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.padding(top = 4.dp, bottom = 6.dp).size(122.dp).semantics {
             contentDescription = "$centerValue $centerUnit. $status. Value $value of $max."
@@ -93,7 +96,7 @@ fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerU
                 val diameter = size.minDimension - stroke
                 val top = Offset(stroke / 2, stroke / 2)
                 drawCircle(FusionChart.Track, diameter / 2, style = Stroke(stroke))
-                if (fraction > 0f) drawArc(arcColor, -90f, 270f * fraction * progress, false,
+                if (fraction > 0f) drawArc(arcColor, -90f, 360f * fraction * progress, false,
                     top, Size(diameter, diameter), style = Stroke(stroke, cap = StrokeCap.Round))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -112,7 +115,7 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
     val max = weeks.maxOf { week -> week.segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw } }
     val segments = weeks.flatMap { it.segments }
     val labels = segments.map { it.label }.distinct()
-    val progress = rememberChartProgress()
+    val progress = rememberChartProgress(max.signum() > 0)
     Column(modifier.fillMaxWidth().semantics {
         contentDescription = weeks.joinToString(". ") { week -> week.label + ": " + week.segments.joinToString { "${it.label} ${formatBigIntegerAmount(it.valueRaw)} USDC" } }
     }, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -160,10 +163,10 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
 
 @Composable
 fun ProgressBars(rows: List<ProgressRow>, modifier: Modifier = Modifier) {
-    val progress = rememberChartProgress()
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         if (rows.isEmpty()) Text("No verified data yet", style = FusionType.BodySmall)
         rows.forEach { row ->
+            val progress = rememberChartProgress(row.fraction != null && row.fraction.signum() > 0)
             Column(Modifier.fillMaxWidth().semantics { contentDescription = "${row.label}: ${row.valueText}. ${row.note.orEmpty()}" }) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)) {

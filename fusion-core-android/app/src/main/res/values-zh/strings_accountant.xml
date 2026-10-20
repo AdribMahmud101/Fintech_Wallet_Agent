@@ -458,7 +458,7 @@
     <string name="home_agent_title">AI 智能体</string>
     <string name="home_agent_active">运行中</string>
     <string name="home_agent_paused">已暂停</string>
-    <string name="home_agent_run">运行智能体</string>
+    <string name="home_agent_run">预览下一步操作</string>
     <string name="home_agent_stop">紧急停止</string>
     <string name="home_agent_stop_confirm_title">Guardian 紧急停止</string>
     <string name="home_agent_stop_confirm_desc">将调用 Base Sepolia 链上的 requestPause() 暂停模块。AI 智能体将无法继续执行交易。</string>

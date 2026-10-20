@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.fusion.wallet.ui.receive.ReceiveSheet
 import app.fusion.wallet.R
 import app.fusion.wallet.agent.AgentRuntime
 import app.fusion.wallet.ui.activity.activityProvenance
@@ -45,6 +46,12 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         else state.recentActions.maxByOrNull { it.blockNumber }?.txHash
     val lastDecisionEntry = txIndex.find(lastDecisionTx)
     val scope = rememberCoroutineScope()
+    var receiveOpen by rememberSaveable { mutableStateOf(false) }
+    var previewOpen by rememberSaveable { mutableStateOf(false) }
+    val previewMove: () -> Unit = {
+        previewOpen = true
+        scope.launch { vm.runAgentTick(dryRun = true) }
+    }
     var askOpen by rememberSaveable { mutableStateOf(false) }
     var stopOpen by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
@@ -75,7 +82,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             } }
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
-            } else item { TreasuryHero(state, now) }
+            } else item { TreasuryHero(state, now, onReceive = { receiveOpen = true }, onEarn = previewMove, running = agent.running) }
+            if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { HomeAllocationAndRunway(state) }
             item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
@@ -99,9 +107,14 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         ?: "No in-app decision recorded this session", style = FusionType.BodySmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                     lastDecisionTx?.let { RecordedProvenanceChip(activityProvenance(lastDecisionEntry?.source)) }
-                    lastDecisionEntry?.planner?.let { StatusChip(it, FusionColors.Indigo) }
+                    StatusChip("On-device AI · Private", FusionColors.Indigo)
+                    module?.let { m ->
+                        val allowance = aiAllowance(m.dailyUsed.raw, m.policy.dailyLimit.raw, m.policy.microMax.raw)
+                        Text("Today's AI allowance: ${formatBigIntegerAmount(allowance.remaining)} of ${formatBigIntegerAmount(allowance.limit)} USDC left · up to ${formatBigIntegerAmount(allowance.perMove)} per move", style = FusionType.BodySmall)
+                        LinearProgressIndicator(progress = { allowance.fraction }, modifier = Modifier.fillMaxWidth(), color = FusionColors.Green)
+                    } ?: Text("AI allowance unavailable until policy loads", style = FusionType.BodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { scope.launch { vm.runAgentTick(true) } }, enabled = !agent.running && state.treasury != null) {
+                        Button(onClick = previewMove, enabled = !agent.running && state.treasury != null) {
                             Text(stringResource(if (agent.running) R.string.home_agent_running else R.string.home_agent_run))
                         }
                         OutlinedButton(onClick = { stopOpen = true }, enabled = module != null && !module.paused) {
@@ -129,6 +142,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
+    if (receiveOpen) state.treasury?.let { ReceiveSheet(it.safeAddress, onDismiss = { receiveOpen = false }) }
+    if (previewOpen) EarnPreviewSheet(agent, state, txIndex, onDismiss = { previewOpen = false })
     if (askOpen) {
         val accountant: AccountantViewModel = viewModel()
         AskAccountantSheet(vm = accountant, onDismiss = { askOpen = false })
@@ -144,7 +159,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
 }
 
 @Composable
-private fun TreasuryHero(state: WalletState, now: Long) {
+private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, onEarn: () -> Unit, running: Boolean) {
     ChartTile(Modifier.fillMaxWidth(), hero = true) {
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
@@ -180,6 +195,10 @@ private fun TreasuryHero(state: WalletState, now: Long) {
         }
         Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
             style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onReceive, enabled = state.treasury != null, modifier = Modifier.weight(1f)) { Text("↓ Receive") }
+            Button(onClick = onEarn, enabled = !running && state.treasury != null, modifier = Modifier.weight(1f)) { Text("+ Earn") }
+        }
     }
 }
 
@@ -191,8 +210,10 @@ private fun VaultTile(vault: VaultPosition) {
             append("\n\nWithdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC")
             append("\nExposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC")
             append("\nShares · ${vault.sharesRaw}")
+            append("\nVault address · ${vault.address}")
         })
         ChartAmount(formatBigIntegerAmount(vault.assets.raw), large = false)
+        Text("Available anytime: ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC", style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
         Text(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position",
             style = FusionChart.Status, color = if (vault.simulatedYield) FusionChart.Reserved else FusionChart.Cash,
             modifier = Modifier.padding(top = 8.dp))

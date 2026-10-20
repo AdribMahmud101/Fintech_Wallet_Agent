@@ -21,9 +21,12 @@ class ChainWalletRepository(
     private val extraObligationsJson: List<String> = emptyList(),
     private val snapshotCache: SnapshotCache? = null,
     eventIndex: EventIndex? = null,
+    private val txIndex: () -> TxIndex = { TxIndex.Empty },
 ) : WalletRepository {
     private val deployment = Deployment.parse(manifestJson)
-    private val reader = ChainReader(rpc ?: JsonRpcClient(deployment.rpcUrl))
+    private val transport = rpc ?: JsonRpcClient(deployment.rpcUrl)
+    private val reader = ChainReader(transport)
+    private val gasReader = AgentGasReader(transport)
     private val mutableState = MutableStateFlow(WalletState(chainId = deployment.chainId))
     override val state = mutableState.asStateFlow()
     private val refreshLock = Mutex()
@@ -216,6 +219,7 @@ class ChainWalletRepository(
         val evidence = logs.map { ModuleEvents.evidence(it, header(it).timestamp, deployment.explorerBaseUrl) }.reversed()
         val (obligations, accountingError) = readObligations(p1.module) { data -> call(deployment.module, data) }
         val charts = runCatching { ChartEvidenceReader.read(indexed, deployment, block, reader, p1.cash) }.getOrNull()
+        val gas = runCatching { gasReader.read(p1.module.sessionKey, block, txIndex()) }.getOrNull()
         val end = reader.block(ChainReader.tag(block.number))
         require(end.hash.equals(block.hash, true)) { "Snapshot block was reorganized; refresh again" }
         val head = reader.block("latest")
@@ -226,7 +230,7 @@ class ChainWalletRepository(
             treasury = Treasury(deployment.safe, deployment.asset, Money(p1.cash)),
             buckets = p1.buckets,
             vaults = p1.vaults, module = p1.module, queue = p1.queue, payees = payees, recentActions = actions,
-            evidence = evidence, obligations = obligations, chartEvidence = charts, accountingMatches = accountingError == null,
+            evidence = evidence, obligations = obligations, chartEvidence = charts, agentGas = gas, accountingMatches = accountingError == null,
             accountingError = accountingError, capturedAtEpochMillis = p1.capturedAt, observedHeadBlock = head.number,
             balanceHistory = BalanceReconstruction.reconstruct(p1.cash, block, indexed.logs, indexed.headers,
                 deployment.asset, deployment.safe),
@@ -261,8 +265,9 @@ class ChainWalletRepository(
                 assetOrNull("deployments/obligations-demo-84532.json"),
             )
             val cache = FileSnapshotCache.forContext(context)
+            val indexCache = TxIndexCache(java.io.File(context.filesDir, "evidence/tx_index.json"))
             return ChainWalletRepository(asset("deployments/84532.json"), asset("deployments/obligations-84532.json"),
-                rpcUrl?.let(::JsonRpcClient), extraObligationsJson = extra, snapshotCache = cache,
+                rpcUrl?.let(::JsonRpcClient), txIndex = { indexCache.cached() }, extraObligationsJson = extra, snapshotCache = cache,
                 eventIndex = SharedEventIndexes.forContext(context, Deployment.parse(asset("deployments/84532.json"))))
         }
     }

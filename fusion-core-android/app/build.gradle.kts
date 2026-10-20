@@ -75,6 +75,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.zxing:core:3.5.3")
     // Lightweight secp256k1 / RFC6979 / Keccak APIs; no global provider replacement.
     implementation("org.bouncycastle:bcprov-jdk18on:1.79")
     implementation(libs.androidx.core.ktx)
