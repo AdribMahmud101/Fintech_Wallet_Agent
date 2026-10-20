@@ -1,20 +1,19 @@
 package app.fusion.wallet.ui.treasury
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +33,6 @@ import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.math.BigInteger
 
 @Composable
 fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) {
@@ -55,8 +53,8 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         while (true) { delay(1000); value = System.currentTimeMillis() }
     }
     LaunchedEffect(state.balanceHistory, state.refreshing, state.historyError) { historyVm.load(state) }
-    Box(modifier.fillMaxSize()) {
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Box(modifier.fillMaxSize().background(Color(0xFF080A0D))) {
+        LazyColumn(contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 // A title row contains only the bounded refresh action; freshness belongs in the hero.
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -78,12 +76,15 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             if (state.treasury == null && state.status == LoadStatus.LOADING) item {
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now) }
-            item { BucketsTile(state.buckets) }
+            item { HomeAllocationAndRunway(state) }
             item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
+            item { HomeSpendingAndRates(state, txIndex) }
+            item { WorthKnowing(state) }
             item {
-                BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
-                    Text(stringResource(R.string.home_agent_title), style = FusionType.HeadingSmall)
+                ChartTile(Modifier.fillMaxWidth()) {
+                    ChartTileHeader(stringResource(R.string.home_agent_title),
+                        "Dry run is a live policy preview without a broadcast. The latest decision uses the recorded transaction provenance where available; planner labels identify the recorded planner. Stop requests the guardian pause.")
                     val module = state.module
                     val status = when {
                         module == null -> "Status unavailable"
@@ -113,7 +114,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 }
             }
             if (state.vaults.isEmpty()) item {
-                BentoTile(Modifier.fillMaxWidth()) {
+                ChartTile(Modifier.fillMaxWidth()) {
                     Text("Vault positions", style = FusionType.HeadingSmall)
                     Text("Vault balances unavailable until the chain snapshot loads.", style = FusionType.BodySmall)
                 }
@@ -144,18 +145,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
 
 @Composable
 private fun TreasuryHero(state: WalletState, now: Long) {
-    BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Green) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(painterResource(R.drawable.ic_crypto_usdc), "USDC", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
-            Text("Total treasury", style = FusionType.HeadingSmall)
-        }
-        val total = state.buckets?.total?.raw
-        if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
-        else {
-            // Currency on a separate line keeps large exact amounts readable on a phone.
-            AmountText(total, symbol = "", style = FusionType.NumberLarge, modifier = Modifier.padding(top = 12.dp))
-            Text(state.treasury?.symbol ?: "USDC", style = FusionType.BodyMedium)
-        }
+    ChartTile(Modifier.fillMaxWidth(), hero = true) {
         val age = state.capturedAtEpochMillis?.let { ((now - it).coerceAtLeast(0) / 1000) }
         val source = when {
             state.source == DataSource.DEMO -> "Demo data"
@@ -163,59 +153,49 @@ private fun TreasuryHero(state: WalletState, now: Long) {
             state.isDisplayStale(now) || state.refreshing -> "Cached snapshot"
             else -> "Live snapshot"
         }
-        Text("$source${age?.let { " · Updated $it s ago" } ?: ""}${if (state.refreshing) " · refreshing" else ""}",
-            style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
-        state.blockNumber?.let { Text("Block $it", style = FusionType.NumberCaption) }
-        state.treasury?.let { Text("Safe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}", style = FusionType.BodySmall) }
-        if (state.accountingMatches == false) Text(app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty(),
-            style = FusionType.BodySmall, color = FusionColors.Amber)
-    }
-}
-
-@Composable
-private fun BucketsTile(buckets: Buckets?) {
-    BentoTile(Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.home_buckets_title), style = FusionType.HeadingSmall)
-        if (buckets == null) { Text("Buckets unavailable until balances and policy load.", style = FusionType.BodySmall); return@BentoTile }
-        // Owed coverage, buffer and surplus partition Safe cash. Deployed vault assets are separate.
-        val values = listOf(buckets.reserve.raw, buckets.buffer.raw, buckets.surplus.raw)
-        val labels = listOf("Owed · covered", "Buffer", "Surplus")
-        val colors = listOf(FusionColors.Amber, FusionColors.Indigo, FusionColors.Green)
-        val total = values.fold(BigInteger.ZERO, BigInteger::add)
-        val summary = labels.zip(values).joinToString { (label, raw) -> "$label ${formatBigIntegerAmount(raw)} USDC" }
-        Canvas(Modifier.padding(vertical = 16.dp).fillMaxWidth().height(20.dp).semantics { contentDescription = "100 percent of Safe cash. $summary" }) {
-            val segments = bucketSegments(values)
-            if (segments.isEmpty()) drawRect(FusionColors.Border)
-            segments.forEach { segment ->
-                val left = size.width * segment.start.toFloat()
-                val right = size.width * segment.end.toFloat()
-                drawRect(colors[segment.bucketIndex], Offset(left, 0f), Size(right - left, size.height))
+        val explanation = buildString {
+            append("What is left after bills and the safety cushion. Your AI agent can only use this.")
+            append("\n\n$source")
+            age?.let { append(" · Updated $it s ago") }
+            if (state.refreshing) append(" · refreshing")
+            state.blockNumber?.let { append("\nBlock $it") }
+            state.treasury?.let { append("\nSafe cash · ${formatBigIntegerAmount(it.balance.raw)} ${it.symbol}") }
+            if (state.accountingMatches == false) append("\n" + app.fusion.wallet.ui.common.accountingMessageForPeople(state.accountingError).orEmpty())
+        }
+        ChartTileHeader("Spare cash", explanation)
+        val total = state.buckets?.surplus?.raw
+        if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
+        else ChartAmount(formatBigIntegerAmount(total), state.treasury?.symbol ?: "USDC")
+        state.buckets?.let { buckets ->
+            val covered = buckets.shortfall.raw.signum() == 0
+            val ok = covered && state.accountingMatches == true
+            val tone = if (ok) FusionChart.Cash else FusionChart.Reserved
+            androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                androidx.compose.material3.Icon(
+                    if (ok) androidx.compose.material.icons.Icons.Filled.CheckCircle else androidx.compose.material.icons.Icons.Filled.Warning,
+                    contentDescription = null, tint = tone, modifier = Modifier.padding(end = 8.dp).size(22.dp))
+                Text(if (state.accountingMatches != true) "Bill coverage unverified" else if (covered) "Your bills are covered" else "${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bill shortfall",
+                    style = FusionChart.Status, color = tone)
             }
         }
-        values.forEachIndexed { i, raw ->
-            Text("${i + 1}. ${labels[i]}", style = FusionType.BodySmall)
-            AmountText(raw, style = FusionType.NumberBody)
-        }
-        if (total.signum() == 0) Text("No Safe cash in this snapshot.", style = FusionType.BodySmall)
-        Text("Total owed · ${formatBigIntegerAmount(buckets.owed.raw)} USDC", style = FusionType.BodySmall)
-        if (buckets.shortfall.raw.signum() > 0) Text("Uncovered owed · ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC",
-            color = FusionColors.Amber, style = FusionType.BodySmall)
-        Text("Vault assets · ${formatBigIntegerAmount(buckets.deployed.raw)} USDC (outside cash buckets)", style = FusionType.BodySmall)
+        Text("What is left after bills and the safety cushion. Your AI agent can only use this.",
+            style = FusionType.BodyMedium, color = FusionChart.Muted, modifier = Modifier.padding(top = 10.dp))
     }
 }
 
 @Composable
 private fun VaultTile(vault: VaultPosition) {
-    BentoTile(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (!vault.simulatedYield) Icon(painterResource(R.drawable.ic_brand_aave), "Aave", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
-            Text(vault.name, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f))
-        }
-        StatusChip(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position", if (vault.simulatedYield) FusionColors.Amber else FusionColors.Green)
-        AmountText(vault.assets.raw, style = FusionType.NumberSmall, modifier = Modifier.padding(top = 8.dp))
-        Text("Withdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC", style = FusionType.BodySmall)
-        Text("Exposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC", style = FusionType.BodySmall)
-        Text("Shares · ${vault.sharesRaw}", style = FusionType.NumberCaption)
+    ChartTile(Modifier.fillMaxWidth()) {
+        ChartTileHeader(vault.name, buildString {
+            append(if (vault.simulatedYield) "Simulated yield from sponsor donations." else "On-chain Aave position.")
+            append("\n\nWithdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC")
+            append("\nExposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC")
+            append("\nShares · ${vault.sharesRaw}")
+        })
+        ChartAmount(formatBigIntegerAmount(vault.assets.raw), large = false)
+        Text(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position",
+            style = FusionChart.Status, color = if (vault.simulatedYield) FusionChart.Reserved else FusionChart.Cash,
+            modifier = Modifier.padding(top = 8.dp))
     }
 }
 

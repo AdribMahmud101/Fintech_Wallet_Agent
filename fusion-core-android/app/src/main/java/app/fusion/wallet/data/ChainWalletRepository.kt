@@ -106,6 +106,7 @@ class ChainWalletRepository(
             accountingError = previous.accountingError,
             capturedAtEpochMillis = capturedAt,
             balanceHistory = previous.balanceHistory,
+            chartEvidence = previous.chartEvidence,
             refreshing = true,
         )
     }
@@ -214,6 +215,7 @@ class ChainWalletRepository(
         }.reversed()
         val evidence = logs.map { ModuleEvents.evidence(it, header(it).timestamp, deployment.explorerBaseUrl) }.reversed()
         val (obligations, accountingError) = readObligations(p1.module) { data -> call(deployment.module, data) }
+        val charts = runCatching { ChartEvidenceReader.read(indexed, deployment, block, reader, p1.cash) }.getOrNull()
         val end = reader.block(ChainReader.tag(block.number))
         require(end.hash.equals(block.hash, true)) { "Snapshot block was reorganized; refresh again" }
         val head = reader.block("latest")
@@ -224,7 +226,7 @@ class ChainWalletRepository(
             treasury = Treasury(deployment.safe, deployment.asset, Money(p1.cash)),
             buckets = p1.buckets,
             vaults = p1.vaults, module = p1.module, queue = p1.queue, payees = payees, recentActions = actions,
-            evidence = evidence, obligations = obligations, accountingMatches = accountingError == null,
+            evidence = evidence, obligations = obligations, chartEvidence = charts, accountingMatches = accountingError == null,
             accountingError = accountingError, capturedAtEpochMillis = p1.capturedAt, observedHeadBlock = head.number,
             balanceHistory = BalanceReconstruction.reconstruct(p1.cash, block, indexed.logs, indexed.headers,
                 deployment.asset, deployment.safe),

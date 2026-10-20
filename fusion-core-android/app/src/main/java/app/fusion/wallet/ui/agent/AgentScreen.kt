@@ -143,7 +143,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                     if (module == null) Text(stringResource(R.string.k24_policy_unavailable), style = FusionType.BodyMedium)
                     else {
                         val bps = gaugeBasisPoints(module.dailyUsed.raw, module.policy.dailyLimit.raw)
-                        EvidenceRing(bps, "Daily limit used: ${module.dailyUsed.display} / ${module.policy.dailyLimit.display} USDC")
+                        DailyLimitRing(module)
                         AmountText(module.dailyUsed.raw)
                         Text("of daily limit", style = FusionType.BodySmall)
                         AmountText(module.policy.dailyLimit.raw, style = FusionType.NumberSmall)
@@ -153,6 +153,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                     }
                 }
             }
+            item { DecisionMixTile(state, txIndex, run.result?.reportJson) }
             item { Text(stringResource(R.string.ag_queue_title), style = FusionType.HeadingMedium) }
             if (state.queue.isEmpty()) item {
                 if (state.status == LoadStatus.LOADING) SkeletonTile() else BentoTile(Modifier.fillMaxWidth()) {

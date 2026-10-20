@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fusion.wallet.R
 import app.fusion.wallet.data.*
+import app.fusion.wallet.ui.charts.*
 import app.fusion.wallet.ui.MainViewModel
 import app.fusion.wallet.ui.agent.*
 import app.fusion.wallet.ui.common.vendorName
@@ -65,6 +66,24 @@ fun BillsScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                     }
                     SegmentedButton(selected = showVendors, onClick = { showVendors = true }, shape = SegmentedButtonDefaults.itemShape(1, 2), modifier = Modifier.heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.bv_tab_payees))
+                    }
+                }
+            }
+            item {
+                ChartTile(Modifier.fillMaxWidth()) {
+                    ChartTileHeader("Paid per vendor",
+                        "Paid bills in the verified current bill commitment, summed by registered vendor. Bars are relative to the largest vendor total. This is the current commitment, not lifetime spending.")
+                    if (state.accountingMatches!=true) Text("Paid bills unavailable until metadata matches the chain commitment",style=FusionType.BodySmall)
+                    else {
+                        val paid=state.obligations.filter { it.paid }.groupBy { bill ->
+                            state.payees.firstOrNull { it.id.equals(bill.payeeId,true) || it.address.equals(bill.payeeId,true) }?.label
+                                ?: vendorName(bill.payeeId,null)
+                        }.mapValues { (_,bills)->bills.fold(BigInteger.ZERO) { sum,bill->sum+bill.amount.raw } }
+                        val max=paid.values.maxOrNull()?:BigInteger.ZERO
+                        if (paid.isEmpty()) Text("No paid bills in the verified commitment",style=FusionType.BodySmall)
+                        else ProgressBars(paid.entries.sortedByDescending { it.value }.map { row ->
+                            ProgressRow(row.key,"${formatBigIntegerAmount(row.value)} USDC",gaugeFraction(row.value.toBigDecimal(),max.toBigDecimal()),FusionColors.Green)
+                        },Modifier.padding(top=12.dp))
                     }
                 }
             }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -13,10 +12,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import app.fusion.wallet.ui.components.AmountText
-import app.fusion.wallet.ui.components.BentoTile
 import app.fusion.wallet.ui.components.formatBigIntegerAmount
-import app.fusion.wallet.ui.theme.FusionColors
+import app.fusion.wallet.ui.theme.FusionChart
 import app.fusion.wallet.ui.theme.FusionType
 import java.math.BigInteger
 import java.math.BigDecimal
@@ -46,58 +43,76 @@ fun balanceSummary(points: List<BalancePoint>, days: Int): String {
 fun BalanceAreaChart(
     points: List<BalancePoint>, currentBalance: BigInteger?, modifier: Modifier = Modifier,
     loading: Boolean = false, note: String? = null,
+) = AreaLineChart(points, currentBalance, modifier, loading, note)
+
+@Composable
+fun AreaLineChart(
+    points: List<BalancePoint>, currentBalance: BigInteger?, modifier: Modifier = Modifier,
+    loading: Boolean = false, note: String? = null,
 ) {
-    var days by rememberSaveable { mutableStateOf(7) }
-    val cutoff = System.currentTimeMillis() / 1000 - days * 86400L
-    val filtered = points.filter { it.timestampSeconds >= cutoff }.sortedBy { it.timestampSeconds }
-    val summary = balanceSummary(filtered, days)
+    val cutoff = System.currentTimeMillis() / 1000 - 30 * 86400L
+    val filtered = points.filter { it.timestampSeconds >= cutoff }.sortedBy { it.timestampSeconds }.distinctBy { it.timestampSeconds }
+    val summary = balanceSummary(filtered, 30)
     val progress = rememberChartProgress()
-    BentoTile(modifier.fillMaxWidth()) {
-        Text("Safe USDC cash history", style = FusionType.HeadingSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(7, 30).forEach { range ->
-                FilterChip(selected = days == range, onClick = { days = range },
-                    label = { Text("$range d") }, modifier = Modifier.heightIn(min = 48.dp))
-            }
-        }
+    val date = remember { SimpleDateFormat("MMM d, HH:mm z", Locale.getDefault()) }
+    val explanation = buildString {
+        append("Reconstructed Safe USDC cash from transfers and module checkpoints. Historical vault values are unavailable; vault assets are separate. Change compares the first and last verified samples in the last 30 days; the window can be shorter than 30 days. Points retain their actual timestamp spacing, including initial funding.")
+        if (filtered.isNotEmpty()) append("\n\n${date.format(Date(filtered.first().timestampSeconds * 1000))} → ${date.format(Date(filtered.last().timestampSeconds * 1000))}\n${filtered.size} verified block samples. $summary")
+        note?.let { append("\n\n$it") }
+    }
+    ChartTile(modifier.fillMaxWidth()) {
+        ChartTileHeader("Total, last 30 days", explanation)
+        currentBalance?.let { ChartAmount(formatBigIntegerAmount(it)) }
+            ?: Text("Balance unavailable", style = FusionType.BodyMedium)
         if (filtered.size < 4) {
-            currentBalance?.let { AmountText(it, style = FusionType.NumberSmall) }
-                ?: Text("Balance unavailable", style = FusionType.BodyMedium)
-            Text(if (loading) "Reading historical balances…" else note ?: 
-                "${filtered.size} verified points in $days days. At least 4 are needed for a chart.",
-                style = FusionType.BodySmall)
+            Text(if (loading) "Reading historical balances…" else
+                "${filtered.size} verified points · not enough history yet", style = FusionType.BodySmall,
+                modifier = Modifier.padding(top = 8.dp))
         } else {
-            Text(summary, style = FusionType.BodySmall)
+            val delta = filtered.last().balanceRaw - filtered.first().balanceRaw
+            Text(balanceChangeCaption(filtered), style = FusionChart.Status,
+                color = if (delta.signum() < 0) FusionChart.Coral else FusionChart.Cash)
             val low = filtered.minOf { it.balanceRaw }
             val high = filtered.maxOf { it.balanceRaw }
-            Text("Safe cash · solid line / circle markers", style = FusionType.BodySmall)
-            Text("${formatBigIntegerAmount(low)} – ${formatBigIntegerAmount(high)} USDC", style = FusionType.NumberCaption)
-            Canvas(Modifier.fillMaxWidth().height(150.dp).semantics {
-                contentDescription = "$summary. Safe USDC cash, excluding vault assets. " +
-                    "Range ${formatBigIntegerAmount(low)} to ${formatBigIntegerAmount(high)} USDC. ${filtered.size} verified block samples."
+            // Pad the actual range, never force the baseline to zero. Funding cliffs stay real.
+            val (floor, ceiling) = balancePlotRange(filtered.map { it.balanceRaw })
+            val span = ceiling - floor
+            Canvas(Modifier.fillMaxWidth().height(120.dp).semantics {
+                contentDescription = "$summary. Safe USDC cash excluding vault assets. Range ${formatBigIntegerAmount(low)} to ${formatBigIntegerAmount(high)} USDC. ${filtered.size} verified block samples."
             }) {
-                val pad = 8.dp.toPx()
-                val w = size.width - pad * 2
-                val h = size.height - pad * 2
-                val span = high - low
+                val pad = 7.dp.toPx(); val w = size.width - pad * 2; val h = size.height - pad * 2
                 val start = filtered.first().timestampSeconds
                 val duration = (filtered.last().timestampSeconds - start).coerceAtLeast(1)
-                val offsets = filtered.map { point -> Offset(
-                    pad + w * ((point.timestampSeconds - start).toBigDecimal().divide(duration.toBigDecimal(), 8, RoundingMode.HALF_UP).toFloat()),
-                    pad + h * (1f - if (span.signum() == 0) 0.5f else chartFraction(point.balanceRaw - low, span))) }
-                repeat(3) { i -> drawLine(FusionColors.Border, Offset(pad, pad + h * i / 2),
-                    Offset(pad + w, pad + h * i / 2), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f))) }
-                val line = Path().apply { offsets.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) } }
-                val area = Path().apply { addPath(line); lineTo(offsets.last().x, pad + h); lineTo(offsets.first().x, pad + h); close() }
+                val offsets = filtered.map { point -> PlotPoint(
+                    pad + w * ((point.timestampSeconds - start).toBigDecimal().divide(duration.toBigDecimal(), 12, RoundingMode.HALF_UP).toFloat()),
+                    pad + h * (1f - chartFraction(point.balanceRaw - floor, span))) }
+                val line = Path().apply {
+                    moveTo(offsets.first().x, offsets.first().y)
+                    monotoneCubics(offsets).forEach { cubicTo(it.c1.x,it.c1.y,it.c2.x,it.c2.y,it.end.x,it.end.y) }
+                }
+                val area = Path().apply { addPath(line); lineTo(offsets.last().x,size.height); lineTo(offsets.first().x,size.height); close() }
                 clipRect(right = size.width * progress) {
-                    drawPath(area, Brush.verticalGradient(listOf(FusionColors.Indigo.copy(alpha = .25f), Color.Transparent)))
-                    drawPath(line, FusionColors.Indigo, style = Stroke(2.dp.toPx()))
-                    offsets.forEach { drawCircle(FusionColors.Text, 2.dp.toPx(), it) }
+                    drawPath(area, Brush.verticalGradient(listOf(FusionChart.Sky.copy(alpha = .28f), Color.Transparent)))
+                    drawPath(line, FusionChart.Sky, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+                    if (progress >= .99f) {
+                        val end = Offset(offsets.last().x, offsets.last().y)
+                        drawCircle(Brush.radialGradient(listOf(FusionChart.Sky.copy(alpha = .5f), Color.Transparent), end, 7.dp.toPx()), 7.dp.toPx(), end)
+                        drawCircle(FusionChart.Sky, 3.5.dp.toPx(), end)
+                    }
                 }
             }
-            val date = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
-            Text("${date.format(Date(filtered.first().timestampSeconds * 1000))} → ${date.format(Date(filtered.last().timestampSeconds * 1000))}", style = FusionType.BodySmall)
-            Text("Reconstructed from Safe USDC transfers and module checkpoints. Vault assets are separate.", style = FusionType.BodySmall)
         }
     }
+}
+
+/** Short face label; exact observed-window details remain in the info sheet. */
+fun balanceChangeCaption(points: List<BalancePoint>): String {
+    if (points.isEmpty()) return "No verified history"
+    val first = points.first().balanceRaw
+    val delta = points.last().balanceRaw - first
+    if (first.signum() == 0) return if (delta.signum() == 0) "0% in 30 days"
+        else "+${formatBigIntegerAmount(delta)} USDC in 30 days"
+    val percent = delta.abs().toBigDecimal().multiply(BigDecimal(100))
+        .divide(first.toBigDecimal(), 1, RoundingMode.HALF_UP)
+    return "${if (delta.signum() < 0) "▼" else if (delta.signum() > 0) "▲" else ""} $percent% in 30 days".trim()
 }
