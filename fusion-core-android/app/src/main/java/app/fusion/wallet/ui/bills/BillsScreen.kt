@@ -70,8 +70,9 @@ fun BillsScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                 }
             }
             item {
-                BentoTile(Modifier.fillMaxWidth()) {
-                    Text("Paid per vendor",style=FusionType.HeadingSmall)
+                ChartTile(Modifier.fillMaxWidth()) {
+                    ChartTileHeader("Paid per vendor",
+                        "Paid bills in the verified current bill commitment, summed by registered vendor. Bars are relative to the largest vendor total. This is the current commitment, not lifetime spending.")
                     if (state.accountingMatches!=true) Text("Paid bills unavailable until metadata matches the chain commitment",style=FusionType.BodySmall)
                     else {
                         val paid=state.obligations.filter { it.paid }.groupBy { bill ->
@@ -83,7 +84,6 @@ fun BillsScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                         else ProgressBars(paid.entries.sortedByDescending { it.value }.map { row ->
                             ProgressRow(row.key,"${formatBigIntegerAmount(row.value)} USDC",gaugeFraction(row.value.toBigDecimal(),max.toBigDecimal()),FusionColors.Green)
                         },Modifier.padding(top=12.dp))
-                        Text("Verified current bill commitment · bars relative to largest vendor total",style=FusionType.BodySmall)
                     }
                 }
             }
