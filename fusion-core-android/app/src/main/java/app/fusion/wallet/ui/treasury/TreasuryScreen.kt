@@ -46,7 +46,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
     val now by produceState(System.currentTimeMillis()) {
         while (true) { delay(1000); value = System.currentTimeMillis() }
     }
-    LaunchedEffect(state.evidence, state.recentActions) { historyVm.load(state) }
+    LaunchedEffect(state.balanceHistory, state.refreshing, state.historyError) { historyVm.load(state) }
     Box(modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
@@ -71,7 +71,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 SkeletonTile(height = 180.dp)
             } else item { TreasuryHero(state, now) }
             item { BucketsTile(state.buckets) }
-            item { BalanceAreaChart(history.points, state.buckets?.total?.raw,
+            item { BalanceAreaChart(history.points, state.treasury?.balance?.raw,
                 loading = history.loading, note = history.note) }
             item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {

@@ -53,7 +53,7 @@ fun BalanceAreaChart(
     val summary = balanceSummary(filtered, days)
     val progress = rememberChartProgress()
     BentoTile(modifier.fillMaxWidth()) {
-        Text("Balance history", style = FusionType.HeadingSmall)
+        Text("Safe USDC cash history", style = FusionType.HeadingSmall)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(7, 30).forEach { range ->
                 FilterChip(selected = days == range, onClick = { days = range },
@@ -70,10 +70,10 @@ fun BalanceAreaChart(
             Text(summary, style = FusionType.BodySmall)
             val low = filtered.minOf { it.balanceRaw }
             val high = filtered.maxOf { it.balanceRaw }
-            Text("Total treasury · solid line / circle markers", style = FusionType.BodySmall)
+            Text("Safe cash · solid line / circle markers", style = FusionType.BodySmall)
             Text("${formatBigIntegerAmount(low)} – ${formatBigIntegerAmount(high)} USDC", style = FusionType.NumberCaption)
             Canvas(Modifier.fillMaxWidth().height(150.dp).semantics {
-                contentDescription = "$summary. Total treasury including vault assets. " +
+                contentDescription = "$summary. Safe USDC cash, excluding vault assets. " +
                     "Range ${formatBigIntegerAmount(low)} to ${formatBigIntegerAmount(high)} USDC. ${filtered.size} verified block samples."
             }) {
                 val pad = 8.dp.toPx()
@@ -97,7 +97,7 @@ fun BalanceAreaChart(
             }
             val date = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
             Text("${date.format(Date(filtered.first().timestampSeconds * 1000))} → ${date.format(Date(filtered.last().timestampSeconds * 1000))}", style = FusionType.BodySmall)
-            Text("Sampled at module-event blocks; transfers between samples are not shown.", style = FusionType.BodySmall)
+            Text("Reconstructed from Safe USDC transfers and module checkpoints. Vault assets are separate.", style = FusionType.BodySmall)
         }
     }
 }
