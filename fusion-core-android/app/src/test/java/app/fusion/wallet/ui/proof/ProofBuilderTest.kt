@@ -94,6 +94,16 @@ class ProofBuilderTest {
         assertTrue(result.sections.none { it.operation == ProofOperation.Transactions })
     }
 
+    @Test
+    fun transactionNoteIsShownFromTheRecordedIndex() {
+        val note = "Owner-mandated rehearsal (2-of-2)"
+        val index = TxIndex.parse(
+            """[{"txHash":"$deposit","source":"APP","kind":"DEPOSIT","evidenceFile":"evidence/app.json","notes":"$note"}]""")
+        val row = ProofBuilder.build(WalletState(), SafetyData(), txIndex = index)
+            .sections.single { it.operation == ProofOperation.AssetManagement }.rows.single()
+        assertEquals(note, row.note)
+    }
+
     private fun index() = TxIndex.parse(
         """[
             {"txHash":"$deposit","source":"AGENT","kind":"DEPOSIT","amountRaw":"5000000","recipient":"0x00000000000000000000000000000000000d0001","evidenceFile":"evidence/vault/deposit.json","planner":"mnn+ahem-g@android"},

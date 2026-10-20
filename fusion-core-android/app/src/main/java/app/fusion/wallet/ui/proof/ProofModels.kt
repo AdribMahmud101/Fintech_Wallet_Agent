@@ -73,6 +73,7 @@ object ProofBuilder {
                 txHash = entry.txHash,
                 blockNumber = 0L,
                 details = entry.evidenceFile,
+                note = entry.notes,
             )
         }
         val sections = ProofOperation.entries.mapNotNull { operation ->
