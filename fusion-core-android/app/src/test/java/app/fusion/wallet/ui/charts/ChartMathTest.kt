@@ -20,11 +20,14 @@ class ChartMathTest {
         segmentPercentages(listOf(BigInteger.valueOf(-1)))
     }
     @Test fun compactBarLabelsPreserveScaleAndSmallNonzeroAmounts() {
-        assertEquals("0.00",chartAmountLabel(BigInteger.ZERO))
+        assertEquals("0",chartAmountLabel(BigInteger.ZERO))
         assertEquals("<0.01",chartAmountLabel(BigInteger.ONE))
-        assertEquals("15.00",chartAmountLabel(BigInteger("15000000")))
-        assertEquals("1.2k",chartAmountLabel(BigInteger("1200000000")))
-        assertEquals("2.5m",chartAmountLabel(BigInteger("2500000000000")))
+        assertEquals("15",chartAmountLabel(BigInteger("15000000")))
+        assertEquals("500",chartAmountLabel(BigInteger("500000000")))
+        assertEquals("6.3K",chartAmountLabel(BigInteger("6300000000")))
+        assertEquals("9.4K",chartAmountLabel(BigInteger("9399000000")))
+        assertEquals("1.2K",chartAmountLabel(BigInteger("1200000000")))
+        assertEquals("2.5M",chartAmountLabel(BigInteger("2500000000000")))
     }
     @Test fun gaugeClampHandlesZeroAndOverLimit() {
         assertEquals(0,gaugeFraction((-1).toBigDecimal(),100.toBigDecimal()).signum())

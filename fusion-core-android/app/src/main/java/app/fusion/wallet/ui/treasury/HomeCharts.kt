@@ -27,20 +27,22 @@ private fun ChartPair(first: @Composable (Modifier)->Unit, second: @Composable (
 
 @Composable
 fun HomeAllocationAndRunway(state: WalletState) {
-    ChartPair(first={ modifier -> BentoTile(modifier,padding=12.dp) {
-        Text("Where it sits",style=FusionType.HeadingSmall)
-        val buckets=state.buckets
-        if (buckets==null) Text("Allocation unavailable until balances and bills load",style=FusionType.BodySmall)
-        else {
-            DonutChart(listOf(
-                Segment("Cash",buckets.surplus.raw,FusionColors.Green),
-                Segment("Reserved for bills",buckets.reserve.raw+buckets.buffer.raw,FusionColors.Amber),
-                Segment("Earning",buckets.deployed.raw,FusionColors.Indigo)),
-                formatBigIntegerAmount(buckets.total.raw),"USDC total")
-            Text("Reserved includes the funded bill reserve and safety cushion.",style=FusionType.BodySmall,modifier=Modifier.padding(top=8.dp))
-            if (buckets.shortfall.raw.signum()>0) Text("${formatBigIntegerAmount(buckets.shortfall.raw)} USDC bills unfunded",style=FusionType.BodySmall,color=FusionColors.Amber)
-        }
-    } },second={ modifier -> BentoTile(modifier,padding=12.dp) {
+    ChartPair(first={ modifier -> ChartTile(modifier) {
+        val buckets = state.buckets
+        ChartTileHeader("Where it sits", buildString {
+            append("Cash is Safe idle cash after funded bills and the safety cushion. Bills includes the funded bill reserve and safety cushion. Earning is current vault assets. These sum to Safe cash plus vault assets.")
+            buckets?.let {
+                append("\n\nCash ${formatBigIntegerAmount(it.surplus.raw)} USDC; reserved ${formatBigIntegerAmount(it.reserve.raw + it.buffer.raw)} USDC; earning ${formatBigIntegerAmount(it.deployed.raw)} USDC.")
+                if (it.shortfall.raw.signum() > 0) append("\n${formatBigIntegerAmount(it.shortfall.raw)} USDC bills unfunded.")
+            }
+        })
+        if (buckets == null) Text("Allocation unavailable until balances and bills load", style = FusionType.BodySmall)
+        else DonutChart(listOf(
+            Segment("Cash", buckets.surplus.raw, FusionChart.Cash),
+            Segment("Bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
+            Segment("Earning", buckets.deployed.raw, FusionChart.Sky)),
+            chartAmountLabel(buckets.total.raw), "USDC")
+    },second={ modifier -> BentoTile(modifier,padding=12.dp) {
         Text("Cash runway",style=FusionType.HeadingSmall)
         val evidence=state.chartEvidence
         if (evidence==null) Text("Runway history unavailable",style=FusionType.BodySmall)

@@ -26,12 +26,12 @@ fun chartAmountLabel(raw: BigInteger): String {
     require(raw.signum() >= 0)
     val units=BigDecimal(raw,6)
     val (divisor,suffix)=when {
-        units >= BigDecimal("1000000") -> BigDecimal("1000000") to "m"
-        units >= BigDecimal("1000") -> BigDecimal("1000") to "k"
+        units >= BigDecimal("1000000") -> BigDecimal("1000000") to "M"
+        units >= BigDecimal("1000") -> BigDecimal("1000") to "K"
         else -> BigDecimal.ONE to ""
     }
     if (raw.signum()>0 && units < BigDecimal("0.01")) return "<0.01"
-    return units.divide(divisor,if (suffix.isEmpty()) 2 else 1,RoundingMode.HALF_UP).toPlainString()+suffix
+    return units.divide(divisor,if (suffix.isEmpty()) 2 else 1,RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()+suffix
 }
 
 /** Drawing coordinates only. Each Bezier's controls stay inside its endpoint interval.

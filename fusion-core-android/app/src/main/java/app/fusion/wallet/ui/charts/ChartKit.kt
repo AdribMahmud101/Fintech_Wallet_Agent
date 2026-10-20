@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import app.fusion.wallet.ui.components.formatBigIntegerAmount
 import app.fusion.wallet.ui.theme.*
@@ -28,41 +31,46 @@ data class ProgressRow(val label: String, val valueText: String, val fraction: B
 
 @Composable
 fun DonutChart(segments: List<Segment>, centerTop: String, centerBottom: String, modifier: Modifier = Modifier) {
-    val percentages=segmentPercentages(segments.map { it.valueRaw })
-    val total=segments.fold(BigInteger.ZERO) { sum,s->sum+s.valueRaw }
-    val progress=rememberChartProgress()
-    Column(modifier.fillMaxWidth(), horizontalAlignment=Alignment.CenterHorizontally) {
-        if (total.signum()==0) {
-            Text(centerTop,style=FusionType.NumberSmall)
-            Text("No recorded allocation yet",style=FusionType.BodySmall)
+    val percentages = segmentPercentages(segments.map { it.valueRaw })
+    val total = segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
+    val progress = rememberChartProgress()
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (total.signum() == 0) {
+            Text(centerTop, style = FusionType.HeadingSmall)
+            Text("No recorded allocation yet", style = FusionType.BodySmall)
         } else {
-            Box(Modifier.fillMaxWidth().height(152.dp).semantics {
-                contentDescription="$centerTop $centerBottom. "+segments.mapIndexed { i,s->"${s.label}: ${s.valueRaw} raw units, ${percentages[i]} percent" }.joinToString(". ")
-            },contentAlignment=Alignment.Center) {
-                Canvas(Modifier.size(148.dp)) {
-                    val sw=13.dp.toPx(); val diameter=size.minDimension-sw; val radius=diameter/2
-                    val top=Offset((size.width-diameter)/2,(size.height-diameter)/2)
-                    var angle=-90f
-                    bucketSegments(segments.map { it.valueRaw }).forEach { s ->
-                        val full=(s.end-s.start).toFloat()*360f
-                        val width=sw.coerceAtMost(full*radius*0.017453293f/3)
-                        val gap=(width+2.dp.toPx())/radius*57.29578f
-                        if (full>gap) drawArc(segments[s.bucketIndex].color,angle+gap/2,(full-gap)*progress,false,
-                            top,Size(diameter,diameter),style=Stroke(width,cap=StrokeCap.Round))
-                        angle+=full
+            Box(Modifier.padding(top = 4.dp, bottom = 10.dp).size(122.dp).semantics {
+                contentDescription = "$centerTop $centerBottom. " + segments.mapIndexed { i, s ->
+                    "${s.label}: ${formatBigIntegerAmount(s.valueRaw)} USDC, ${percentages[i]} percent"
+                }.joinToString(". ")
+            }, contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = 17.dp.toPx()
+                    val diameter = size.minDimension - stroke
+                    val top = Offset(stroke / 2, stroke / 2)
+                    var angle = -90f
+                    bucketSegments(segments.map { it.valueRaw }).forEach { segment ->
+                        val sweep = (segment.end - segment.start).toFloat() * 360f
+                        // Butt ends and angular gaps match the reference; tiny segments remain real.
+                        val gap = minOf(2f, sweep / 2)
+                        drawArc(segments[segment.bucketIndex].color, angle + gap / 2,
+                            (sweep - gap) * progress, false, top, Size(diameter, diameter),
+                            style = Stroke(stroke, cap = StrokeCap.Butt))
+                        angle += sweep
                     }
                 }
-                Column(horizontalAlignment=Alignment.CenterHorizontally, modifier=Modifier.padding(horizontal=18.dp)) {
-                    Text(centerTop,style=FusionType.NumberSmall,textAlign=TextAlign.Center)
-                    Text(centerBottom,style=FusionType.BodySmall,textAlign=TextAlign.Center)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(centerTop, style = FusionType.HeadingSmall.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                    Text(centerBottom, style = FusionType.BodySmall.copy(fontSize = 12.sp), color = FusionChart.Muted)
                 }
             }
         }
-        segments.forEachIndexed { i,s ->
-            Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Text("●",color=s.color,style=FusionType.BodySmall)
-                Text(s.label,Modifier.weight(1f),style=FusionType.BodySmall)
-                Text("${percentages[i]} %",style=FusionType.NumberCaption)
+        segments.forEachIndexed { i, segment ->
+            Row(Modifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(segment.color))
+                Text("${segment.label} ${percentages[i]}%", style = FusionType.BodyMedium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
