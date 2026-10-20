@@ -104,11 +104,14 @@ class ModelDownloader(
         fun create(context: Context, targetDir: File = defaultTargetDir(context)): ModelDownloader {
             return ModelDownloader(targetDir) {
                 val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                // A missing permission or an OEM quirk must never crash setup:
+                // if the network type cannot be read, do not block the download.
                 if (cm != null) {
-                    val network = cm.activeNetwork
-                    val caps = cm.getNetworkCapabilities(network)
-                    caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
-                        caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+                    runCatching {
+                        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+                        caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                            caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+                    }.getOrDefault(true)
                 } else true
             }
         }

@@ -27,6 +27,9 @@ object OnboardingPrefs {
     fun getSelectedRole(context: Context): String =
         prefs(context).getString(KEY_SELECTED_ROLE, "AUDITOR") ?: "AUDITOR"
 
+    fun hasSelectedRole(context: Context): Boolean =
+        prefs(context).contains(KEY_SELECTED_ROLE)
+
     fun setSelectedRole(context: Context, role: String) {
         prefs(context).edit().putString(KEY_SELECTED_ROLE, role).apply()
     }

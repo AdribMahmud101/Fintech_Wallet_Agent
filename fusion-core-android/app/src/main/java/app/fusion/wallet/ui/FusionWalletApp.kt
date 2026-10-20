@@ -97,6 +97,18 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                 LoginScreen(authState, lang, setLang, onSignIn = auth::signIn, onEdit = auth::clearError)
             } else if (user != null && !onboardingDone) {
                 // The first-run stepper (UX plan §3). Finishing persists the flag and drops to Home.
+                // Preselect the role of the person who signed in (Owner / approver / auditor),
+                // unless they already picked one in an earlier run of the stepper.
+                remember(user.role) {
+                    if (!OnboardingPrefs.hasSelectedRole(base)) {
+                        OnboardingPrefs.setSelectedRole(base, when (user.role) {
+                            app.fusion.wallet.accountant.data.UserRole.OWNER -> "OWNER"
+                            app.fusion.wallet.accountant.data.UserRole.MANAGER -> "APPROVER"
+                            app.fusion.wallet.accountant.data.UserRole.AUDITOR -> "AUDITOR"
+                        })
+                    }
+                    true
+                }
                 OnboardingFlow(
                     lang = lang,
                     onLang = setLang,
