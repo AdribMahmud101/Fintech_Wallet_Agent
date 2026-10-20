@@ -46,7 +46,7 @@ fun HomeAllocationAndRunway(state: WalletState) {
             Segment("Bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
             Segment("Earning", buckets.deployed.raw, FusionChart.Sky)),
             chartAmountLabel(buckets.total.raw), "USDC")
-    },second={ modifier -> ChartTile(modifier) {
+    } },second={ modifier -> ChartTile(modifier) {
         val evidence = state.chartEvidence
         val runway = evidence?.let { cashRunway(it.cashRaw, it.outflowRaw, it.historyStart, it.through) }
         ChartTileHeader("Cash runway", buildString {
@@ -88,7 +88,7 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
                 top.mapIndexed { i, label -> Segment(label, week.totals[label] ?: BigInteger.ZERO, palette[i]) } +
                     listOf(Segment("Other", week.totals.filterKeys { it !in top }.values.fold(BigInteger.ZERO, BigInteger::add), FusionChart.Reserved))) })
         }
-    },second={ modifier -> ChartTile(modifier) {
+    } },second={ modifier -> ChartTile(modifier) {
         val apy = state.chartEvidence?.aaveApyPercent
         ChartTileHeader("Interest per year", buildString {
             append("Aave lending: live waUSDC supply APY from Aave V3 Pool getReserveData(USDC).currentLiquidityRate (ray APR converted to compounded annual supply APY). Pool 0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27; USDC 0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f. Bars scale to the largest available rate shown, rather than 100%.")
@@ -122,7 +122,7 @@ fun WorthKnowing(state: WalletState) {
                 val date = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(bill.dueAt * 1000))
                 InsightRow("Your next bill is ${formatBigIntegerAmount(bill.amount.raw)} USDC, due $date; ${formatBigIntegerAmount(buckets.reserve.raw)} USDC is reserved.", FusionChart.Cash)
             } else InsightRow("${formatBigIntegerAmount(buckets.owed.raw)} USDC owed; ${formatBigIntegerAmount(buckets.shortfall.raw)} USDC is unfunded.", FusionChart.Reserved)
-            InsightRow("${formatBigIntegerAmount(buckets.surplus.raw)} USDC spare cash is idle; ${formatBigIntegerAmount(buckets.deployed.raw)} USDC is earning in vaults.", FusionChart.Sky)
+            InsightRow("${formatBigIntegerAmount(buckets.surplus.raw)} USDC spare cash is idle; ${formatBigIntegerAmount(buckets.deployed.raw)} USDC is in vaults.", FusionChart.Sky)
         }
     }
 }

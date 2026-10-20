@@ -70,9 +70,9 @@ fun ChartTile(
 
 /** Currency follows the value on the same baseline, using the reference sans face. */
 @Composable
-fun ChartAmount(value: String, unit: String = "USDC") {
+fun ChartAmount(value: String, unit: String = "USDC", large: Boolean = true) {
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(value, style = FusionChart.Value, maxLines = 1, modifier = Modifier.alignByBaseline())
+        Text(value, style = FusionChart.Value.copy(fontSize = if (large) 32.sp else 26.sp), maxLines = 1, modifier = Modifier.alignByBaseline())
         Text(unit, style = FusionType.BodyMedium.copy(fontSize = 16.sp), color = FusionChart.Muted,
             modifier = Modifier.alignByBaseline())
     }

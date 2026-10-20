@@ -111,7 +111,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                 }
             }
             if (state.vaults.isEmpty()) item {
-                BentoTile(Modifier.fillMaxWidth()) {
+                ChartTile(Modifier.fillMaxWidth()) {
                     Text("Vault positions", style = FusionType.HeadingSmall)
                     Text("Vault balances unavailable until the chain snapshot loads.", style = FusionType.BodySmall)
                 }
@@ -176,16 +176,17 @@ private fun TreasuryHero(state: WalletState, now: Long) {
 
 @Composable
 private fun VaultTile(vault: VaultPosition) {
-    BentoTile(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (!vault.simulatedYield) Icon(painterResource(R.drawable.ic_brand_aave), "Aave", tint = Color.Unspecified, modifier = Modifier.size(32.dp))
-            Text(vault.name, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f))
-        }
-        StatusChip(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position", if (vault.simulatedYield) FusionColors.Amber else FusionColors.Green)
-        AmountText(vault.assets.raw, style = FusionType.NumberSmall, modifier = Modifier.padding(top = 8.dp))
-        Text("Withdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC", style = FusionType.BodySmall)
-        Text("Exposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC", style = FusionType.BodySmall)
-        Text("Shares · ${vault.sharesRaw}", style = FusionType.NumberCaption)
+    ChartTile(Modifier.fillMaxWidth()) {
+        ChartTileHeader(vault.name, buildString {
+            append(if (vault.simulatedYield) "Simulated yield from sponsor donations." else "On-chain Aave position.")
+            append("\n\nWithdrawable · ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC")
+            append("\nExposure cap · ${formatBigIntegerAmount(vault.exposureLimit.raw)} USDC")
+            append("\nShares · ${vault.sharesRaw}")
+        })
+        ChartAmount(formatBigIntegerAmount(vault.assets.raw), large = false)
+        Text(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position",
+            style = FusionChart.Status, color = if (vault.simulatedYield) FusionChart.Reserved else FusionChart.Cash,
+            modifier = Modifier.padding(top = 8.dp))
     }
 }
 
