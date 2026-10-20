@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,11 +27,11 @@ import app.fusion.wallet.ui.theme.*
 fun ChartTileHeader(title: String, explanation: String) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     // The glyph is small; its 48 dp hit target extends into the tile padding.
-    Box(Modifier.fillMaxWidth().height(24.dp)) {
+    Box(Modifier.fillMaxWidth().height(20.dp)) {
         Text(title, Modifier.fillMaxWidth().padding(end = 12.dp), style = FusionChart.Title,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
-        IconButton(onClick = { expanded = true }, modifier = Modifier.align(Alignment.TopEnd)
-            .offset(x = 16.dp, y = (-14).dp).size(48.dp)
+        IconButton(onClick = { expanded = true }, modifier = Modifier.align(Alignment.CenterEnd)
+            .offset(x = 16.dp).requiredSize(48.dp)
             .semantics { contentDescription = "About $title" }) {
             Text("ⓘ", style = FusionType.BodySmall, color = FusionChart.Muted)
         }

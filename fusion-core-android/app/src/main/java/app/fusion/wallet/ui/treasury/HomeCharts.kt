@@ -14,7 +14,6 @@ import app.fusion.wallet.data.*
 import app.fusion.wallet.ui.charts.*
 import app.fusion.wallet.ui.components.*
 import app.fusion.wallet.ui.theme.*
-import java.math.BigDecimal
 import java.math.BigInteger
 import java.text.SimpleDateFormat
 import java.util.*
@@ -22,7 +21,7 @@ import java.util.*
 /** Two equal bento columns; large accessibility text stacks the same tiles. */
 @Composable
 private fun ChartPair(first: @Composable (Modifier)->Unit, second: @Composable (Modifier)->Unit) {
-    if (LocalDensity.current.fontScale > 1.3f) Column(verticalArrangement=Arrangement.spacedBy(16.dp)) {
+    if (LocalDensity.current.fontScale > 1.3f) Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
         first(Modifier.fillMaxWidth()); second(Modifier.fillMaxWidth())
     } else Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
         first(Modifier.weight(1f).fillMaxHeight()); second(Modifier.weight(1f).fillMaxHeight())
@@ -59,7 +58,8 @@ fun HomeAllocationAndRunway(state: WalletState) {
         } else {
             val days = runway.days
             RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
-                when { days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral })
+                when { days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral },
+                arcColor = FusionChart.Reserved)
         }
     } })
 }
@@ -93,7 +93,7 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
         ChartTileHeader("Interest per year", buildString {
             append("Aave lending: live waUSDC supply APY from Aave V3 Pool getReserveData(USDC).currentLiquidityRate (ray APR converted to compounded annual supply APY). Pool 0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27; USDC 0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f. Bars scale to the largest available rate shown, rather than 100%.")
             state.chartEvidence?.blockNumber?.let { append("\n\nPool supply rate · block $it") }
-            append("\n\nDemo vault: simulated yield funded by sponsor donations; no configured annual rate getter. Empty track means no live rate, not zero yield.")
+            append("\n\nDemo vault: simulated — no live rate. Simulated yield is funded by sponsor donations; no configured annual rate getter. Empty track means no live rate, not zero yield.")
         })
         ProgressBars(listOf(
             ProgressRow("Aave lending", apy?.let { "${it.setScale(2, java.math.RoundingMode.HALF_UP)}%" } ?: "unavailable",

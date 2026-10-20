@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -13,11 +12,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import app.fusion.wallet.ui.components.AmountText
-import app.fusion.wallet.ui.components.BentoTile
 import app.fusion.wallet.ui.components.formatBigIntegerAmount
 import app.fusion.wallet.ui.theme.FusionChart
-import app.fusion.wallet.ui.theme.FusionColors
 import app.fusion.wallet.ui.theme.FusionType
 import java.math.BigInteger
 import java.math.BigDecimal
@@ -79,9 +75,8 @@ fun AreaLineChart(
             val low = filtered.minOf { it.balanceRaw }
             val high = filtered.maxOf { it.balanceRaw }
             // Pad the actual range, never force the baseline to zero. Funding cliffs stay real.
-            val rangePadding = ((high - low) / BigInteger.TEN).coerceAtLeast(BigInteger.ONE)
-            val floor = low - rangePadding
-            val span = high + rangePadding - floor
+            val (floor, ceiling) = balancePlotRange(filtered.map { it.balanceRaw })
+            val span = ceiling - floor
             Canvas(Modifier.fillMaxWidth().height(120.dp).semantics {
                 contentDescription = "$summary. Safe USDC cash excluding vault assets. Range ${formatBigIntegerAmount(low)} to ${formatBigIntegerAmount(high)} USDC. ${filtered.size} verified block samples."
             }) {

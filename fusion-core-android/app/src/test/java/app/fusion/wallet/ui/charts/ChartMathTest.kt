@@ -35,6 +35,26 @@ class ChartMathTest {
         assertEquals(0,gaugeFraction(150.toBigDecimal(),100.toBigDecimal()).compareTo(1.toBigDecimal()))
         assertEquals(0,gaugeFraction(25.toBigDecimal(),100.toBigDecimal()).compareTo("0.25".toBigDecimal()))
     }
+    @Test fun paddedBalanceRangeKeepsVariationFundingCliffsAndConstantSeries() {
+        fun range(vararg values: String) = balancePlotRange(values.map(::BigInteger))
+        assertEquals(BigInteger("9339") to BigInteger("10071"), range("9400", "10010"))
+        assertEquals(BigInteger("-1000") to BigInteger("11000"), range("0", "10000", "9399"))
+        assertEquals(BigInteger("9398") to BigInteger("9400"), range("9399", "9399"))
+        assertEquals(BigInteger("-1") to BigInteger.ONE, range("0"))
+        val huge = BigInteger.TEN.pow(40)
+        assertEquals((huge - BigInteger.TEN) to (huge + BigInteger.valueOf(110)),
+            balancePlotRange(listOf(huge, huge + BigInteger.valueOf(100))))
+    }
+    @Test fun balanceCaptionUsesRealChangeAndNeverDividesByZero() {
+        fun points(first: String, last: String) = listOf(
+            BalancePoint(1, BigInteger(first)), BalancePoint(2, BigInteger(last)))
+        assertEquals("▼ 6.0% in 30 days", balanceChangeCaption(points("10000000000", "9400000000")))
+        assertEquals("▲ 25.0% in 30 days", balanceChangeCaption(points("8000000000", "10000000000")))
+        assertEquals("0.0% in 30 days", balanceChangeCaption(points("100", "100")))
+        assertEquals("0% in 30 days", balanceChangeCaption(points("0", "0")))
+        assertEquals("+9,399.00 USDC in 30 days", balanceChangeCaption(points("0", "9399000000")))
+        assertEquals("No verified history", balanceChangeCaption(emptyList()))
+    }
     @Test fun monotoneCubicNeverOvershootsIncludingFlatAndReversals() {
         val series=listOf(listOf(0f,1f,2f,3f),listOf(3f,2f,2f,0f),listOf(0f,100f,0f,100f),listOf(2f,2f,2f,2f))
         series.forEach { ys ->

@@ -34,6 +34,15 @@ fun chartAmountLabel(raw: BigInteger): String {
     return units.divide(divisor,if (suffix.isEmpty()) 2 else 1,RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()+suffix
 }
 
+/** Padded actual extrema, including funding cliffs; never add a synthetic zero baseline. */
+fun balancePlotRange(values: List<BigInteger>): Pair<BigInteger, BigInteger> {
+    require(values.isNotEmpty())
+    val low = values.min()
+    val high = values.max()
+    val padding = ((high - low) / BigInteger.TEN).coerceAtLeast(BigInteger.ONE)
+    return (low - padding) to (high + padding)
+}
+
 /** Drawing coordinates only. Each Bezier's controls stay inside its endpoint interval.
  * Weighted harmonic slopes are zero at a direction change; the limiter preserves monotonicity.
  */

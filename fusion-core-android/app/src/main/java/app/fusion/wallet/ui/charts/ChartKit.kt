@@ -42,7 +42,7 @@ fun DonutChart(
             Text(centerTop, style = FusionType.HeadingSmall)
             Text("No recorded allocation yet", style = FusionType.BodySmall)
         } else {
-            Box(Modifier.padding(top = 4.dp, bottom = 10.dp).size(122.dp).semantics {
+            Box(Modifier.padding(top = 4.dp, bottom = 6.dp).size(122.dp).semantics {
                 contentDescription = "$centerTop $centerBottom. " + segments.mapIndexed { i, s ->
                     "${s.label}: ${valueLabel(s.valueRaw)}, ${percentages[i]} percent"
                 }.joinToString(". ")
@@ -69,22 +69,23 @@ fun DonutChart(
             }
         }
         segments.forEachIndexed { i, segment ->
-            Row(Modifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically,
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(segment.color))
-                Text("${segment.label} ${percentages[i]}%", style = FusionType.BodyMedium,
+                Text(segment.label, Modifier.weight(1f, fill = false), style = FusionType.BodyMedium,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${percentages[i]}%", style = FusionType.BodyMedium, maxLines = 1)
             }
         }
     }
 }
 
 @Composable
-fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerUnit: String, status: String, tone: Color, modifier: Modifier = Modifier) {
+fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerUnit: String, status: String, tone: Color, modifier: Modifier = Modifier, arcColor: Color = tone) {
     val fraction = gaugeFraction(value, max).toFloat()
     val progress = rememberChartProgress()
     Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.padding(top = 4.dp, bottom = 10.dp).size(122.dp).semantics {
+        Box(Modifier.padding(top = 4.dp, bottom = 6.dp).size(122.dp).semantics {
             contentDescription = "$centerValue $centerUnit. $status. Value $value of $max."
         }, contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
@@ -92,7 +93,7 @@ fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerU
                 val diameter = size.minDimension - stroke
                 val top = Offset(stroke / 2, stroke / 2)
                 drawCircle(FusionChart.Track, diameter / 2, style = Stroke(stroke))
-                if (fraction > 0f) drawArc(tone, -90f, 270f * fraction * progress, false,
+                if (fraction > 0f) drawArc(arcColor, -90f, 270f * fraction * progress, false,
                     top, Size(diameter, diameter), style = Stroke(stroke, cap = StrokeCap.Round))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -100,7 +101,8 @@ fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerU
                 Text(centerUnit, style = FusionType.BodySmall.copy(fontSize = 12.sp), color = FusionChart.Muted)
             }
         }
-        Text(status, style = FusionChart.Status, color = tone, textAlign = TextAlign.Center)
+        Text(status, style = FusionChart.Status, color = tone, textAlign = TextAlign.Center,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -116,7 +118,7 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
     }, horizontalAlignment = Alignment.CenterHorizontally) {
         if (max.signum() == 0) Text("No bill payments recorded", style = FusionType.BodySmall)
         // 24 dp pills and up to 22 dp gaps; gaps contract on narrow phones.
-        Canvas(Modifier.widthIn(max = 162.dp).fillMaxWidth().height(120.dp).padding(top = 8.dp)) {
+        Canvas(Modifier.widthIn(max = 162.dp).fillMaxWidth().height(116.dp).padding(top = 8.dp)) {
             val width = minOf(24.dp.toPx(), size.width / weeks.size)
             val gap = if (weeks.size > 1) (size.width - width * weeks.size) / (weeks.size - 1) else 0f
             weeks.forEachIndexed { i, week ->
@@ -138,15 +140,15 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
                 }
             }
         }
-        Row(Modifier.widthIn(max = 162.dp).fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(Modifier.widthIn(max = 162.dp).fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             weeks.forEach { week -> Text(week.label, modifier = Modifier.width(24.dp),
                 style = FusionType.BodySmall, color = FusionChart.Muted, textAlign = TextAlign.Center, maxLines = 1) }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         labels.forEach { label ->
             val all = segments.filter { it.label == label }
             val total = all.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
-            if (total.signum() > 0) Row(Modifier.fillMaxWidth().padding(top = 4.dp),
+            if (total.signum() > 0) Row(Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(all.first().color))
                 Text(label, Modifier.weight(1f), style = FusionType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
