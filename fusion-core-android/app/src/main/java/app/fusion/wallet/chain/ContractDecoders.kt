@@ -95,7 +95,8 @@ object ModuleEvents {
         val kind = when (log.topics.firstOrNull()) {
             EXECUTED -> "ActionExecuted"; PAID -> "ObligationPaid"; QUEUED -> "ActionQueued"
             PAUSED -> "Paused"; UNWIND -> "EmergencyUnwind"; PAYEE_ADDED -> "PayeeAdded"
-            else -> "Module event ${log.topics.firstOrNull()?.take(10).orEmpty()}"
+            else -> ModuleEventNames.byTopic[log.topics.firstOrNull()?.lowercase()]
+                ?: "Module event ${log.topics.firstOrNull()?.take(10).orEmpty()}"
         }
         val decisionHash = when (log.topics.firstOrNull()) {
             EXECUTED -> log.topics[3]

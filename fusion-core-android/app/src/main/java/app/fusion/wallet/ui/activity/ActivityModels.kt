@@ -47,6 +47,12 @@ fun activityTitle(kind: String): String = when (kind.uppercase()) {
     "OWNER_PAY" -> "Bill paid by owner"
     "SAFE_CREATION" -> "Safe treasury created"
     "MODULE_ENABLE" -> "Wallet module enabled"
+    "OBLIGATIONSCOMMITTED", "OBLIGATIONS_COMMITTED" -> "Bills committed by both owners"
+    "POLICYCONFIGURED", "POLICY_CONFIGURED" -> "Policy updated by both owners"
+    "SESSIONSTARTED", "SESSION_STARTED" -> "Agent session started"
+    "RESUMED", "OWNER_RESUME" -> "Agent resumed by both owners"
+    "ACTIONCANCELLED", "ACTION_CANCELLED", "QUEUE_CANCELLED" -> "Queued action cancelled"
+    "ACTIONAPPROVED", "ACTION_APPROVED" -> "Action approved by owners"
     else -> kind.replace('_', ' ').replace(Regex("([a-z])([A-Z])"), "$1 $2")
         .lowercase().replaceFirstChar { it.uppercase() }
 }
