@@ -78,21 +78,26 @@ fun DonutChart(segments: List<Segment>, centerTop: String, centerBottom: String,
 
 @Composable
 fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerUnit: String, status: String, tone: Color, modifier: Modifier = Modifier) {
-    val fraction=gaugeFraction(value,max).toFloat()
-    val progress=rememberChartProgress()
-    Column(modifier.fillMaxWidth(),horizontalAlignment=Alignment.CenterHorizontally) {
-        Box(Modifier.fillMaxWidth().height(152.dp).semantics { contentDescription="$centerValue $centerUnit. $status. Value $value of $max." },contentAlignment=Alignment.Center) {
-            Canvas(Modifier.size(148.dp)) {
-                val sw=12.dp.toPx(); val d=size.minDimension-sw; val top=Offset(sw/2,sw/2)
-                drawArc(FusionColors.Border,135f,270f,false,top,Size(d,d),style=Stroke(sw,cap=StrokeCap.Round))
-                if (fraction>0f) drawArc(tone,135f,270f*fraction*progress,false,top,Size(d,d),style=Stroke(sw,cap=StrokeCap.Round))
+    val fraction = gaugeFraction(value, max).toFloat()
+    val progress = rememberChartProgress()
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.padding(top = 4.dp, bottom = 10.dp).size(122.dp).semantics {
+            contentDescription = "$centerValue $centerUnit. $status. Value $value of $max."
+        }, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 17.dp.toPx()
+                val diameter = size.minDimension - stroke
+                val top = Offset(stroke / 2, stroke / 2)
+                drawCircle(FusionChart.Track, diameter / 2, style = Stroke(stroke))
+                if (fraction > 0f) drawArc(tone, -90f, 270f * fraction * progress, false,
+                    top, Size(diameter, diameter), style = Stroke(stroke, cap = StrokeCap.Round))
             }
-            Column(horizontalAlignment=Alignment.CenterHorizontally) {
-                Text(centerValue,style=FusionType.NumberMedium)
-                Text(centerUnit,style=FusionType.BodySmall)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(centerValue, style = FusionType.HeadingSmall.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                Text(centerUnit, style = FusionType.BodySmall.copy(fontSize = 12.sp), color = FusionChart.Muted)
             }
         }
-        Text(status,style=FusionType.BodySmall,color=tone,textAlign=TextAlign.Center)
+        Text(status, style = FusionChart.Status, color = tone, textAlign = TextAlign.Center)
     }
 }
 

@@ -42,20 +42,20 @@ fun HomeAllocationAndRunway(state: WalletState) {
             Segment("Bills", buckets.reserve.raw + buckets.buffer.raw, FusionChart.Reserved),
             Segment("Earning", buckets.deployed.raw, FusionChart.Sky)),
             chartAmountLabel(buckets.total.raw), "USDC")
-    },second={ modifier -> BentoTile(modifier,padding=12.dp) {
-        Text("Cash runway",style=FusionType.HeadingSmall)
-        val evidence=state.chartEvidence
-        if (evidence==null) Text("Runway history unavailable",style=FusionType.BodySmall)
-        else {
-            val runway=cashRunway(evidence.cashRaw,evidence.outflowRaw,evidence.historyStart,evidence.through)
-            if (runway.days==null) Text(runway.status,style=FusionType.BodySmall,modifier=Modifier.padding(vertical=24.dp))
-            else {
-                val days=runway.days
-                RadialGauge(days,90.toBigDecimal(),days.setScale(0,java.math.RoundingMode.DOWN).toPlainString(),"days",runway.status,
-                    when { days>=60.toBigDecimal()->FusionColors.Green; days>=21.toBigDecimal()->FusionColors.Amber; else->FusionColors.Red })
-            }
-            Text("${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1,java.math.RoundingMode.DOWN)} days",style=FusionType.BodySmall)
-            Text("Bill payments + owner sends. Vault deposits excluded. Arc scale: 90 days.",style=FusionType.BodySmall)
+    },second={ modifier -> ChartTile(modifier) {
+        val evidence = state.chartEvidence
+        val runway = evidence?.let { cashRunway(it.cashRaw, it.outflowRaw, it.historyStart, it.through) }
+        ChartTileHeader("Cash runway", buildString {
+            append("Safe cash divided by average daily outflow over the observed last 30 days. Bill payments and owner sends count once; vault deposits and self-transfers are excluded. At least 7 days of history is required. Arc scale: 90 days, capped visually; the center shows uncapped days. Healthy: 60+ days. Keep an eye on it: 21–59 days. Low: under 21 days.")
+            if (evidence != null && runway != null) append("\n\n${formatBigIntegerAmount(evidence.cashRaw)} USDC cash; ${formatBigIntegerAmount(evidence.outflowRaw)} USDC out over ${runway.observedDays.setScale(1, java.math.RoundingMode.DOWN)} days.")
+        })
+        if (runway?.days == null) Box(Modifier.fillMaxWidth().heightIn(min = 166.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Text(runway?.status ?: "Runway history unavailable", style = FusionType.BodyMedium,
+                color = FusionChart.Muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        } else {
+            val days = runway.days
+            RadialGauge(days, 90.toBigDecimal(), days.setScale(0, java.math.RoundingMode.DOWN).toPlainString(), "days", runway.status,
+                when { days >= 60.toBigDecimal() -> FusionChart.Cash; days >= 21.toBigDecimal() -> FusionChart.Reserved; else -> FusionChart.Coral })
         }
     } })
 }
