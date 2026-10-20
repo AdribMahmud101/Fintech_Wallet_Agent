@@ -193,6 +193,7 @@ fun TxLink(
     hash: String,
     modifier: Modifier = Modifier,
     explorerUrl: String? = null,
+    label: String? = null,
 ) {
     val context = LocalContext.current
     val url = explorerUrl ?: "https://sepolia.basescan.org/tx/$hash"
@@ -216,7 +217,7 @@ fun TxLink(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = short,
+            text = label ?: short,
             style = FusionType.NumberCaption,
             color = FusionColors.Indigo,
         )

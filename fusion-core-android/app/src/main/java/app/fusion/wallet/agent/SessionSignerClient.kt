@@ -12,7 +12,7 @@ import kotlin.coroutines.resumeWithException
 
 internal object SessionSignerClient {
     private val lock = Mutex()
-    suspend fun execute(context: Context, request: JSONObject): JSONObject = lock.withLock {
+    suspend fun execute(context: Context, request: JSONObject, onChain: () -> Unit = {}): JSONObject = lock.withLock {
         // A lost UI connection does not erase a durable signed attempt.
         withTimeout(240_000) {
             suspendCancellableCoroutine { continuation ->
@@ -20,6 +20,7 @@ internal object SessionSignerClient {
                 lateinit var connection: ServiceConnection
                 fun unbind() { if (bound) { bound = false; runCatching { context.unbindService(connection) } } }
                 val reply = Messenger(Handler(Looper.getMainLooper()) { message ->
+                    if (message.what == SessionSignerService.ON_CHAIN && continuation.isActive) onChain()
                     if (message.what == SessionSignerService.EXECUTE && continuation.isActive) {
                         try { continuation.resume(JSONObject(message.data.getString("result") ?: error("Missing session signer result"))) }
                         catch (e: Exception) { continuation.resumeWithException(e) }

@@ -9,6 +9,8 @@ import app.fusion.wallet.inference.ProvisionedHashes
 import app.fusion.wallet.inference.core.signPrepared
 import app.fusion.wallet.inference.core.verifyForSigning
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import org.json.JSONArray
 import java.io.File
@@ -16,18 +18,22 @@ import java.io.File
 /** Same-UID Binder only, separate :signer process. Takes a complete bound decision, never a tx. */
 class SessionSignerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val progressLock = Mutex()
+    private var progressReply: Messenger? = null
     private lateinit var engine: SessionSignerEngine
     private val messenger = Messenger(Handler(Looper.getMainLooper()) { message ->
         if (message.what == EXECUTE && message.sendingUid == Process.myUid() && message.replyTo != null) {
             val input = message.data.getString("report").orEmpty(); val reply = message.replyTo
-            scope.launch {
+            scope.launch { progressLock.withLock {
                 val output = try {
                     require(input.length <= 65_536)
+                    progressReply = reply
                     engine.execute(JSONObject(input)).put("signerProcess", android.app.Application.getProcessName()).put("signerPid", Process.myPid()).put("keyProtection", "Android Keystore AES-GCM session envelope").toString()
                 } catch (error: Exception) { JSONObject().put("error", safeSessionError(error)).toString() }
+                progressReply = null
                 try { reply.send(Message.obtain(null, EXECUTE).apply { data = Bundle().apply { putString("result", output) } }) }
                 catch (_: Exception) { /* Durable journal survives a lost reply. */ }
-            }
+            } }
         }
         true
     })
@@ -43,6 +49,9 @@ class SessionSignerService : Service() {
             rpc = { method, params -> AgentNetwork.relay(this, method, params) },
             readBatch = { calls -> AgentNetwork.batch(this, calls) },
             trace = { stage ->
+                if (stage == "broadcast" || stage == "await_receipt") {
+                    runCatching { progressReply?.send(Message.obtain(null, ON_CHAIN)) }
+                }
                 if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
                     if (stage == "start") { traceStart = SystemClock.elapsedRealtime(); traceStages = JSONArray() }
                     traceStages.put(JSONObject().put("stage", stage).put("elapsedMs", SystemClock.elapsedRealtime() - traceStart))
@@ -82,7 +91,7 @@ class SessionSignerService : Service() {
     }
     override fun onBind(intent: Intent?): IBinder = messenger.binder
     override fun onDestroy() { scope.cancel(); super.onDestroy() }
-    internal companion object { const val EXECUTE = 17 }
+    internal companion object { const val EXECUTE = 17; const val ON_CHAIN = 18 }
 }
 internal class FileSessionJournal(private val dir: File) : SessionJournal {
     private val file = AtomicFile(File(dir, "pending.json").apply { parentFile!!.mkdirs() })

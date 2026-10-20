@@ -23,6 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import app.fusion.wallet.ui.components.ExecutionSuccess
+import app.fusion.wallet.ui.components.ReceiptVerificationMark
+import app.fusion.wallet.ui.motion.rememberMotionEnabled
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -98,6 +103,7 @@ fun ProofScreen(
     val sections = remember(state.evidence, state.recentActions, state.payees, safety, frozen, txIndex) {
         ProofBuilder.build(state, safety, frozen, txIndex)
     }
+    var verifiedHashes by remember { mutableStateOf(emptySet<String>()) }
     var selected by remember { mutableStateOf<ActivityItem?>(null) }
 
     LazyColumn(
@@ -135,7 +141,7 @@ fun ProofScreen(
                 }
             }
             items(section.rows, key = { "${section.operation.name}:${it.id}" }) { row ->
-                ProofTransactionCard(row, onClick = { selected = row })
+                ProofTransactionCard(row, row.txHash in verifiedHashes, onClick = { selected = row })
             }
         }
         item(key = "contracts-header") {
@@ -161,7 +167,7 @@ fun ProofScreen(
         }
     }
 
-    selected?.let { row -> ProofReceiptSheet(row, onDismiss = { selected = null }) }
+    selected?.let { row -> ProofReceiptSheet(row, onVerified = { verifiedHashes = verifiedHashes + row.txHash }, onDismiss = { selected = null }) }
 }
 
 @Composable
@@ -232,8 +238,10 @@ private fun proofOperationLabel(operation: ProofOperation): String = stringResou
 })
 
 @Composable
-private fun ProofTransactionCard(row: ActivityItem, onClick: () -> Unit) {
-    BentoTile(Modifier.fillMaxWidth(), onClick = onClick) {
+private fun ProofTransactionCard(row: ActivityItem, verified: Boolean, onClick: () -> Unit) {
+    val motion = rememberMotionEnabled()
+    var expanded by remember(row.txHash) { mutableStateOf(false) }
+    BentoTile(Modifier.fillMaxWidth().animateContentSize(tween(if (motion) 220 else 0)), onClick = { expanded = true; onClick() }) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(row.title, style = FusionType.HeadingSmall, modifier = Modifier.weight(1f), maxLines = 2)
             Spacer(Modifier.width(8.dp))
@@ -251,7 +259,8 @@ private fun ProofTransactionCard(row: ActivityItem, onClick: () -> Unit) {
             row.planner?.let { StatusChip(it, FusionColors.Indigo) }
             row.note?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
         }
-        TxLink(row.txHash, explorerUrl = row.explorerUrl)
+        if (expanded && verified && row.provenance == app.fusion.wallet.ui.components.Provenance.Agent) ExecutionSuccess(row.txHash, row.explorerUrl ?: "https://sepolia.basescan.org/tx/${row.txHash}")
+        else TxLink(row.txHash, explorerUrl = row.explorerUrl)
     }
 }
 
@@ -276,7 +285,7 @@ private fun ExplorerLink(url: String) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProofReceiptSheet(row: ActivityItem, onDismiss: () -> Unit) {
+private fun ProofReceiptSheet(row: ActivityItem, onVerified: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     var receipt by remember(row.txHash) { mutableStateOf<ActivityReceipt?>(null) }
     var loading by remember(row.txHash) { mutableStateOf(true) }
@@ -288,6 +297,7 @@ private fun ProofReceiptSheet(row: ActivityItem, onDismiss: () -> Unit) {
                 val deployment = Deployment.parse(context.assets.open("deployments/84532.json").bufferedReader().use { it.readText() })
                 ActivityReceiptReader.read(deployment, row)
             }
+            if (receipt?.reverted == false) onVerified()
         } catch (e: kotlinx.coroutines.CancellationException) { throw e
         } catch (_: Exception) { receipt = null
         } finally { loading = false }
@@ -306,7 +316,9 @@ private fun ProofReceiptSheet(row: ActivityItem, onDismiss: () -> Unit) {
                     ?: (if (row.blockNumber > 0) "Block ${row.blockNumber}" else stringResource(R.string.prf_time_unavailable)),
                 style = FusionType.BodySmall, color = FusionColors.TextMuted,
             )
-            receipt?.let { r ->
+            ReceiptVerificationMark(loading, receipt?.reverted == false)
+            receipt?.takeUnless { loading }?.let { r ->
+                Text("Receipt block ${r.blockNumber}", style = FusionType.NumberBody)
                 StatusChip(
                     text = if (r.reverted) stringResource(R.string.prf_receipt_reverted) else stringResource(R.string.prf_receipt_confirmed),
                     tone = if (r.reverted) FusionColors.Red else FusionColors.Green,

@@ -11,6 +11,9 @@ import app.fusion.wallet.agent.AgentRunState
 import app.fusion.wallet.data.WalletState
 import app.fusion.wallet.data.TxIndex
 import app.fusion.wallet.ui.agent.DecisionDetails
+import app.fusion.wallet.ui.components.DecisionPipelineStrip
+import app.fusion.wallet.ui.components.PolicyChecksReveal
+import app.fusion.wallet.ui.motion.rememberMotionEnabled
 import app.fusion.wallet.ui.advisor.WhyButton
 import app.fusion.wallet.ui.advisor.toFacts
 import app.fusion.wallet.ui.common.readableCheckMessage
@@ -23,8 +26,10 @@ fun EarnPreviewSheet(agent: AgentRunState, state: WalletState, txIndex: TxIndex,
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Preview next move", style = MaterialTheme.typography.headlineSmall)
             Text("Dry run · no transaction is broadcast")
+            DecisionPipelineStrip(agent.pipeline)
+            val motion = rememberMotionEnabled()
             when {
-                agent.running -> { CircularProgressIndicator(); Text("Reading live policy and asking the on-device AI…") }
+                agent.running -> { if (motion) CircularProgressIndicator(); Text("Reading live policy and asking the on-device AI…") }
                 agent.error != null -> Text("Preview unavailable: ${readableCode(agent.error)}")
                 agent.result?.dryRun == true -> {
                     val result = agent.result
@@ -33,10 +38,8 @@ fun EarnPreviewSheet(agent: AgentRunState, state: WalletState, txIndex: TxIndex,
                     val details = runCatching { DecisionDetails.parse(result.reportJson, result.passportJson) }.getOrNull()
                     if (details != null) WhyButton("preview:${details.hash}", facts = { details.toFacts() })
                     if (details?.checks.isNullOrEmpty()) Text("No individual policy checks recorded")
-                    details?.checks?.forEach { check ->
-                        Text("${readableCode(check.status)} · ${readableCode(check.name)}")
-                        if (check.message.isNotBlank()) Text(readableCode(readableCheckMessage(check.message)), style = MaterialTheme.typography.bodySmall)
-                    }
+                    details?.let { PolicyChecksReveal(it.checks) }
+
                 }
                 else -> Text("No dry-run decision available")
             }

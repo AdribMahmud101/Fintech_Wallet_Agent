@@ -154,7 +154,7 @@ private fun HomeAllocation(buckets: Buckets) {
         DonutChart(segments.map { chartFraction(it.valueRaw, buckets.total.raw) }, segments.map { it.color }, 122.dp, 17.dp,
             segments.mapIndexed { i, segment -> "${segment.label}: ${formatBigIntegerAmount(segment.valueRaw)} USDC, ${percentages[i]} percent" }.joinToString(". ")) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(chartAmountLabel(buckets.total.raw), style = FusionType.HeadingSmall)
+                Text(chartAmountLabel(app.fusion.wallet.ui.motion.refreshAmount(buckets.total.raw)), style = FusionType.HeadingSmall)
                 Text("USDC", style = FusionType.BodySmall)
             }
         }
@@ -162,7 +162,7 @@ private fun HomeAllocation(buckets: Buckets) {
             Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box(Modifier.size(6.dp).background(segment.color, CircleShape))
                 Text(segment.label, Modifier.weight(1f), style = FusionType.BodySmall)
-                Text("${chartAmountLabel(segment.valueRaw)} · ${percentages[i]}%", style = FusionType.BodySmall)
+                Text("${chartAmountLabel(app.fusion.wallet.ui.motion.refreshAmount(segment.valueRaw))} · ${percentages[i]}%", style = FusionType.BodySmall)
             }
         }
     }
