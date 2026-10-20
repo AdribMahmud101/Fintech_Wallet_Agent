@@ -241,6 +241,7 @@ private fun ProofTransactionCard(row: ActivityItem, onClick: () -> Unit) {
         }
         row.amountRaw?.let { AmountText(it, style = FusionType.NumberSmall) }
         row.counterparty?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.TextMuted, maxLines = 1) }
+        row.note?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = row.timestampSeconds?.let { formatEpochSeconds(it) }
@@ -248,6 +249,7 @@ private fun ProofTransactionCard(row: ActivityItem, onClick: () -> Unit) {
                 style = FusionType.BodySmall, color = FusionColors.TextMuted,
             )
             row.planner?.let { StatusChip(it, FusionColors.Indigo) }
+            row.note?.let { Text(it, style = FusionType.BodySmall, color = FusionColors.Amber) }
         }
         TxLink(row.txHash, explorerUrl = row.explorerUrl)
     }

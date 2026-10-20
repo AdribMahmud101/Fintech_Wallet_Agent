@@ -17,6 +17,7 @@ data class TxIndexEntry(
     val payeeLabel: String?,
     val planner: String?,
     val evidenceFile: String,
+    val notes: String?,
 )
 
 class TxIndex private constructor(private val entries: Map<String, TxIndexEntry>) {
@@ -38,7 +39,8 @@ class TxIndex private constructor(private val entries: Map<String, TxIndexEntry>
                 val raw = row.optionalString("amountRaw")?.also { require(Regex("[0-9]+").matches(it)) }?.toBigInteger()
                 val recipient = row.optionalString("recipient")?.also { require(address.matches(it)) }
                 val entry = TxIndexEntry(tx, source, row.getString("kind"), raw, recipient,
-                    row.optionalString("payeeLabel"), row.optionalString("planner"), row.getString("evidenceFile"))
+                    row.optionalString("payeeLabel"), row.optionalString("planner"), row.getString("evidenceFile"),
+                    row.optionalString("notes"))
                 require(entries.put(tx, entry) == null) { "Duplicate txHash in transaction index" }
             }
             return TxIndex(entries)

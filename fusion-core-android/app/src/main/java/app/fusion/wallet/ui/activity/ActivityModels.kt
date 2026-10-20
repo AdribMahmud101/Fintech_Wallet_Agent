@@ -22,6 +22,7 @@ data class ActivityItem(
     val details: String? = null,
     val explorerUrl: String? = null,
     val planner: String? = null,
+    val note: String? = null,
 )
 
 fun activityProvenance(source: String?): Provenance? = when (source?.trim()?.uppercase()) {
@@ -102,7 +103,7 @@ object ActivityTimelineBuilder {
                 counterparty = indexed.payeeLabel ?: indexed.recipient?.let { address ->
                     state.payees.find { it.address.equals(address, true) }?.label ?: address
                 } ?: row.counterparty,
-                planner = indexed.planner)
+                planner = indexed.planner, note = indexed.notes)
         }.distinctBy { it.id }
             // A payment emits both ActionExecuted and ObligationPaid, which render as the
             // same "Bill paid" card twice. Merge only rows that would look identical
