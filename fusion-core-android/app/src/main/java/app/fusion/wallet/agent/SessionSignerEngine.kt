@@ -44,6 +44,7 @@ internal class SessionSignerEngine(
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
         check(q(rpc("eth_chainId", JSONArray()).toString()) == BigInteger.valueOf(chainId)) { "WRONG_CHAIN" }
         journal.load()?.let { old ->
+            trace("await_receipt")
             val confirmed = awaitConfirmation(old)
             journal.clear()
             check(old.getString("decisionHash") == report.getString("decisionHash")) { "PREVIOUS_ATTEMPT_CONFIRMED_REPLAN" }
@@ -103,6 +104,7 @@ internal class SessionSignerEngine(
         check(lease() == report.getString("requestId")) { "SESSION_LOCK_REQUIRED" }
         trace("broadcast_authority_checked")
         journal.save(pending)
+        trace("broadcast")
         try {
             check(rpc("eth_sendRawTransaction", JSONArray().put(raw)).toString().equals(hash, true)) { "BROADCAST_HASH_MISMATCH" }
         } catch (_: Exception) { /* Lost reply or already-known: only the receipt proves success. */ }

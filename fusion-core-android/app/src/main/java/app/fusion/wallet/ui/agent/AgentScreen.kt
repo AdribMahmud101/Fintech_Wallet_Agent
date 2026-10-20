@@ -53,7 +53,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
     LazyColumn(modifier.fillMaxSize().background(FusionColors.Bg), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Text(stringResource(R.string.ag_title), style = FusionType.HeadingMedium) }
-        item { AutopilotCard(autopilot, vm.autopilot, now * 1000, run.running) }
+        item { AutopilotCard(autopilot, vm.autopilot, now * 1000, run.running, if (run.pipeline.steps.isNotEmpty()) run.pipeline else pipelineFromReport(autopilot.timeline.firstOrNull()?.reportJson)) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 BentoTile(Modifier.weight(1f).height(148.dp), onClick = { sheet = "limits" }, padding = 12.dp) {
@@ -98,7 +98,7 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
             }
         }
         if (autopilot.timeline.isEmpty()) item { Text("Turn on Autopilot or tap Run now to record a tick.", style = FusionType.BodySmall) }
-        items(autopilot.timeline.take(5), key = { it.id }) { tick -> AutopilotTimelineTick(tick, onClick = { selected = tick }) }
+        items(autopilot.timeline.take(3), key = { it.id }) { tick -> AutopilotTimelineTick(tick, showExecution = tick.id == autopilot.timeline.firstOrNull()?.id, onClick = { selected = tick }) }
     }
     if (sheet != null) ModalBottomSheet(onDismissRequest = { sheet = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(0.9f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -144,7 +144,9 @@ fun AgentScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel()) 
                 Text(tick.wakePath, style = FusionType.HeadingMedium)
                 Text(tick.reason, style = FusionType.BodyMedium)
                 val details = remember(tick.id) { runCatching { tick.reportJson?.let { DecisionDetails.parse(it, tick.passportJson) } }.getOrNull() }
-                if (details != null) LatestDecision(details, txIndex, state.blockTime, tick.timeMillis / 1000, tick.checks.map { DecisionCheck(it.name, it.status, it.message) }, onCopy = {
+                DecisionPipelineStrip(pipelineFromReport(tick.reportJson))
+                if (tick.outcome == "EXECUTED" && tick.txHash != null) ExecutionSuccess(tick.txHash)
+                if (details != null) LatestDecision(details, txIndex, state.blockTime, tick.timeMillis / 1000, details.checks.ifEmpty { tick.checks.map { DecisionCheck(it.name, it.status, it.message) } }, onCopy = {
                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Passport hash", details.hash))
                 }) else {
                     WhyButton("tick:${tick.id}", facts = { tick.toFacts() })
@@ -184,13 +186,7 @@ private fun LatestDecision(decision: DecisionDetails, txIndex: TxIndex, currentB
         Text(stringResource(R.string.k24_policy_checks), style = FusionType.HeadingSmall)
         var checksOpen by remember { mutableStateOf(false) }
         TextButton(onClick = { checksOpen = !checksOpen }) { Text("${checks.count { it.status == "PASS" }} passed · ${checks.count { it.status == "FAIL" }} failed") }
-        if (checksOpen) checks.forEach { check ->
-            Column(Modifier.padding(vertical = 6.dp)) {
-                StatusChip(readableCode(check.status), when (check.status) { "PASS" -> FusionColors.Green; "FAIL" -> FusionColors.Red; else -> FusionColors.Amber })
-                Text(readableCode(check.name), style = FusionType.BodyMedium)
-                Text(historicalCheckMessage(check.message, decision.snapshotTime ?: recordedTime, currentBlockTime), style = FusionType.BodySmall)
-            }
-        }
+        if (checksOpen) PolicyChecksReveal(checks) { check -> historicalCheckMessage(check.message, decision.snapshotTime ?: recordedTime, currentBlockTime) }
         if (checks.isEmpty()) Text("Policy checks not recorded", style = FusionType.BodySmall)
         Text("Passport ${decision.hash}", style = FusionType.NumberCaption)
         TextButton(onClick = onCopy, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.k24_copy_hash)) }

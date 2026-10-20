@@ -20,7 +20,14 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.draw.alpha
+import app.fusion.wallet.ui.motion.eventPulse
+import app.fusion.wallet.data.WalletState
+import app.fusion.wallet.data.DataSource
+import app.fusion.wallet.ui.theme.FusionColors
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +53,7 @@ import app.fusion.wallet.ui.theme.FusionTheme
  * DEMO badge in debug builds only, and the language switch.
  */
 @Composable
-fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null) {
+fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null, wallet: WalletState = WalletState()) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -57,8 +64,21 @@ fun FusionTopBar(user: UserEntity?, onProfile: () -> Unit, demoData: Boolean, mo
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FusionBrandLockup(height = 22.dp)
-            StatusPill(label = stringResource(R.string.badge_network), tone = Tone.Warn)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FusionBrandLockup(height = 22.dp)
+                    StatusPill(label = stringResource(R.string.badge_network), tone = Tone.Warn)
+                }
+                val now by produceState(System.currentTimeMillis()) { while (true) { delay(1000); value = System.currentTimeMillis() } }
+                val cached = wallet.source != DataSource.LIVE || wallet.isDisplayStale(now) || wallet.refreshing
+                val block = wallet.blockNumber
+                val pulse = eventPulse(block)
+                val tone = if (cached) FusionColors.Amber else FusionColors.Green
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Box(Modifier.size(6.dp).alpha(if (cached) 1f else 1f - pulse * 0.55f).background(tone, CircleShape))
+                    Text(if (block == null) "Waiting for block" else "${if (cached) "Cached" else "Live"} · block $block", style = MaterialTheme.typography.labelSmall, color = tone, maxLines = 1)
+                }
+            }
             if (demoData) StatusPill(label = stringResource(R.string.badge_demo), tone = Tone.Earning)
         }
         if (user != null) {

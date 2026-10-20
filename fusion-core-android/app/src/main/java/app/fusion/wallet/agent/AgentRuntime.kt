@@ -2,6 +2,7 @@ package app.fusion.wallet.agent
 
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import app.fusion.wallet.chain.*
 import app.fusion.wallet.data.*
 import app.fusion.wallet.inference.PlannerClient
@@ -24,7 +25,7 @@ data class AgentTickResult(
     val decodeMs: Double, val vetoes: Long, val dryRun: Boolean, val reportJson: String,
     val txHash: String? = null,
 )
-data class AgentRunState(val running: Boolean = false, val result: AgentTickResult? = null, val error: String? = null)
+data class AgentRunState(val running: Boolean = false, val result: AgentTickResult? = null, val error: String? = null, val pipeline: DecisionPipeline = DecisionPipeline())
 
 /** A failure before entering the signer definitively requested no transaction. */
 class AgentHeldException(val publicReason: String) : IllegalStateException(publicReason)
@@ -34,20 +35,39 @@ object AgentRuntime {
     private val mutex = Mutex()
     private val mutableState = MutableStateFlow(AgentRunState())
     val state = mutableState.asStateFlow()
+    private var stageStartedAt = 0L
+    private fun enter(stage: DecisionStage) {
+        if (mutableState.value.pipeline.steps.any { it.stage == stage }) return
+        val now = SystemClock.elapsedRealtime()
+        val previous = mutableState.value.pipeline
+        mutableState.value = mutableState.value.copy(pipeline = previous.enter(stage, (now - stageStartedAt).coerceAtLeast(0)))
+        stageStartedAt = now
+    }
+    private fun finishPipeline(error: String? = null) {
+        mutableState.value = mutableState.value.copy(pipeline = mutableState.value.pipeline.finish(SystemClock.elapsedRealtime() - stageStartedAt, error))
+    }
+    private fun pipelineJson(): JSONArray = JSONArray().apply {
+        mutableState.value.pipeline.steps.forEach { step ->
+            put(JSONObject().put("stage", step.stage.name).put("durationMs", step.durationMs ?: JSONObject.NULL))
+        }
+    }
     private const val GOAL = "Pay scheduled obligations, restore cash reserves, and invest available surplus within policy."
 
     suspend fun run(context: Context, repository: WalletRepository, dryRun: Boolean): Result<AgentTickResult> = mutex.withLock {
-        mutableState.value = AgentRunState(running = true, result = mutableState.value.result)
+        mutableState.value = AgentRunState(running = true, pipeline = DecisionPipeline(dryRun = dryRun))
+        enter(DecisionStage.SNAPSHOT)
         try {
             val result = withContext(Dispatchers.IO) { decide(context, repository, dryRun) }
-            mutableState.value = AgentRunState(result = result)
+            mutableState.value = AgentRunState(result = result, pipeline = mutableState.value.pipeline)
             Result.success(result)
         } catch (e: CancellationException) {
-            mutableState.value = AgentRunState(error = "Agent tick cancelled; no new action authorized")
+            finishPipeline("Tick cancelled; execution not confirmed")
+            mutableState.value = mutableState.value.copy(running = false, error = "Agent tick cancelled; no new action authorized")
             throw e
         } catch (e: Exception) {
             val message = e.message?.take(256) ?: "Agent tick failed"
-            mutableState.value = AgentRunState(error = message)
+            finishPipeline(message)
+            mutableState.value = mutableState.value.copy(running = false, error = message)
             Result.failure(e)
         }
     }
@@ -55,6 +75,8 @@ object AgentRuntime {
     /** Read-only recovery of an already signed/mined attempt. Never runs a new
      * planner choice or permits a new signature. Preserve the original passport. */
     suspend fun reconcile(context: Context): Result<AgentTickResult> = mutex.withLock {
+        mutableState.value = AgentRunState(running = true, pipeline = DecisionPipeline(dryRun = false))
+        stageStartedAt = SystemClock.elapsedRealtime()
         try {
             val result = withContext(Dispatchers.IO) {
                 val file = File(context.filesDir, "agent/last_tick.json")
@@ -62,12 +84,15 @@ object AgentRuntime {
                 check(report.getString("source") == "APP" && !report.getBoolean("dryRun")) { "INVALID_REPORT" }
                 report.put("originalRequestId", report.getString("requestId"))
                     .put("requestId", AgentNetwork.requireLease(context)).put("reconcileOnly", true)
-                val execution = SessionSignerClient.execute(context, report)
+                enter(DecisionStage.SIGNER)
+                val execution = SessionSignerClient.execute(context, report) { enter(DecisionStage.CHAIN) }
                 check(!execution.has("error")) { execution.optString("error", "SESSION_SIGNER_FAILED") }
                 check(execution.getString("passportJson") == report.getString("passportJson") &&
                     execution.getString("decisionHash") == report.getString("decisionHash")) { "PASSPORT_HASH_MISMATCH" }
                 report.put("execution", execution).put("txHash", execution.getString("txHash"))
                     .put("reconciledAfterReceiptReadFailure", true)
+                finishPipeline()
+                report.put("recoveryPipeline", pipelineJson())
                 file.writeText(report.toString())
                 val passport = JSONObject(report.getString("passportJson"))
                 AgentTickResult(passport.getString("choiceLabel"), passport.getString("reasonCode"), passport.getString("route"),
@@ -75,10 +100,17 @@ object AgentRuntime {
                     report.getJSONObject("preview").getBoolean("passed"), report.getJSONObject("model").getJSONObject("timings").getDouble("totalMs"),
                     report.getJSONObject("model").getJSONObject("ahem").getJSONObject("g").getLong("vetoes"), false, report.toString(), execution.getString("txHash"))
             }
-            mutableState.value = AgentRunState(result = result)
+            mutableState.value = AgentRunState(result = result, pipeline = mutableState.value.pipeline)
             Result.success(result)
-        } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { mutableState.value = AgentRunState(error = e.message); Result.failure(e) }
+        } catch (e: CancellationException) {
+            finishPipeline("Recovery cancelled; execution not confirmed")
+            mutableState.value = mutableState.value.copy(running = false)
+            throw e
+        } catch (e: Exception) {
+            finishPipeline(e.message)
+            mutableState.value = mutableState.value.copy(running = false, error = e.message)
+            Result.failure(e)
+        }
     }
 
     private suspend fun decide(context: Context, repository: WalletRepository, dryRun: Boolean): AgentTickResult {
@@ -144,6 +176,7 @@ object AgentRuntime {
             rates.put(JSONObject().put("vault", deployment.vaultA).put("rateBps", bps).put("isSimulated", false))
             rateEvidence.put("status", "LIVE").put("liquidityRateRay", reserve.getString("liquidityRateRay")).put("aprBps", bps)
         }.onFailure { rateEvidence.put("status", "UNAVAILABLE") }
+        enter(DecisionStage.CANDIDATES)
         var set = checked(candidates(snapshot.toString(), SnapshotAdapter.obligations(state, true).toString(),
             SnapshotAdapter.payees(state).toString(), commitment.getJSONObject("proofs").toString(), rates.toString(),
             deployment.safe, deployment.module)).getJSONObject("set")
@@ -175,7 +208,11 @@ object AgentRuntime {
         val prompt = checked(plannerPrompt(set.toString(), goal))
         val request = JSONObject().put("prompt", prompt.getString("prompt")).put("labels", prompt.getJSONArray("labels"))
             .put("candidateSetDigest", set.getString("candidateSetDigest")).put("mode", "ahem-g").put("budgetMs", 25000)
+        enter(DecisionStage.AI)
         val model = PlannerClient.choose(context, request)
+        mutableState.value = mutableState.value.copy(pipeline = mutableState.value.pipeline.copy(
+            loadMs = model.optJSONObject("load")?.optString("coldLoadMs")?.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 },
+            inferenceMs = model.optJSONObject("timings")?.optString("totalMs")?.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }))
         check(!model.has("error")) { "On-device planner failed: ${model.optJSONObject("error")}" }
         check(model.getString("candidateSetDigest") == set.getString("candidateSetDigest")) { "Stale candidate-set digest" }
         check(model.getBoolean("rawValid") && !model.getJSONObject("ahem").getJSONObject("g").getBoolean("aborted")) { "Planner aborted; HOLD without execution" }
@@ -208,6 +245,7 @@ object AgentRuntime {
         val built = checked(buildPassport(passport.toString()))
         val canonical = built.getString("passportJson")
         val hash = built.getString("decisionHash")
+        enter(DecisionStage.POLICY)
         val preview = checked(preview(candidate.toString(), snapshot.toString(), hash, deployment.safe, deployment.module)).getJSONObject("result")
         val nextBill = state.obligations.filterNot { it.paid }.minByOrNull { it.dueAt }
         val explanation = gasHold ?: if (choice == "H") {
@@ -229,15 +267,19 @@ object AgentRuntime {
         File(dir, "last_tick.json").writeText(report.toString())
         val execution = if (!dryRun && choice != "H") {
             check(preview.getBoolean("passed")) { "Policy preview blocked execution" }
-            val first = SessionSignerClient.execute(context, report)
+            enter(DecisionStage.SIGNER)
+            val first = SessionSignerClient.execute(context, report) { enter(DecisionStage.CHAIN) }
             val signed = recoverSessionReceipt(first, report,
                 { File(context.noBackupFilesDir, "agent/pending.json").isFile },
-                { original -> SessionSignerClient.execute(context, original) })
+                { original -> SessionSignerClient.execute(context, original) { enter(DecisionStage.CHAIN) } })
             check(!signed.has("error")) { signed.optString("error", "SESSION_SIGNER_FAILED") }
             report.put("execution", signed).put("txHash", signed.getString("txHash"))
             File(dir, "last_tick.json").writeText(report.toString())
             signed
         } else null
+        finishPipeline()
+        report.put("pipeline", pipelineJson())
+        File(dir, "last_tick.json").writeText(report.toString())
         return AgentTickResult(choice, gasHold ?: validated.getString("reasonCode"), if (choice == "H") "HOLD" else passport.getString("route"), hash, canonical,
             snapshot.getLong("blockNumber"), preview.getBoolean("passed"), model.getJSONObject("timings").getDouble("totalMs"), stats.getLong("vetoes"), dryRun, report.toString(), execution?.getString("txHash"))
     }

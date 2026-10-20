@@ -10,7 +10,7 @@ import java.net.URL
 import java.math.BigInteger
 
 /** Lazy, read-only receipt lookup for the selected sheet. Never sends or signs a transaction. */
-data class ActivityReceipt(val gasUsed: BigInteger, val timestampSeconds: Long, val reverted: Boolean)
+data class ActivityReceipt(val gasUsed: BigInteger, val timestampSeconds: Long, val reverted: Boolean, val blockNumber: Long = 0)
 
 object ActivityReceiptReader {
     fun read(deployment: Deployment, item: ActivityItem): ActivityReceipt {
@@ -36,14 +36,15 @@ object ActivityReceiptReader {
             envelope.getJSONObject("result")
         } finally { connection.disconnect() }
         require(receipt.getString("transactionHash").equals(item.txHash, true))
-        require(ChainReader.quantity(receipt.getString("blockNumber")) == item.blockNumber)
-        val header = reader.block(ChainReader.tag(item.blockNumber))
+        val receiptBlock = ChainReader.quantity(receipt.getString("blockNumber"))
+        require(receiptBlock > 0 && (item.blockNumber <= 0 || receiptBlock == item.blockNumber))
+        val header = reader.block(ChainReader.tag(receiptBlock))
         require(header.hash.equals(receipt.getString("blockHash"), true))
         val gasHex = receipt.getString("gasUsed")
         require(Regex("0x[0-9a-fA-F]+").matches(gasHex))
         val status = ChainReader.quantity(receipt.getString("status"))
         require(status in 0..1)
-        return ActivityReceipt(BigInteger(gasHex.drop(2), 16), header.timestamp, status == 0L)
+        return ActivityReceipt(BigInteger(gasHex.drop(2), 16), header.timestamp, status == 0L, header.number)
     }
 
     private fun java.io.InputStream.readBytesLimited(): ByteArray {

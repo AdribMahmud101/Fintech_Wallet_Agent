@@ -46,6 +46,14 @@ import kotlinx.coroutines.launch
 fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(), onOpenProof: () -> Unit = {}, onOpenScout: () -> Unit = {}) {
     val context = LocalContext.current
     val state by vm.state.collectAsStateWithLifecycle()
+    // Keep evidence parsing/refresh out of the first Home frame and snapshot path.
+    var evidenceReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { withFrameNanos { }; evidenceReady = true }
+    val arena = if (evidenceReady) {
+        val arenaVm: app.fusion.wallet.ui.safety.SafetyScreenModel = viewModel()
+        val evidence by arenaVm.state.collectAsStateWithLifecycle()
+        evidence.arena
+    } else null
     val historyVm: BalanceHistoryViewModel = viewModel()
     val history by historyVm.state.collectAsStateWithLifecycle()
     val agent by AgentRuntime.state.collectAsStateWithLifecycle()
@@ -97,6 +105,18 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             if (approvalBannerVisible(state.queue)) item { ApprovalBanner(state, now / 1000, txIndex) }
             item { app.fusion.wallet.ui.scout.ScoutTile(state, onOpenScout) }
             item { ProofChip(txIndex, onOpenProof) }
+            item {
+                BentoTile(Modifier.fillMaxWidth(), onClick = onOpenProof, tint = FusionColors.Green, padding = 12.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(painterResource(R.drawable.ic_nav_shield), contentDescription = null, tint = FusionColors.Green, modifier = Modifier.size(24.dp))
+                        val evidence = arena
+                        Text(evidence?.let { "${it.stopped}/${it.scenarios.size} attacks stopped" } ?: "Security evidence unavailable", style = FusionType.BodyMedium)
+                        evidence?.frozenAsr?.let { ratio ->
+                            Text("ASR ${if (ratio.numerator == 0) "0" else "${ratio.numerator}/${ratio.denominator}"}", style = FusionType.NumberCaption, color = FusionColors.Green)
+                        }
+                    }
+                }
+            }
             if (OnboardingPrefs.isWatchOnly(context)) item {
                 BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
                     Text(stringResource(R.string.ob_watch_title), style = FusionType.HeadingSmall)
@@ -121,6 +141,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
                         else -> "Active"
                     }
                     if (autopilot.enabled) Text(autopilotStatus(autopilot, now), style = FusionType.BodyMedium)
+                    AutopilotCountdown(autopilot.nextTickAtMillis, autopilot.intervalMinutes, now, autopilot.enabled && !autopilot.running)
                     StatusChip(status, if (module?.sessionActive == true) FusionColors.Green else FusionColors.Amber)
                     val runtimeReport = agent.result?.let { runCatching { org.json.JSONObject(it.reportJson) }.getOrNull() }
                     val lastTick = autopilot.timeline.firstOrNull { it.outcome != "RUNNING" }
@@ -206,7 +227,7 @@ private fun TreasuryHero(state: WalletState, now: Long, onReceive: () -> Unit, o
         ChartTileHeader("Spare cash", explanation)
         val total = state.buckets?.surplus?.raw
         if (total == null) Text("Balance unavailable", style = FusionType.HeadingMedium)
-        else ChartAmount(formatBigIntegerAmount(total), state.treasury?.symbol ?: "USDC")
+        else ChartAmount(formatBigIntegerAmount(app.fusion.wallet.ui.motion.refreshAmount(total)), state.treasury?.symbol ?: "USDC")
         state.buckets?.let { buckets ->
             val covered = buckets.shortfall.raw.signum() == 0
             val ok = covered && state.accountingMatches == true
@@ -238,7 +259,7 @@ private fun VaultTile(vault: VaultPosition) {
             append("\nShares · ${vault.sharesRaw}")
             append("\nVault address · ${vault.address}")
         })
-        ChartAmount(formatBigIntegerAmount(vault.assets.raw), large = false)
+        ChartAmount(formatBigIntegerAmount(app.fusion.wallet.ui.motion.refreshAmount(vault.assets.raw)), large = false)
         Text("Available anytime: ${formatBigIntegerAmount(vault.maxWithdraw.raw)} USDC", style = FusionType.BodySmall, modifier = Modifier.padding(top = 8.dp))
         Text(if (vault.simulatedYield) "Simulated yield" else "On-chain Aave position",
             style = FusionChart.Status, color = if (vault.simulatedYield) FusionChart.Reserved else FusionChart.Cash,

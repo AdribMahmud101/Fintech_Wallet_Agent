@@ -11,14 +11,18 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import app.fusion.wallet.ui.common.formatEpochSeconds
 import app.fusion.wallet.ui.common.readableCode
-import app.fusion.wallet.ui.components.BentoTile
+import app.fusion.wallet.ui.components.*
+import app.fusion.wallet.agent.DecisionPipeline
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import app.fusion.wallet.ui.motion.rememberMotionEnabled
 import app.fusion.wallet.ui.advisor.WhyButton
 import app.fusion.wallet.ui.advisor.toFacts
 import app.fusion.wallet.ui.theme.FusionColors
 import app.fusion.wallet.ui.theme.FusionType
 
 @Composable
-fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMillis: Long, runtimeBusy: Boolean) {
+fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMillis: Long, runtimeBusy: Boolean, pipeline: DecisionPipeline = DecisionPipeline()) {
     BentoTile(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("Autopilot", style = FusionType.HeadingMedium, modifier = Modifier.weight(1f))
@@ -26,6 +30,8 @@ fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMil
                 modifier = Modifier.semantics { contentDescription = "Autopilot" })
         }
         Text(autopilotStatus(state, nowMillis), style = FusionType.BodyMedium)
+        AutopilotCountdown(state.nextTickAtMillis, state.intervalMinutes, nowMillis, state.enabled && !state.running)
+        DecisionPipelineStrip(pipeline)
         Text(state.mode, style = FusionType.BodySmall, color = FusionColors.Amber, maxLines = 2, overflow = TextOverflow.Ellipsis)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -50,13 +56,15 @@ fun AutopilotCard(state: AutopilotState, controller: AutopilotController, nowMil
 }
 
 @Composable
-fun AutopilotTimelineTick(tick: AutopilotTick, onClick: () -> Unit = {}) {
-    BentoTile(Modifier.fillMaxWidth(), onClick = onClick, padding = 12.dp) {
+fun AutopilotTimelineTick(tick: AutopilotTick, showExecution: Boolean = false, onClick: () -> Unit = {}) {
+    val motion = rememberMotionEnabled()
+    BentoTile(Modifier.fillMaxWidth().animateContentSize(tween(if (motion) 220 else 0)), onClick = onClick, padding = 12.dp) {
         Text("${formatEpochSeconds(tick.timeMillis / 1000)} · ${tick.wakePath}", style = FusionType.BodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text("${tick.letter} · ${tick.title} · ${when (tick.outcome) {
             "EXECUTED" -> "Confirmed"; "PREVIEW" -> "Preview"; "PROTECTED" -> "Protected"; "RUNNING" -> "Running"; "UNCONFIRMED" -> "Unconfirmed"; else -> "Held"
         }}", style = FusionType.BodyMedium)
         Text(readableCode(tick.reason), style = FusionType.BodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (showExecution && tick.outcome == "EXECUTED" && tick.txHash != null) ExecutionSuccess(tick.txHash)
         if (tick.outcome != "RUNNING") WhyButton("tick:${tick.id}", facts = { tick.toFacts() })
     }
 }

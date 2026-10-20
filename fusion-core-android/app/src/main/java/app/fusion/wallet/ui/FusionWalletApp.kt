@@ -59,7 +59,9 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
     val localized = remember(lang, base) { AppLocale.wrap(base, lang) }
     val setLang: (String) -> Unit = { code -> lang = code; AppLocale.save(base, code) }
 
+    val motionEnabled = app.fusion.wallet.ui.motion.observeMotionEnabled()
     CompositionLocalProvider(
+        app.fusion.wallet.ui.motion.LocalMotionEnabled provides motionEnabled,
         LocalContext provides localized,
         LocalConfiguration provides localized.resources.configuration,
     ) {
@@ -140,7 +142,7 @@ fun FusionWalletApp(modifier: Modifier = Modifier) {
                 }
                 Scaffold(
                     modifier = modifier.fillMaxSize(),
-                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO) },
+                    topBar = { FusionTopBar(user = user, onProfile = { profileOpen = true }, onSettings = { settingsOpen = true }, demoData = walletState.source == app.fusion.wallet.data.DataSource.DEMO, wallet = walletState) },
                     bottomBar = { FusionBottomBar(selected = route, onSelect = shell::navigate) },
                 ) { padding ->
                     Box(Modifier.fillMaxSize().padding(padding)) {
