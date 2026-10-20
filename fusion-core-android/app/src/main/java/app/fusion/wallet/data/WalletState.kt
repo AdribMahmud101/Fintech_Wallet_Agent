@@ -61,12 +61,15 @@ data class WalletState(
 ) {
     val dataLabel: String get() = if (source == DataSource.DEMO) "DEMO" else "Base Sepolia · LIVE"
 
+    /** About 30 s of Base blocks, matching the 30 s age limit; a full refresh now takes longer than the old 5 blocks. */
+    private val MAX_BLOCK_LAG get() = 15
+
     /** Monitor freshness only; consumers must never use this read-only repository to sign. */
     fun isStale(nowMillis: Long = System.currentTimeMillis(), headBlock: Long? = observedHeadBlock): Boolean {
         val captured = capturedAtEpochMillis ?: return true
         val block = blockNumber ?: return true
         return status != LoadStatus.READY || nowMillis < captured || nowMillis - captured >= 30_000 ||
-            (headBlock != null && (headBlock < block || headBlock - block >= 5))
+            (headBlock != null && (headBlock < block || headBlock - block >= MAX_BLOCK_LAG))
     }
 
     /** Real-device freshness latch: show stale only if last successful snapshot is older than 90s. */
