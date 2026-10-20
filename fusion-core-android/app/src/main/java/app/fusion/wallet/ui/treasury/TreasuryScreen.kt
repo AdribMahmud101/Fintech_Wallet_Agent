@@ -1,6 +1,7 @@
 package app.fusion.wallet.ui.treasury
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -49,7 +50,7 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
         while (true) { delay(1000); value = System.currentTimeMillis() }
     }
     LaunchedEffect(state.balanceHistory, state.refreshing, state.historyError) { historyVm.load(state) }
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().background(Color(0xFF080A0D))) {
         LazyColumn(contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 // A title row contains only the bounded refresh action; freshness belongs in the hero.
@@ -78,8 +79,9 @@ fun TreasuryScreen(modifier: Modifier = Modifier, vm: MainViewModel = viewModel(
             item { HomeSpendingAndRates(state, txIndex) }
             item { WorthKnowing(state) }
             item {
-                BentoTile(Modifier.fillMaxWidth(), tint = FusionColors.Indigo) {
-                    Text(stringResource(R.string.home_agent_title), style = FusionType.HeadingSmall)
+                ChartTile(Modifier.fillMaxWidth()) {
+                    ChartTileHeader(stringResource(R.string.home_agent_title),
+                        "Dry run is a live policy preview without a broadcast. The latest decision uses the recorded transaction provenance where available; planner labels identify the recorded planner. Stop requests the guardian pause.")
                     val module = state.module
                     val status = when {
                         module == null -> "Status unavailable"
