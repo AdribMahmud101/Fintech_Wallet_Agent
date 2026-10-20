@@ -103,43 +103,52 @@ fun RadialGauge(value: BigDecimal, max: BigDecimal, centerValue: String, centerU
 
 @Composable
 fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
-    if (weeks.isEmpty()) { Text("Spending history unavailable",style=FusionType.BodySmall); return }
-    val max=weeks.maxOf { w->w.segments.fold(BigInteger.ZERO) { sum,s->sum+s.valueRaw } }
-    val labels=weeks.flatMap { it.segments }.map { it.label }.distinct()
-    val progress=rememberChartProgress()
+    if (weeks.isEmpty()) { Text("Spending history unavailable", style = FusionType.BodySmall); return }
+    val max = weeks.maxOf { week -> week.segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw } }
+    val segments = weeks.flatMap { it.segments }
+    val labels = segments.map { it.label }.distinct()
+    val progress = rememberChartProgress()
     Column(modifier.fillMaxWidth().semantics {
-        contentDescription=weeks.joinToString(". ") { w->w.label+": "+w.segments.joinToString { "${it.label} ${formatBigIntegerAmount(it.valueRaw)} USDC" } }
-    }) {
-        if (max.signum()==0) Text("No bill payments recorded in these weeks",style=FusionType.BodySmall)
-        Canvas(Modifier.fillMaxWidth().height(112.dp).padding(top=12.dp)) {
-            val slot=size.width/weeks.size; val width=slot*.56f
-            weeks.forEachIndexed { i,w ->
-                val total=w.segments.fold(BigInteger.ZERO) { sum,s->sum+s.valueRaw }
-                val h=size.height*chartFraction(total,max)*progress
-                val left=slot*i+(slot-width)/2
-                if (total.signum()==0) drawRoundRect(FusionColors.Border,Offset(left,size.height-2.dp.toPx()),Size(width,2.dp.toPx()),CornerRadius(2.dp.toPx()))
+        contentDescription = weeks.joinToString(". ") { week -> week.label + ": " + week.segments.joinToString { "${it.label} ${formatBigIntegerAmount(it.valueRaw)} USDC" } }
+    }, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (max.signum() == 0) Text("No bill payments recorded", style = FusionType.BodySmall)
+        // 24 dp pills and up to 22 dp gaps; gaps contract on narrow phones.
+        Canvas(Modifier.widthIn(max = 162.dp).fillMaxWidth().height(120.dp).padding(top = 8.dp)) {
+            val width = minOf(24.dp.toPx(), size.width / weeks.size)
+            val gap = if (weeks.size > 1) (size.width - width * weeks.size) / (weeks.size - 1) else 0f
+            weeks.forEachIndexed { i, week ->
+                val total = week.segments.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
+                val height = size.height * chartFraction(total, max) * progress
+                val left = i * (width + gap)
+                if (total.signum() == 0) drawRoundRect(FusionChart.Track,
+                    Offset(left, size.height - 4.dp.toPx()), Size(width, 4.dp.toPx()), CornerRadius(2.dp.toPx()))
                 else {
-                    val path=Path().apply { addRoundRect(RoundRect(Rect(left,size.height-h,left+width,size.height),CornerRadius(6.dp.toPx()))) }
+                    val path = Path().apply { addRoundRect(RoundRect(Rect(left, size.height - height, left + width, size.height), CornerRadius(width / 2))) }
                     clipPath(path) {
-                        var bottom=size.height
-                        w.segments.forEach { segment ->
-                            val height=h*chartFraction(segment.valueRaw,total)
-                            drawRect(segment.color,Offset(left,bottom-height),Size(width,height)); bottom-=height
+                        var bottom = size.height
+                        week.segments.forEach { segment ->
+                            val segmentHeight = height * chartFraction(segment.valueRaw, total)
+                            drawRect(segment.color, Offset(left, bottom - segmentHeight), Size(width, segmentHeight))
+                            bottom -= segmentHeight
                         }
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top=8.dp)) {
-            weeks.forEach { w -> Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally) {
-                Text(w.label,style=FusionType.BodySmall,textAlign=TextAlign.Center)
-                Text(chartAmountLabel(w.segments.fold(BigInteger.ZERO) { sum,s->sum+s.valueRaw }),style=FusionType.NumberCaption,textAlign=TextAlign.Center)
-            } }
+        Row(Modifier.widthIn(max = 162.dp).fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            weeks.forEach { week -> Text(week.label, modifier = Modifier.width(24.dp),
+                style = FusionType.BodySmall, color = FusionChart.Muted, textAlign = TextAlign.Center, maxLines = 1) }
         }
+        Spacer(Modifier.height(8.dp))
         labels.forEach { label ->
-            val all=weeks.flatMap { it.segments }.filter { it.label==label }
-            Text("● $label · ${formatBigIntegerAmount(all.fold(BigInteger.ZERO) { sum,s->sum+s.valueRaw })} USDC",
-                color=all.first().color,style=FusionType.BodySmall,modifier=Modifier.padding(top=8.dp))
+            val all = segments.filter { it.label == label }
+            val total = all.fold(BigInteger.ZERO) { sum, s -> sum + s.valueRaw }
+            if (total.signum() > 0) Row(Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(all.first().color))
+                Text(label, Modifier.weight(1f), style = FusionType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(chartAmountLabel(total), style = FusionType.BodyMedium, color = FusionChart.Muted, maxLines = 1)
+            }
         }
     }
 }

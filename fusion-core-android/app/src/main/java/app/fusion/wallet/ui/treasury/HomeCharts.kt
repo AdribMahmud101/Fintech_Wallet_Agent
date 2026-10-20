@@ -62,26 +62,29 @@ fun HomeAllocationAndRunway(state: WalletState) {
 
 @Composable
 fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
-    ChartPair(first={ modifier -> BentoTile(modifier,padding=12.dp) {
-        Text("Spending by week",style=FusionType.HeadingSmall)
-        val evidence=state.chartEvidence
-        if (evidence==null) Text("Bill payment history unavailable",style=FusionType.BodySmall)
+    ChartPair(first={ modifier -> ChartTile(modifier) {
+        val evidence = state.chartEvidence
+        val date = SimpleDateFormat("MMM d", Locale.getDefault())
+        ChartTileHeader("Spending by week", buildString {
+            append("USDC bill payments from the shared event index. Local Monday weeks: 3w, 2w, 1w, Now. The current week is partial. Values in the legend sum the last four weeks. Up to three named vendors plus Other; vendor labels come from the transaction index, then registered payees, then an abbreviated address. Empty weeks are flat stubs.")
+            evidence?.let { append("\n\nHistory begins ${date.format(Date(it.historyStart * 1000))}; earlier dates are unobserved.") }
+        })
+        if (evidence == null) Text("Bill payment history unavailable", style = FusionType.BodySmall)
         else {
-            val weeks=weeklySpending(evidence.payments,evidence.through,TimeZone.getDefault()) { payment ->
-                txIndex.find(payment.txHash)?.payeeLabel ?: state.payees.firstOrNull { it.address.equals(payment.recipient,true) }?.label
+            val weeks = weeklySpending(evidence.payments, evidence.through, TimeZone.getDefault()) { payment ->
+                txIndex.find(payment.txHash)?.payeeLabel ?: state.payees.firstOrNull { it.address.equals(payment.recipient, true) }?.label
                     ?: "Vendor ${payment.recipient.take(8)}…"
             }
-            val top=weeks.flatMap { it.totals.entries }.groupBy { it.key }.mapValues { (_,rows)->rows.fold(BigInteger.ZERO) { sum,row->sum+row.value } }
-                .entries.sortedWith(compareByDescending<Map.Entry<String,BigInteger>> { it.value }.thenBy { it.key }).take(3).map { it.key }
-            val palette=listOf(FusionColors.Indigo,FusionColors.Green,FusionColors.Amber)
-            val date=SimpleDateFormat("MMM d",Locale.getDefault())
-            WeeklyBars(weeks.map { week -> WeekBucket(date.format(Date(week.startSeconds*1000)),
-                top.mapIndexed { i,label-> Segment(label,week.totals[label]?:BigInteger.ZERO,palette[i]) }+
-                    listOf(Segment("Other",week.totals.filterKeys { it !in top }.values.fold(BigInteger.ZERO,BigInteger::add),FusionColors.TextMuted))) })
-            Text("USDC · local Monday weeks · current week is partial",style=FusionType.BodySmall,modifier=Modifier.padding(top=8.dp))
-            if (evidence.historyStart>weeks.first().startSeconds) Text("History begins ${date.format(Date(evidence.historyStart*1000))}; earlier dates are unobserved.",style=FusionType.BodySmall)
+            val top = weeks.flatMap { it.totals.entries }.groupBy { it.key }
+                .mapValues { (_, rows) -> rows.fold(BigInteger.ZERO) { sum, row -> sum + row.value } }
+                .entries.sortedWith(compareByDescending<Map.Entry<String, BigInteger>> { it.value }.thenBy { it.key }).take(3).map { it.key }
+            val palette = listOf(FusionChart.Teal, FusionChart.Coral, FusionChart.Sky)
+            val labels = listOf("3w", "2w", "1w", "Now")
+            WeeklyBars(weeks.mapIndexed { index, week -> WeekBucket(labels[index],
+                top.mapIndexed { i, label -> Segment(label, week.totals[label] ?: BigInteger.ZERO, palette[i]) } +
+                    listOf(Segment("Other", week.totals.filterKeys { it !in top }.values.fold(BigInteger.ZERO, BigInteger::add), FusionChart.Reserved))) })
         }
-    } },second={ modifier -> BentoTile(modifier,padding=12.dp) {
+    },second={ modifier -> BentoTile(modifier,padding=12.dp) {
         Text("Interest per year",style=FusionType.HeadingSmall)
         val apy=state.chartEvidence?.aaveApyPercent
         val fraction=apy?.let { gaugeFraction(it,100.toBigDecimal()) }
