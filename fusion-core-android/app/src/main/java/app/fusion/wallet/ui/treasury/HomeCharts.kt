@@ -84,15 +84,18 @@ fun HomeSpendingAndRates(state: WalletState, txIndex: TxIndex) {
                 top.mapIndexed { i, label -> Segment(label, week.totals[label] ?: BigInteger.ZERO, palette[i]) } +
                     listOf(Segment("Other", week.totals.filterKeys { it !in top }.values.fold(BigInteger.ZERO, BigInteger::add), FusionChart.Reserved))) })
         }
-    },second={ modifier -> BentoTile(modifier,padding=12.dp) {
-        Text("Interest per year",style=FusionType.HeadingSmall)
-        val apy=state.chartEvidence?.aaveApyPercent
-        val fraction=apy?.let { gaugeFraction(it,100.toBigDecimal()) }
+    },second={ modifier -> ChartTile(modifier) {
+        val apy = state.chartEvidence?.aaveApyPercent
+        ChartTileHeader("Interest per year", buildString {
+            append("Aave lending: live waUSDC supply APY from Aave V3 Pool getReserveData(USDC).currentLiquidityRate (ray APR converted to compounded annual supply APY). Pool 0x8bAB6d1b75f19e9eD9fCe8b9BD338844fF79aE27; USDC 0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f. Bars scale to the largest available rate shown, rather than 100%.")
+            state.chartEvidence?.blockNumber?.let { append("\n\nPool supply rate · block $it") }
+            append("\n\nDemo vault: simulated yield funded by sponsor donations; no configured annual rate getter. Empty track means no live rate, not zero yield.")
+        })
         ProgressBars(listOf(
-            ProgressRow("Aave waUSDC",apy?.let { "${it.setScale(2,java.math.RoundingMode.HALF_UP)} % APY" }?:"Live rate unavailable",fraction,FusionColors.Indigo,
-                state.chartEvidence?.blockNumber?.let { "Pool supply rate · block $it · 100% scale" }),
-            ProgressRow("Demo vault · simulated yield","simulated — no live rate",null,FusionColors.Amber,"Sponsor donations; no configured annual rate")
-        ),Modifier.padding(top=16.dp))
+            ProgressRow("Aave lending", apy?.let { "${it.setScale(2, java.math.RoundingMode.HALF_UP)}%" } ?: "unavailable",
+                apy?.let { gaugeFraction(it, it) }, FusionChart.Sky),
+            ProgressRow("Demo vault", "simulated", null, FusionChart.Sky)
+        ), Modifier.padding(top = 8.dp))
     } })
 }
 

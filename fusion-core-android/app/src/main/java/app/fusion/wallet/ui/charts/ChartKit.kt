@@ -155,20 +155,23 @@ fun WeeklyBars(weeks: List<WeekBucket>, modifier: Modifier = Modifier) {
 
 @Composable
 fun ProgressBars(rows: List<ProgressRow>, modifier: Modifier = Modifier) {
-    val progress=rememberChartProgress()
-    Column(modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-        if (rows.isEmpty()) Text("No verified data yet",style=FusionType.BodySmall)
+    val progress = rememberChartProgress()
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        if (rows.isEmpty()) Text("No verified data yet", style = FusionType.BodySmall)
         rows.forEach { row ->
-            Column(Modifier.fillMaxWidth().semantics { contentDescription="${row.label}: ${row.valueText}. ${row.note.orEmpty()}" }) {
-                Text(row.label,style=FusionType.BodySmall)
-                Text(row.valueText,style=FusionType.NumberBody)
-                if (row.fraction!=null) {
-                    Box(Modifier.padding(top=6.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(FusionColors.Border)) {
-                        val width=row.fraction.coerceIn(BigDecimal.ZERO,BigDecimal.ONE).toFloat()*progress
-                        if (width>0f) Box(Modifier.fillMaxWidth(width).fillMaxHeight().clip(RoundedCornerShape(4.dp)).background(row.tone))
-                    }
+            Column(Modifier.fillMaxWidth().semantics { contentDescription = "${row.label}: ${row.valueText}. ${row.note.orEmpty()}" }) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(row.label, Modifier.weight(1f), style = FusionType.BodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(row.valueText, style = FusionType.BodyMedium, maxLines = 1)
                 }
-                row.note?.let { Text(it,style=FusionType.BodySmall,modifier=Modifier.padding(top=4.dp)) }
+                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(FusionChart.Track)) {
+                    val width = row.fraction?.coerceIn(BigDecimal.ZERO, BigDecimal.ONE)?.toFloat()?.times(progress) ?: 0f
+                    if (width > 0f) Box(Modifier.fillMaxWidth(width).fillMaxHeight()
+                        .clip(RoundedCornerShape(4.dp)).background(row.tone))
+                }
+                row.note?.let { Text(it, style = FusionType.BodySmall, modifier = Modifier.padding(top = 4.dp)) }
             }
         }
     }
