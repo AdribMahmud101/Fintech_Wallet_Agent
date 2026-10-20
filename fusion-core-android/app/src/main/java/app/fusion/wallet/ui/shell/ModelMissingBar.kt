@@ -30,6 +30,13 @@ import app.fusion.wallet.ui.theme.FusionColors
 import app.fusion.wallet.ui.theme.FusionType
 import kotlinx.coroutines.delay
 
+private const val PREFS = "model_prompt"
+private const val KEY_AUTO = "download_on_launch"
+
+/** Asks the next ModelMissingBar to start the model download once (set when a judge chooses it at the skip warning). */
+fun requestModelDownload(context: android.content.Context) =
+    context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO, true).apply()
+
 /**
  * Shown under the top bar on every screen while the on-device AI model is missing (for example a judge who skipped
  * setup). Preview, Run now and Autopilot need it; everything else works without it. Download starts it in place.
@@ -37,8 +44,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun ModelMissingBar(vm: SettingsViewModel = viewModel()) {
     val model by vm.model.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         vm.refreshModel()
+        val prefs = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_AUTO, false)) {
+            delay(1_500)
+            if (vm.model.value.status?.ready != true) vm.redownload()
+            prefs.edit().putBoolean(KEY_AUTO, false).apply()
+        }
         while (true) { delay(5_000); if (!vm.model.value.downloading) vm.refreshModel() }
     }
     val status = model.status ?: return

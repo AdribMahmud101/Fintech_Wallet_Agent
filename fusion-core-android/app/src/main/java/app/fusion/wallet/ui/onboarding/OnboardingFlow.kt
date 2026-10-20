@@ -79,6 +79,24 @@ fun OnboardingFlow(
 
     BackHandler(enabled = step > 0) { goBack() }
 
+    var skipWarn by rememberSaveable { mutableStateOf(false) }
+    if (skipWarn) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { skipWarn = false },
+        title = { Text("The AI needs its model") },
+        text = { Text("Skipping setup also skips the on-device AI model (about 128 MB). Without it, Preview, Run now and Autopilot can’t decide. Balances, proof and security still work. Download it now? (Wi-Fi recommended)") },
+        confirmButton = { androidx.compose.material3.TextButton(onClick = {
+            skipWarn = false
+            OnboardingPrefs.setWatchOnly(context)
+            app.fusion.wallet.ui.shell.requestModelDownload(context)
+            onFinish()
+        }) { Text("Download and continue") } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = {
+            skipWarn = false
+            OnboardingPrefs.setWatchOnly(context)
+            onFinish()
+        }) { Text("Continue without") } },
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -103,9 +121,8 @@ fun OnboardingFlow(
                     },
                     onWatchOnly = {
                         // Judges install a keyless APK: land them in the live wallet read-only instead
-                        // of the six-step owner setup.
-                        OnboardingPrefs.setWatchOnly(context)
-                        onFinish()
+                        // of the six-step owner setup. They skip the model step, so warn first.
+                        skipWarn = true
                     },
                 )
                 1 -> NetworkCurrencyStep(vm = vm, lang = lang, onLang = onLang)
